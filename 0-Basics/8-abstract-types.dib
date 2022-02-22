@@ -1,0 +1,40 @@
+#!markdown
+
+# 0.8. Abstract Types
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/0-basics.
+
+It covers topics for section [0.8. Abstract Types](https://gienieczko.com/teaching/csharp/0-basics/8-abstract-types).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Summary
+
+We now know how to create classes in C#.
+We've learnt the basic blocks for creating complex programs -- fields, holding data, and methods, defining behaviour.
+We met properties, that generalise the common getter-setter pattern.
+We know how to create and initialise objects.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [0.9. Strings](https://gienieczko.com/teaching/csharp/0-basics/9-strings),
+or straight to the next notebook, `9-strings.dib`.

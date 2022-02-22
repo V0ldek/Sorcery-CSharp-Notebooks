@@ -1,0 +1,612 @@
+#!markdown
+
+# 0.3. Basic Types
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/0-basics.
+
+It covers topics for section [0.3. Basic Types](https://gienieczko.com/teaching/csharp/0-basics/3-basic-types).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Basic built-in types
+
+C# hosts a handful of builtin types:
+
+### Integral numerics
+
+- `byte` -- 8-bit unsigned integer;
+- `int` -- 32-bit signed integer; the most commonly used integral type;
+- `long` -- 64-bit signed integer;
+- `short` -- 16-bit signed integer;
+- `nint` -- native-size signed integer; this is always the same size as the running process' pointer size;
+
+...and their counterparts with flipped signage:
+
+- `sbyte` -- signed `byte`;
+- `uint` -- unsigned `int`;
+- `ulong` -- unsigned `long`;
+- `ushort` -- unsigned `short`;
+- `nuint` -- unsigned `nint`.
+
+The counterparts aren't used too often.
+
+### Floating point numerics
+
+- `float` -- 32-bit floating point number, standard IEEE 754 single-precision;
+- `double` -- 64-bit floating point number, standard IEEE 754 double-precision;
+- `decimal` -- 128-bit high precision floating point number; represented in base10, 
+well-suited for financial calculations or other operations that require large numbers of digits with no rounding errors
+
+### Non-numeric values
+
+- `bool` -- boolean value equal to either `true` or `false`;
+- `char` -- 16-bits representing a Unicode UTF-16 character;
+
+### Complex types
+
+- `object` -- the root of the .NET class hierarchy;
+- `string` -- a sequence of UTF-16 characters.
+
+### Notes
+
+This list is up-to-date for C# 10, but may change in time.
+For example, `nint` and `nuint` were added in C# 9.
+
+The [official MSDN documentation](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types)
+lists `dynamic` as well, but that's not really a type. We'll cover `dynamic` _way_ later in the course. 
+
+#!markdown
+
+## The `object` type
+
+.NET features a unified type system. The `object` type is the root of the entire inheritance hierarchy,
+which means that every type in .NET is a subtype of `object` and inherits its methods.
+We will talk about inheritance in one of the following sections, but for now we only need to know
+that:
+- every type is convertible to `object` (implicitly)
+- every object has a `ToString` method that returns its string representation.
+
+#!markdown
+
+## Variables
+
+We can declare variables in the usual way, by specifying their type and identifier:
+
+#!csharp
+
+int number;           // Declaration.
+number = 42;          // Assignment.
+int otherNumber = 17; // Declaration and assignment.
+
+Console.WriteLine(number);
+Console.WriteLine(otherNumber);
+
+#!markdown
+
+Variables are mutable:
+
+#!csharp
+
+int number = 42;
+Console.WriteLine(number);
+
+number = 17;
+Console.WriteLine(number);
+
+#!markdown
+
+### Type inference
+
+Most of the time variables are declared and immediatelly assigned, and their type is known.
+In such cases you can use the `var` keyword to say "the type of this variable is the same as the type of the expression on the right".
+
+#!csharp
+
+var number = 42;          // `number` is an `int`.
+var s = "string literal"; // `s` is a `string`.
+
+#!markdown
+
+There are competing styles of using `var`:
+
+1. Use `var` always where possible -- preferred by me, in line with how most modern languages work 
+(Rust is implictly typed by default, so is Kotlin, so are all functional languages)
+2. Use `var` where the type on the right is "obvious" -- this has the problem of the definition of "obvious" being nebulous,
+and if styling rules are open to interpretation they lead to inconsistencies;
+3. Never use `var` -- this is simply unpractical and unnecessarily verbose.
+
+In the course we will be using 2. for a definition of obvious that I find compelling at the time,
+to ease your way into the language -- at the beginning it is useful to explicitly see all the
+types we use.
+
+#!markdown
+
+### Constants
+
+We can declare a constant using the `const` keyword.
+It has to be a compile-time constant, so it must be either a literal
+or an expression computable at compile-time.
+Its type must be given explicitly.
+
+#!csharp
+
+const int x = 4;
+const int square = x * x;
+const string message = "Hello, World!";
+const string message2 = message + " From C#!";
+
+Console.WriteLine(message2);
+
+#!markdown
+
+## Literals
+
+String literals are located within double quotes.
+
+Char literals are located within single quotes.
+
+Integral literals are of type `int`. Decimal literals are of type `double`. You can change that behaviour with suffixes `U`, `L`, `UL`, `F` and `M`.
+
+#!csharp
+
+var a = "string literal"; // a is `string`
+var b = 'c';              // b is `char`
+var c = 42;               // c is `int`
+var d = 42U;              // c is `uint`
+var e = 42L;              // d is `long`
+var f = 42UL;             // d is `ulong`
+var g = 4.2;              // e is `double`
+var h = 4.2f;             // f is `float`
+var i = 4.2M;             // g is `decimal`
+
+#!markdown
+
+There are a few more useful ways of putting a literal numeric value. First off, you can use underscores to make values more readable:
+
+#!csharp
+
+var x = 1000000000;
+var y = 1_000_000_000;
+
+Console.WriteLine(x);
+Console.WriteLine(y);
+
+#!markdown
+
+You can declare binary and hexadecimal integral values:
+
+#!csharp
+
+var x = 0b101010110011001100001000; // `int` by default
+var y = 0xAB3308;
+
+Console.WriteLine(x);
+Console.WriteLine(y);
+
+#!markdown
+
+Finally, you can declare decimal values with scientific notation:
+
+#!csharp
+
+var x = 1.3e5;   // `double`
+var y = 3.14e-4; // `double`
+
+Console.WriteLine(x);
+Console.WriteLine(y);
+
+#!markdown
+
+## Type safety and conversions
+
+C# is statically typed. A variable has its type assigned at declaration and it cannot change.
+You can only perform operations on it that are valid for the declared type.
+
+#!csharp
+
+// Intentionally does not compile.
+int x = 42;
+x = "42";
+
+#!markdown
+
+Type inference does not change the above facts. When using `var`, the type is not explicitly stated, but it is still unambiguously defined at compile time.
+
+#!csharp
+
+// Intentionally does not compile.
+var x = 42; // Type of `x` is `int`.
+x = "42";
+
+#!csharp
+
+// Intentionally does not compile.
+Console.WriteLine("42" * 6);
+
+#!markdown
+
+There are two types of type conversions in C# -- **implicit** and **explicit**.
+
+### Implicit numeric conversions
+
+Implicit conversions happen automatically when trying to use an expression of some type in a context that requires a different type.
+
+There are implicit conversions between numeric types where it's obvious that the value will be correct
+and fit into the other type. For example, there's an obviously correct conversion from `int` to `long`,
+as values of `int` are always valid values of `long`. The same is the case for `float` and `double`.
+
+#!csharp
+
+int x = 42;
+long y = x;
+
+Console.WriteLine(x);
+Console.WriteLine(y);
+
+#!markdown
+
+There's a catch for `float` and `double`, because of course, there's always a catch when dealing with floating point values in computers.
+Conversions from `int` (or bigger) to `float` or from `long` or `ulong` to `double` may cause precision loss.
+
+#!csharp
+
+int x = 123456789;
+float y = x;
+
+Console.WriteLine(x);
+Console.WriteLine(y);
+
+#!markdown
+
+Other implicit conversions never lose any information.
+
+### Explicit numeric conversions.
+
+All numeric types have explicit conversions, using the cast operator.
+
+#!csharp
+
+long x = 42;
+var y = (int) x;
+
+Console.WriteLine(x);
+Console.WriteLine(y);
+
+#!markdown
+
+This can cause information loss and overflow.
+
+#!csharp
+
+long x = 1_000_000_000_000;
+var y = (int) x;
+
+Console.WriteLine(x);
+Console.WriteLine(y);
+
+#!csharp
+
+double x = 119_113_734_256.00544;
+var y = (float) x;
+
+Console.WriteLine(x);
+Console.WriteLine(y);
+
+#!markdown
+
+## Operators
+
+Operators are special functions with special names and semantics. 
+There is a fixed pool of operators, so you cannot define your own `:-->:@$` operator that does something magical
+as you can in Haskell for example.
+
+#!markdown
+
+### Arithmetic operators
+
+For binary operators we have the usual suspects: `*`, `/`, `%`, `+`, and `-`, defined as you might expect.
+
+#!csharp
+
+var a = 2 + 2 * 2;
+var b = a - 10;
+var c = a / 4;     // Integral division.
+var d = a % 4;     // Modulus.
+
+Console.WriteLine(a);
+Console.WriteLine(b);
+Console.WriteLine(c);
+Console.WriteLine(d);
+
+#!markdown
+
+For unary, we have increment `++` and decrement `--`, as well as negation `-`.
+
+#!csharp
+
+var a = 3;
+a++;
+var b = -a;
+
+Console.WriteLine(a);
+Console.WriteLine(b);
+
+#!markdown
+
+Increment and decrement operators have the C-like funky prefix and postfix semantics,
+where pre-incrementing is an expression whose value is of the object being incremented _before_ the operation,
+and post-incrementing is an expression whose value is of the object being incremented _after_ the operation,
+for decrement analogously.
+
+#!csharp
+
+var a = 3;
+var b = a--;
+var c = --a;
+
+Console.WriteLine(a);
+Console.WriteLine(b);
+Console.WriteLine(c);
+
+#!markdown
+
+However using these as expressions is widely considered bad style and discouraged. Don't do that.
+
+Personally, I dislike `x++` syntax anyway, and usually use `x += 1`, but that's more my quirk than a widely held opinion.
+
+#!markdown
+
+### Logical operators
+
+These operators return `bool` values. We have:
+
+- comparison operators: `==`, `!=`, `>`, `<`, `>=`, `<=`;
+- boolean operators: `^`, `&`, `|` and `&&`, `||`;
+- negation operator: `!`
+
+Comparison operators are straightforward.
+
+#!csharp
+
+Console.WriteLine(3 == 4);
+Console.WriteLine(3 < 4);
+Console.WriteLine(3 > 4);
+
+#!markdown
+
+The core boolean operators are `^` (XOR), `&` (AND), and `|` (OR).
+The `&&` and `||` operators are derived from them and are the most commonly used ones.
+They evaluate their arguments lazily, which is a very important part of control flow.
+
+What that means is that `a && b` is equivalent to "if `a` is false, return false, if `a` is true then if `b` is false, return false, else return true",
+so if `a` is false, then `b` is not evaluated. Analogously, in `a || b` `b` is only evaluated if `a` is false.
+
+#!csharp
+
+Console.WriteLine(3 > 4 || 3 > 2);
+Console.WriteLine(3 > 4 && 3 == 3);
+
+#!markdown
+
+The `&` and `|`, called **eager** operators, are used rather rarely. The **lazy** versions `&&`, `||` are the go-to default.
+
+#!markdown
+
+### Bitwise operators
+
+Bitwise operators are valid for integral numerics (and `char`) and operate on the bits representing the value.
+They are basically the same as in C. We have:
+
+- `&`, `|`, `^` -- bitwise AND, OR, and XOR;
+- `<<`, `>>` -- bitwise shifts;
+- `~` -- unary bitwise complement;
+
+#!csharp
+
+int x = 0b_1111_0000_1111_0000; // Binary literal syntax, pretty neat tool.
+int y = 0b_1100_1100_1100_1100;
+
+// {0,32} is formatting magic for "pad left with space until length is 32".
+// We will discuss string formatting later.
+//
+// `Convert` is a utility class, this converts `x` to a string in base `2`.
+Console.WriteLine("{0,32}", Convert.ToString(x & y, 2)); 
+Console.WriteLine("{0,32}", Convert.ToString(x | y, 2));
+Console.WriteLine("{0,32}", Convert.ToString(x ^ y, 2));
+Console.WriteLine("{0,32}", Convert.ToString(~x, 2));
+Console.WriteLine("{0,32}", Convert.ToString(y << 3, 2));
+Console.WriteLine("{0,32}", Convert.ToString(y >> 3, 2));
+
+#!markdown
+
+### Compound assignment
+
+A very common idiom is mutating a value with a binary operator:
+
+#!csharp
+
+var a = 3;
+var b = false;
+
+a = a + 3;
+a = a << 1;
+b = b | true;
+
+Console.WriteLine(a);
+Console.WriteLine(b);
+
+#!markdown
+
+There's syntactic sugar for that, called compound assignment:
+
+#!csharp
+
+var a = 3;
+var b = false;
+
+a += 3;
+a <<= 1;
+b |= true;
+
+Console.WriteLine(a);
+Console.WriteLine(b);
+
+#!markdown
+
+These are not special `+=`, `<<=` or `|=` operators, it's just sugar.
+The compiler almost immediately expands the second version to the first version.
+
+#!markdown
+
+## Strings and string literals
+
+As we established, strings in .NET are sequences of valid UTF-16 characters.
+The basic way of creating strings is via string literals, enclosed in double quotes.
+
+### Escape sequences
+
+Some characters can be expressed with escape sequences.
+The following is a non-exhaustive list of them:
+
+- `\'` -- single quote;
+- `\"` -- double quote, expressible as a character, but not as a string: `"\""`;
+- `\\` -- backslash;
+- `\0` -- the NULL character, value `0x0`;
+- `\b` -- backspace
+- `\n` -- newline
+- `\r` -- carriage return
+- `\t` -- tab
+- `\uXXXX` -- special unicode escape, can represent any UTF-16 character with its Unicode hexadecimal code, for example, `\u00A9` is ©, `\u000A` is newline.
+
+### Verbatim strings
+
+There are cases when a string contains so many special characters that it's very cumbersome to write it down.
+For example, writing paths:
+
+#!csharp
+
+var path = "mnt\\d\\code\\csharp\\notebooks";
+
+Console.WriteLine(path);
+
+#!markdown
+
+To make it easier, we can use verbatim strings by prefixing the opening quote with `@`: 
+
+#!csharp
+
+var path = @"mnt\d\code\csharp\notebooks";
+
+Console.WriteLine(path);
+
+#!markdown
+
+You can also include multiline strings this way:
+
+#!csharp
+
+var multiline = @"line one
+line two
+line three";
+
+Console.WriteLine(multiline);
+
+#!markdown
+
+A catch is that if we want to use the double quote character `"` inside an interpolated string
+we need to somehow escape it, and backslash no longer works. To do that, we just write the quote twice:
+
+#!csharp
+
+var verbatimQuotes = @"""Within quotes""";
+
+Console.WriteLine(verbatimQuotes);
+
+#!markdown
+
+### String interpolation
+
+Extremely often we'll want to construct a string from string representations of other values.
+
+#!csharp
+
+var x = 4;
+Console.WriteLine("The value is " + x.ToString() + ".");
+
+#!markdown
+
+In C# this is done using interpolated strings. We prefix the string with a `$` character
+and then we can _interpolate_ other values within the string between braces.
+
+#!csharp
+
+var x = 4;
+Console.WriteLine($"The value is {x}.");
+
+#!markdown
+
+These interpolated fragments can be any expressions:
+
+#!csharp
+
+var x = 4;
+Console.WriteLine($"The value is {x}, and its square is {x * x}.");
+
+#!markdown
+
+The value is implicitly converted to string using its `ToString` method.
+
+### Format specifiers
+
+When interpolating a string we might want to format the value in some special way,
+for example include only a given number of digits after the decimal point or display a number in hexadecimal.
+This is done with format specifiers -- after an interpolated expression we can put a colon and then a magical string
+that formats it. Here are some examples:
+
+#!csharp
+
+var x = 255;
+var y = 3.14159;
+
+Console.WriteLine($"Hexadecimal format: {x:X}");
+Console.WriteLine($"Hexadecimal format with set number of digits: {x:X4}");
+Console.WriteLine($"Scientific notation format: {x:E}");
+Console.WriteLine($"Fixed-point format: {y:F3}");
+Console.WriteLine($"Percentage format: {y:P}");
+Console.WriteLine($"Custom format: {x:000#}");
+Console.WriteLine($"Custom format: {y:000#.###}");
+
+#!markdown
+
+The magical formats are defined here: https://docs.microsoft.com/en-us/dotnet/standard/base-types/standard-numeric-format-strings.
+
+#!markdown
+
+## Summary
+
+We now know how to use the basic types in C#, declare variables and use various literals,
+including the different types of string literals.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [0.4. Control Flow](https://gienieczko.com/teaching/csharp/0-basics/4-control-flow),
+or straight to the next notebook, `4-control-flow.dib`.

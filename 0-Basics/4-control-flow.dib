@@ -1,0 +1,257 @@
+#!markdown
+
+# 0.4. Control Flow
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/0-basics.
+
+It covers topics for section [0.4. Control Flow](https://gienieczko.com/teaching/csharp/0-basics/4-control-flow).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## The `if` statement
+
+The `if` statement gives us branching. It can be followed by any number of
+`else if` clauses and optionally a final catch-all `else` clause.
+
+#!csharp
+
+var a = 42;
+var b = 17;
+
+if (a == 42)
+{
+    if (a < b) 
+    {
+        Console.WriteLine("b is more than 42");
+    }
+    else if (a == b)
+    {
+        Console.WriteLine("b is equal to 42");
+    }
+    else
+    {
+        Console.WriteLine("b is not more than 42");
+    }
+}
+
+#!csharp
+
+var a = 42;
+var b = 17;
+
+if (a != b && a == 42)
+{
+    Console.WriteLine("if is an if");
+}
+
+#!markdown
+
+### The ternary operator
+
+The ternary operator is the only operator in the language that is, well, 3-ary.
+It's an expression whose value depends on a condition.
+
+#!csharp
+
+var x = 3 > 4 ? 42 : 17;
+var y = 3 == 3 ? "true" : "not true";
+
+Console.WriteLine(x);
+Console.WriteLine(y);
+
+#!markdown
+
+## Loops
+
+We have three basic loops: `while`, `do while` and `for`. They work as in C.
+
+#!csharp
+
+for (var i = 0; i < 10; i++)
+{
+    Console.WriteLine(i);
+}
+
+#!csharp
+
+var x = 6;
+
+do
+{
+    if (x % 2 == 0)
+    {
+        x = x / 2;
+    }
+    else
+    {
+        x = 3 * x + 1;
+    }
+    Console.WriteLine(x);
+} 
+while (x > 1);
+
+#!markdown
+
+There is also the `foreach` loop for iterating over collections of objects. We'll cover that in the next section.
+
+#!markdown
+
+## Variable scoping
+
+#!markdown
+
+## Function syntax
+
+Function declarations and function calls are the same as in any C-like language, only that we use PascalCase for the names.
+
+#!csharp
+
+int Foo()
+{
+    return 42;
+}
+
+Console.WriteLine(Foo());
+
+#!markdown
+
+## Definite assignment
+
+C# is memory safe, and thus you cannot access a variable before it was _definitely assigned_.
+
+#!csharp
+
+// Intentionally does not compile.
+void Foo()
+{
+    int x;
+    Console.WriteLine(x);
+}
+
+#!markdown
+
+In a perfect world, the compiler would always be able to decide whether a given variable is definitely assigned
+at point of use. However, control flow makes it difficult (undecidable, in fact). It can handle some natural patterns:
+
+#!csharp
+
+void Foo(int arg)
+{
+    int x;
+
+    if (arg == 42)
+    {
+        x = 1;
+    }
+    else 
+    {
+        x = 2;
+    }
+
+    Console.WriteLine(x);
+}
+
+Foo(42);
+
+#!csharp
+
+void Foo(int arg)
+{
+    int x;
+
+    do
+    {
+        x = arg;
+        arg--;
+    }
+    while (arg > 0);
+
+    Console.WriteLine(x);
+}
+
+Foo(10);
+
+#!markdown
+
+This is good -- in most cases this catches developer mistakes, where they just forgot to initialize something.
+However, some code that is obviously correct to a human can trigger a false positive for definite assignment analysis:
+
+#!csharp
+
+// Intentionally does not compile.
+int Foo(int arg)
+{
+    int x;
+
+    if (arg <= 0)
+    {
+        return 0;
+    }
+
+    while(arg > 0)
+    {
+        x = arg;
+        arg--;
+    }
+
+    return x;
+}
+
+Console.WriteLine(Foo(42));
+
+#!markdown
+
+This isn't that common, though. You can probably see that the above example is artificial and could be easily fixed.
+And for natural patterns, the compiler is pretty good at catching them.
+
+The important takeaway here is that we prevent a whole class of errors that would result from forgetting to initialize
+a variable. There is a way to initialize to a default value, but you need to do it explicitly -- we'll cover that later.
+
+#!markdown
+
+### Note
+
+You might've noticed that we put code into a `Foo` method to show definite assignment. That's because in Notebooks
+all variables are automatically initialized.
+
+#!csharp
+
+// INVALID C# CODE OUTSIDE OF THE NOTEBOOK
+int x;
+Console.WriteLine(x);
+
+#!markdown
+
+This is weird, but probably better suited for a scripting environment.
+
+#!markdown
+
+## Summary
+
+We now know how to use `if`, `while`, `do while` and `for` for control flow.
+We've met the ternary operator.
+Tangentially, we've seen how to declare functions, pass arguments, and return values.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [0.5. Arrays](https://gienieczko.com/teaching/csharp/0-basics/5-arrays),
+or straight to the next notebook, `5-arrays.dib`.

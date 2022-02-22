@@ -1,0 +1,229 @@
+#!markdown
+
+# 0.5. Arrays
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/0-basics.
+
+It covers topics for section [0.5. Arrays](https://gienieczko.com/teaching/csharp/0-basics/5-arrays).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Arrays
+
+Arrays are a very special type. They define a collection of values of fixed size that is stored in a contiguous fragment of memory.
+You can create an array of any (well, almost any, we'll talk about ref structs near the end) type `T` by saying `T[]`. Creating a new
+array is done with `new T[size]`. Arrays are initialised to the default value for a given type (which we'll learn in the next module).
+
+You can index into an array with its indexer, both for reading and writing values. Arrays are `0`-indexed.
+To get the length of the array you use the `Length` property.
+
+#!csharp
+
+int[] x = new int[4]; // Declare an array of `int` values, of size 4.
+
+x[2] = 1; // Set the value at index 2 to 1.
+
+for (var i = 0; i < x.Length; i += 1) // .Length gives the length of the array, in this case 4.
+{
+    Console.WriteLine(x[i]);
+}
+
+#!markdown
+
+As expected, default value for `int` is `0`.
+
+#!markdown
+
+You can initialize arrays immediately by using a **collection initializer**:
+
+#!csharp
+
+var x = new[] { 2, 2, 0, 7, 3, 7, 2, 1 }; // You can omit the type if it is obvious. This is an `int[]`.
+
+for (var i = 0; i < x.Length; i += 1)
+{
+    Console.WriteLine(x[i]);
+}
+
+#!markdown
+
+Indexing outside of bounds of the array causes a runtime error, called an **exception**. 
+We won't get the magic powers for dealing with exceptions until module 2, but you should never
+index out of bounds anyway.
+
+#!csharp
+
+var x = new int[2];
+
+for (var i = 0; i <= x.Length; i += 1)
+{
+    Console.WriteLine(x[i]);
+}
+
+#!markdown
+
+## Indexing with `Index` and `Range`
+
+.NET provides two useful types for referencing elements and slices of a collection.
+
+- `Index` represents an index in the collection and can be either counted from start (`0`, `1`, any `int` value),
+or from the back (`^1`, `^2`, `^x` where `x` is an `int`).
+- `Range` represents a slice in the collection, i.e. a contiguous sequence of indices. They are left-inclusive, right-exclusive. So:
+    - `1..3` is a two-element range `1, 2`;
+    - `0..^0` is the range representing all indices in the collection;
+    - `0..^1` is the range representing all but the last index in the collection.
+
+#!csharp
+
+string[] words = new[]
+{
+                // index from start    index from end
+    "The",      // 0                   ^9
+    "quick",    // 1                   ^8
+    "brown",    // 2                   ^7
+    "fox",      // 3                   ^6
+    "jumped",   // 4                   ^5
+    "over",     // 5                   ^4
+    "the",      // 6                   ^3
+    "lazy",     // 7                   ^2
+    "dog"       // 8                   ^1
+};              // 9 (or words.Length) ^0
+
+Console.WriteLine($"0 -> {words[0]}");
+Console.WriteLine($"^1 -> {words[^1]}");
+
+var i = 3;
+Console.WriteLine($"^i -> {words[^i]}");
+
+Console.WriteLine("words[1..^1]:");
+foreach (var word in words[1..^1])
+{
+    Console.WriteLine(word);
+}
+
+Console.WriteLine("words[^2..^0]:");
+foreach (var word in words[^2..^0])
+{
+    Console.WriteLine(word);
+}
+
+#!markdown
+
+## `foreach` loop
+
+The `foreach` loop is arguably the most common loop in C# programs.
+We will cover its semantics in detail later on, but for now we can use it very simply to iterate over an array:
+
+#!csharp
+
+int[] array = new[] {3, 7, 2, 1};
+
+foreach (var x in array) // x is an `int`
+{
+    Console.WriteLine(x);
+}
+
+#!markdown
+
+## Multidimensional arrays
+
+There are two ways of declaring multidimensional arrays in C#.
+
+### Jagged array
+
+The simplest one is an array of arrays;
+
+#!csharp
+
+int[][] jagged = new int[4][];
+
+for (var i = 0; i < jagged.Length; i += 1)
+{
+    jagged[i] = new int[i + 1];
+}
+
+jagged[1][1] = 1;
+
+foreach (var row in jagged)
+{
+    foreach (var x in row)
+    {
+        Console.Write($"{x}, ");
+    }
+    Console.WriteLine();
+}
+
+#!markdown
+
+This is the right one to use in most cases and is rather simple to understand.
+It generalises to any dimension you want, so a 4-dimensional jagged array is a `T[][][][]`.
+
+#!markdown
+
+### Multidimensional arrays
+
+There is also a way to declare a single multidimensional array:
+
+#!csharp
+
+int[,] multidimensional = new int[4, 3];
+
+multidimensional[1, 1] = 1;
+
+foreach (var element in multidimensional)
+{
+    Console.Write($"{element}, ");
+}
+Console.WriteLine();
+
+// To get lengths of dimensions you need to use `GetLength(dimension)`.
+for (var i = 0; i < multidimensional.GetLength(0); i += 1)
+{
+    for (var j = 0; j < multidimensional.GetLength(1); j += 1)
+    {
+        Console.Write($"{multidimensional[i, j]}, ");
+    }
+    Console.WriteLine();
+}
+
+#!markdown
+
+A multidimensional array is allocated as a single contiguous sequence of elements of size
+equal to the array's "volume", so the product of all dimension lengths.
+To not waste space, you should only use them when the data you're storing actually is
+a multidimensional hyperrectangle. Contiguous access also makes it more desirable when
+you often read through the entire array element-by-element.
+
+Most of the time, you should use jagged arrays, unless you are truly modelling something rectangular in nature,
+like a game board or a grid.
+
+#!markdown
+
+## Summary
+
+We now know how to handle collections of values with arrays. We met the `foreach` loop and various ways of ergonomic access to collections
+with `Index` and `Range`. We've also learnt how to handle multidimensional datasets.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [0.6. Classes](https://gienieczko.com/teaching/csharp/0-basics/6-classes),
+or straight to the next notebook, `6-classes.dib`.
