@@ -190,7 +190,7 @@ Foo(10);
 
 #!markdown
 
-This is good -- in most cases this catches developer mistakes, where they just forgot to initialize something.
+This is good – in most cases this catches developer mistakes, where they just forgot to initialize something.
 However, some code that is obviously correct to a human can trigger a false positive for definite assignment analysis:
 
 #!csharp
@@ -222,7 +222,7 @@ This isn't that common, though. You can probably see that the above example is a
 And for natural patterns, the compiler is pretty good at catching them.
 
 The important takeaway here is that we prevent a whole class of errors that would result from forgetting to initialize
-a variable. There is a way to initialize to a default value, but you need to do it explicitly -- we'll cover that later.
+a variable. There is a way to initialize to a default value, but you need to do it explicitly – we'll cover that later.
 
 #!markdown
 

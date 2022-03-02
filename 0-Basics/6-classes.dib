@@ -33,15 +33,15 @@ Every part of a type has some accessibility defined, including the type itself.
 
 There are four core accessibility modifiers, and two special ones:
 
-- `public` -- accessible from everywhere;
-- `protected` -- only accessible from within this type and all the types derived from it (we'll talk about inheritance in the next section);
-- `internal` -- only accessible from within this assembly;
-- `private` -- only accessible from within this type.
+- `public` – accessible from everywhere;
+- `protected` – only accessible from within this type and all the types derived from it (we'll talk about inheritance in the next section);
+- `internal` – only accessible from within this assembly;
+- `private` – only accessible from within this type.
 
 The special accessibilities are a combo of `protected` and something else:
 
-- `private protected` -- `protected` AND `internal`; accessible only from this type and all derived types within this assembly;
-- `protected internal` -- `protected` OR `internal`; accessible from within this assembly, and from derived types in a different assembly;
+- `private protected` – `protected` AND `internal`; accessible only from this type and all derived types within this assembly;
+- `protected internal` – `protected` OR `internal`; accessible from within this assembly, and from derived types in a different assembly;
 
 These are much less common. The `private protected` is very useful for avoiding class brittleness,
 and one could argue you should use it more often that `protected` itself, though.
@@ -117,7 +117,7 @@ There is no naming convention for `public` or `protected` fields, because you sh
 
 ## Constructors
 
-To create an object we need a constructor. If we don't specify any, C# synthesises one for us -- it's called the **default constructor**.
+To create an object we need a constructor. If we don't specify any, C# synthesises one for us – it's called the **default constructor**.
 
 #!csharp
 
@@ -400,7 +400,7 @@ Console.WriteLine(peter.Name);
 
 #!markdown
 
-This syntax -- `duck.Name` instead of `duck.Name` -- is much terser.
+This syntax – `duck.Name` instead of `duck.Name` – is much terser.
 It also allows us to declare a **setter**.
 A setter is a special method that has access to the `value` keyword,
 that gives us the value that was passed to the property.
@@ -603,7 +603,7 @@ peter.Quack();
 We have that `Name` get-only property and the `_name` field.
 By the way, we call such a field the **backing field** of the property.
 There's nothing that says that a property has to be tied to a single field,
-we will see many examples where it is not -- for example, a natural definition of a 2D point class would be:
+we will see many examples where it is not – for example, a natural definition of a 2D point class would be:
 
 #!csharp
 
@@ -672,8 +672,8 @@ class Point
 
 #!markdown
 
-That's a pretty verbose error message, we don't know what init-only setters or variable initializers are yet -- don't worry about it now.
-The important part is that the fields are still mutable in the constructor -- after all it has to actually initialise the instance --
+That's a pretty verbose error message, we don't know what init-only setters or variable initializers are yet – don't worry about it now.
+The important part is that the fields are still mutable in the constructor – after all it has to actually initialise the instance –
 but not within any other methods, like `Mutate`.
 
 So, back to our `Duck`:
@@ -732,7 +732,7 @@ The `_name` is now immutable, but is still assignable in the constructor.
 There's a pattern here. A very common pattern.
 We have public getter properties with a very simple implementation
 that just returns the backing field. In one case it's mutable, in the other it's readonly.
-This pattern is _so_ common that we have a better way of expressing it -- auto properties.
+This pattern is _so_ common that we have a better way of expressing it – auto properties.
 
 #!csharp
 
@@ -799,8 +799,8 @@ than "assign `value` to the backing field".
 ### Init-only setters
 
 Let's refactor our `Duck` class a bit using what we've learnt.
-Instead of having two data points that have to be updated at the same time -- `TimesQuacked` and `_remainingQuacks` --
-we can store the initial number of allowed quacks -- an immutable value -- and then track the number of times we quacked.
+Instead of having two data points that have to be updated at the same time – `TimesQuacked` and `_remainingQuacks` –
+we can store the initial number of allowed quacks – an immutable value – and then track the number of times we quacked.
 The `RemainingQuacks` property will then be computed from those two data points.
 
 #!csharp
@@ -846,7 +846,7 @@ duck.Quack();
 
 #!markdown
 
-This is better. It also allows us to showcase a new toy -- the `init`-only setter.
+This is better. It also allows us to showcase a new toy – the `init`-only setter.
 An `init`-only setter is a special setter that can be used only during object construction.
 
 #!csharp
@@ -990,9 +990,9 @@ var array = new[]
 #!markdown
 
 Isn't it tedious that we have to say "`Duck`" three times?
-This is a much more common general issue -- oftentimes we have a place that expects a certain type
+This is a much more common general issue – oftentimes we have a place that expects a certain type
 and we are creating a new instance of that type to fill it. But since the expected type is known,
-it can be inferred. To facilitate this, we have target-typed `new` -- if the place in which
+it can be inferred. To facilitate this, we have target-typed `new` – if the place in which
 we want to use a `new T` expression expects an object of type `T` then we can omit the `T`.
 
 #!csharp
@@ -1166,7 +1166,7 @@ Console.WriteLine(square.DiagonalLength);
 ## Summary
 
 We now know how to create classes in C#.
-We've learnt the basic blocks for creating complex programs -- fields, holding data, and methods, defining behaviour.
+We've learnt the basic blocks for creating complex programs – fields, holding data, and methods, defining behaviour.
 We met properties, that generalise the common getter-setter pattern.
 We know how to create and initialise objects.
 

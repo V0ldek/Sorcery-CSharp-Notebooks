@@ -28,7 +28,7 @@ That's kind of the point of doing all this in notebooks.
 ## Summary
 
 We now know how to create classes in C#.
-We've learnt the basic blocks for creating complex programs -- fields, holding data, and methods, defining behaviour.
+We've learnt the basic blocks for creating complex programs – fields, holding data, and methods, defining behaviour.
 We met properties, that generalise the common getter-setter pattern.
 We know how to create and initialise objects.
 
