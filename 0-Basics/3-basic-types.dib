@@ -31,38 +31,38 @@ C# hosts a handful of builtin types:
 
 ### Integral numerics
 
-- `byte` -- 8-bit unsigned integer;
-- `int` -- 32-bit signed integer; the most commonly used integral type;
-- `long` -- 64-bit signed integer;
-- `short` -- 16-bit signed integer;
-- `nint` -- native-size signed integer; this is always the same size as the running process' pointer size;
+- `byte` – 8-bit unsigned integer;
+- `int` – 32-bit signed integer; the most commonly used integral type;
+- `long` – 64-bit signed integer;
+- `short` – 16-bit signed integer;
+- `nint` – native-size signed integer; this is always the same size as the running process' pointer size;
 
 ...and their counterparts with flipped signage:
 
-- `sbyte` -- signed `byte`;
-- `uint` -- unsigned `int`;
-- `ulong` -- unsigned `long`;
-- `ushort` -- unsigned `short`;
-- `nuint` -- unsigned `nint`.
+- `sbyte` – signed `byte`;
+- `uint` – unsigned `int`;
+- `ulong` – unsigned `long`;
+- `ushort` – unsigned `short`;
+- `nuint` – unsigned `nint`.
 
 The counterparts aren't used too often.
 
 ### Floating point numerics
 
-- `float` -- 32-bit floating point number, standard IEEE 754 single-precision;
-- `double` -- 64-bit floating point number, standard IEEE 754 double-precision;
-- `decimal` -- 128-bit high precision floating point number; represented in base10, 
+- `float` – 32-bit floating point number, standard IEEE 754 single-precision;
+- `double` – 64-bit floating point number, standard IEEE 754 double-precision;
+- `decimal` – 128-bit high precision floating point number; represented in base10, 
 well-suited for financial calculations or other operations that require large numbers of digits with no rounding errors
 
 ### Non-numeric values
 
-- `bool` -- boolean value equal to either `true` or `false`;
-- `char` -- 16-bits representing a Unicode UTF-16 character;
+- `bool` – boolean value equal to either `true` or `false`;
+- `char` – 16-bits representing a Unicode UTF-16 character;
 
 ### Complex types
 
-- `object` -- the root of the .NET class hierarchy;
-- `string` -- a sequence of UTF-16 characters.
+- `object` – the root of the .NET class hierarchy;
+- `string` – a sequence of UTF-16 characters.
 
 ### Notes
 
@@ -126,14 +126,14 @@ var s = "string literal"; // `s` is a `string`.
 
 There are competing styles of using `var`:
 
-1. Use `var` always where possible -- preferred by me, in line with how most modern languages work 
+1. Use `var` always where possible – preferred by me, in line with how most modern languages work 
 (Rust is implictly typed by default, so is Kotlin, so are all functional languages)
-2. Use `var` where the type on the right is "obvious" -- this has the problem of the definition of "obvious" being nebulous,
+2. Use `var` where the type on the right is "obvious" – this has the problem of the definition of "obvious" being nebulous,
 and if styling rules are open to interpretation they lead to inconsistencies;
-3. Never use `var` -- this is simply unpractical and unnecessarily verbose.
+3. Never use `var` – this is simply unpractical and unnecessarily verbose.
 
 In the course we will be using 2. for a definition of obvious that I find compelling at the time,
-to ease your way into the language -- at the beginning it is useful to explicitly see all the
+to ease your way into the language – at the beginning it is useful to explicitly see all the
 types we use.
 
 #!markdown
@@ -242,7 +242,7 @@ Console.WriteLine("42" * 6);
 
 #!markdown
 
-There are two types of type conversions in C# -- **implicit** and **explicit**.
+There are two types of type conversions in C# – **implicit** and **explicit**.
 
 ### Implicit numeric conversions
 
@@ -337,7 +337,7 @@ Console.WriteLine(d);
 
 #!markdown
 
-For unary, we have increment `++` and decrement `--`, as well as negation `-`.
+For unary, we have increment `++` and decrement `–`, as well as negation `-`.
 
 #!csharp
 
@@ -414,9 +414,9 @@ The `&` and `|`, called **eager** operators, are used rather rarely. The **lazy*
 Bitwise operators are valid for integral numerics (and `char`) and operate on the bits representing the value.
 They are basically the same as in C. We have:
 
-- `&`, `|`, `^` -- bitwise AND, OR, and XOR;
-- `<<`, `>>` -- bitwise shifts;
-- `~` -- unary bitwise complement;
+- `&`, `|`, `^` – bitwise AND, OR, and XOR;
+- `<<`, `>>` – bitwise shifts;
+- `~` – unary bitwise complement;
 
 #!csharp
 
@@ -485,15 +485,15 @@ The basic way of creating strings is via string literals, enclosed in double quo
 Some characters can be expressed with escape sequences.
 The following is a non-exhaustive list of them:
 
-- `\'` -- single quote;
-- `\"` -- double quote, expressible as a character, but not as a string: `"\""`;
-- `\\` -- backslash;
-- `\0` -- the NULL character, value `0x0`;
-- `\b` -- backspace
-- `\n` -- newline
-- `\r` -- carriage return
-- `\t` -- tab
-- `\uXXXX` -- special unicode escape, can represent any UTF-16 character with its Unicode hexadecimal code, for example, `\u00A9` is ©, `\u000A` is newline.
+- `\'` – single quote;
+- `\"` – double quote, expressible as a character, but not as a string: `"\""`;
+- `\\` – backslash;
+- `\0` – the NULL character, value `0x0`;
+- `\b` – backspace
+- `\n` – newline
+- `\r` – carriage return
+- `\t` – tab
+- `\uXXXX` – special unicode escape, can represent any UTF-16 character with its Unicode hexadecimal code, for example, `\u00A9` is ©, `\u000A` is newline.
 
 ### Verbatim strings
 
@@ -577,7 +577,7 @@ The value is implicitly converted to string using its `ToString` method.
 
 When interpolating a string we might want to format the value in some special way,
 for example include only a given number of digits after the decimal point or display a number in hexadecimal.
-This is done with format specifiers -- after an interpolated expression we can put a colon and then a magical string
+This is done with format specifiers – after an interpolated expression we can put a colon and then a magical string
 that formats it. Here are some examples:
 
 #!csharp

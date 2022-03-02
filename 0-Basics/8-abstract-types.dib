@@ -173,8 +173,8 @@ PrintName(neptune);
 
 Implementing an interface avoids many problems that come from regular inheritance:
 
-- interfaces contain no data, so the diamond problem doesn't occur -- hence we can implement more than one interface on a given type;
-- interfaces contain no implementations, so there is no brittle base class problem -- changes to the interface cannot silently cause implementing types to become incorrect.
+- interfaces contain no data, so the diamond problem doesn't occur – hence we can implement more than one interface on a given type;
+- interfaces contain no implementations, so there is no brittle base class problem – changes to the interface cannot silently cause implementing types to become incorrect.
 
 As we'll see, the BCL exposes many interfaces, but the inheritance hierarchy is very flat.
 
@@ -183,12 +183,12 @@ As we'll see, the BCL exposes many interfaces, but the inheritance hierarchy is 
 ## Static classes
 
 Static classes are also abstract types, but they're the complete opposite of abstract classes and interfaces
--- they cannot be instantiated _or_ derived from. They're basically `abstract sealed`. Their methods must all be
+– they cannot be instantiated _or_ derived from. They're basically `abstract sealed`. Their methods must all be
 static.
 
 The purpose is to allow something comparable to free functions in other languages, so functions not related to any particular instance.
 In C# you cannot just declare a free function, it must be contained within a static class. `Math` is a classical example of a static class
--- it contains all the mathematical functions, and they wouldn't really make sense declared on any particular concrete class.
+– it contains all the mathematical functions, and they wouldn't really make sense declared on any particular concrete class.
 
 #!csharp
 

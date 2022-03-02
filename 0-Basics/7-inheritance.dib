@@ -58,7 +58,7 @@ duck.Quack();
 
 An instance of a derived type is always implicitly convertible to its base type.
 Such a conversion is also called an **identity conversion**, as it doesn't actually do anything
--- it's a no-op at runtime. 
+– it's a no-op at runtime. 
 
 The ability fact that an instance that has type `T` at compile time can, at runtime, be of type `T`
 _but also_ of some type `U` where `U : T` is one of the aspects of **polymorphism**.
@@ -89,7 +89,7 @@ QuackTogether(duck, derivedDuck);
 
 When an instance of the derived class is constructed
 it's important to initialise everything pertaining to the base class first.
-This is done by invoking base's constructor. Implicitly, it's the parameterless constructor --
+This is done by invoking base's constructor. Implicitly, it's the parameterless constructor –
 the code we wrote before was equivalent to:
 
 #!csharp
@@ -394,7 +394,7 @@ QuackDuck(disguisedDuck);
 
 #!markdown
 
-Of course, this works only one way -- a `LoudDuck` _is a_ `Duck`, but a `Duck` is not necessarily a `LoudDuck`.
+Of course, this works only one way – a `LoudDuck` _is a_ `Duck`, but a `Duck` is not necessarily a `LoudDuck`.
 
 #!csharp
 
@@ -440,7 +440,7 @@ PrintLoudness(new Duck());
 
 #!markdown
 
-Actually, I kind of lied -- there are arbitrarily many cases, because the caller can pass not only "just a `Duck`",
+Actually, I kind of lied – there are arbitrarily many cases, because the caller can pass not only "just a `Duck`",
 but also anything else that happens to inherit from `Duck`.
 
 #!csharp
@@ -612,11 +612,11 @@ Every type is implicitly convertible to `object`.
 
 The `Object` class defines a number of methods that are inherited, and therefore available on every object in .NET.
 
-- `public virtual string ToString()` -- we know this one, returns a string representation of the instance;
-- `public virtual bool Equals(object)` -- compare the instance with another one; we will discuss this one more closely later;
-- `public virtual int GetHashCode()` -- returns a hash of the object; again, let's leave this for later;
-- `protected object MemberwiseClone()` -- returns a shallow copy of the current object by naively copying all of its fields;
-- `public Type GetType()` -- returns the runtime type of the object; we'll talk about it near the end when we cover reflection;
+- `public virtual string ToString()` – we know this one, returns a string representation of the instance;
+- `public virtual bool Equals(object)` – compare the instance with another one; we will discuss this one more closely later;
+- `public virtual int GetHashCode()` – returns a hash of the object; again, let's leave this for later;
+- `protected object MemberwiseClone()` – returns a shallow copy of the current object by naively copying all of its fields;
+- `public Type GetType()` – returns the runtime type of the object; we'll talk about it near the end when we cover reflection;
   
 Technically there's also the `Finalize()` method, but we need many more preliminaries before we're able to understand what
 high level magic that is.
