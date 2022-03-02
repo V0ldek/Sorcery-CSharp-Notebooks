@@ -60,6 +60,12 @@ Here's a handy table to summarise that:
 
 #!markdown
 
+It's perhaps intuitive, but important to note: whether a given member is accessible depends on the least permissible access modifier in its fully qualified path.
+So, for example, a `public` method of an `internal` class is effectively `internal`. Another way of thinking about it if a class member is `public` then
+it is "public to the people who can see the class in the first place."
+
+#!markdown
+
 ## Classes
 
 Okay, time to actually get to some C#. Up until now we couldn't have too much fun,
@@ -139,9 +145,9 @@ A constructor is a special method that gets invoked once when we create an objec
 It's responsible for initialising the instance 
 It can have any number of parameters.
 
-A constructor has access to the special identifier `this`, just like instance method that we'll see in a moment.
-It points to the instance which was just created. We can refer to fields as `this._field`, but most of the time
-we can omit the `this`.
+Within all members of a class we have an access to a special `this` identifier.
+It points to the instance on which a method is called, which in case of a constructor is the object that was just created.
+We can refer to fields as `this._field`, but most of the time we can omit the `this`.
 
 #!csharp
 
@@ -153,9 +159,9 @@ public class Duck
 
     public Duck(string name)
     {
-        _name = name;
-        _timesQuacked = 0;
-        _remainingQuacks = 10;
+        this._name = name;
+        this._timesQuacked = 0;
+        this._remainingQuacks = 10;
     }
 }
 

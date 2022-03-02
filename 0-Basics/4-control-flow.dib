@@ -113,10 +113,6 @@ There is also the `foreach` loop for iterating over collections of objects. We'l
 
 #!markdown
 
-## Variable scoping
-
-#!markdown
-
 ## Function syntax
 
 Function declarations and function calls are the same as in any C-like language, only that we use PascalCase for the names.
@@ -129,6 +125,65 @@ int Foo()
 }
 
 Console.WriteLine(Foo());
+
+#!markdown
+
+## Variable scoping
+
+Every variable has a scope. Usually, the scope is the code contained within the closest pair of braces of the declaration.
+A variable can be used only within its scope and only in the lines after its declaration.
+
+Moreover, two variables cannot have the same name if their scopes overlap.
+
+#!csharp
+
+void Foo()
+{   // Scope of x begins.
+    var x = 42;
+
+    if (x == 42)
+    {
+        var y = 37;
+        Console.WriteLine(y);
+    }
+
+    Console.WriteLine(x);
+    // Scope of x ends.
+}
+
+Foo();
+
+#!markdown
+
+Note that the scope spans _all_ of the code within braces.
+The following code is illegal, even though at the point where the inner `y` local is declared
+the outer one cannot be used, since its declaration occurs in a later line.
+
+#!csharp
+
+// Intentionally does not compile.
+void Foo()
+{   // Scope of x, y begins.
+    var x = 42;
+
+    if (x == 42)
+    {
+        var y = 37;
+        Console.WriteLine(y);
+    }
+
+    var y = 12;
+
+    Console.WriteLine(x);
+    Console.WriteLine(y);
+    // Scope of x, y ends.
+}
+
+#!markdown
+
+Those rules are more restrictive than they need to, but it helps avoid mistakes
+where it could be not immediately clear to a developer which usage of a name refers to which declaration.
+This is usually not a problem if you write your code cleanly enough.
 
 #!markdown
 
