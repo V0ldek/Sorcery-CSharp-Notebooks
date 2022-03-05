@@ -600,6 +600,7 @@ public class Duck
 
 var peter = new Duck("Peter", -1);
 Console.WriteLine(peter.RemainingQuacks);
+peter.RemainingQuacks = 0;
 peter.Quack();
 
 #!markdown
