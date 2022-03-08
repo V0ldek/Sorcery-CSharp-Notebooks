@@ -1,0 +1,94 @@
+#!markdown
+
+# 0.10. Attributes
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/0-basics.
+
+It covers topics for section [0.10. Attributes](https://gienieczko.com/teaching/csharp/0-basics/10-attributes).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Attributes as metadata
+
+Attributes are a mechanism of adding metadata to code elements, be it assemblies, members, parameters or the like.
+An attribute is a special class that inherits from `System.Attribute`. We'll talk about creating your own later,
+but for now we'll be using existing ones.
+
+To use an attribute we put it above the annotated symbol in brackets and invoke one of its constructors.
+For example, here's `System.ObsoleteAttribute` that marks parts of the API that are deprecated
+and should not be used by consumers, called with its single-parameter constructor.
+
+#!csharp
+
+public class Duck
+{
+    // By convention, names of attributes and with the word `Attribute`, but when using them we can omit it.
+    [Obsolete("Use NewQuack instead.")]
+    public void Quack() => Console.WriteLine("quack");
+
+    public void NewQuack() => Console.WriteLine("Quack!");
+}
+
+var duck = new Duck();
+duck.Quack();
+
+#!markdown
+
+You can also initialise properties of the attribute, if it has any.
+For example, inside `System.Xml.Serialization` there's the `XmlTypeAttribute` that takes the name of the element
+that a class will be translated to as its required parameter, but it also has a `Namespace` property to optionally set the XML namespace.
+
+#!csharp
+
+using System.Xml.Serialization;
+
+[XmlType("Duck", Namespace="http://gienieczko.com")]
+public class Duck
+{
+}
+
+#!markdown
+
+So what do these attributes do? It's a funny situation, because attributes are both extremely powerful and utterly powerless.
+All they do is attach some metadata to the type. The obsolete `Quack` method we used above is emitted exactly the same as before,
+only it has this small segment of data next to it that says "the user put the `ObsoleteAttribute` here with this message."
+
+On the other hand, the tools that operate on the code can use this metadata to do the craziest things.
+In case of `ObsoleteAttribute` the compiler emits warnings out of thin air when we try to use that method.
+We can even make the compiler error on that, by setting `true` to the second parameter of `ObsoleteAttribute`!
+
+We will see over and over again attributes changing semantics of the programs we write in ways
+that would be hard to achieve from plain code.
+
+One serious limitation is that the values passed to attributes must be compile-time constants, as it's the compiler
+that emits these attributes to code.
+
+#!markdown
+
+## Summary
+
+We've learnt how to use existing attributes on parts of our code. We're now ready to jump into xUnit!
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [0.11. Testing with xUnit](https://gienieczko.com/teaching/csharp/0-basics/11-testing-with-xunit).
+The next section has no notebook associated, we'll get back to notebooks in the next module.

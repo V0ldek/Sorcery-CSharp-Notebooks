@@ -1,0 +1,215 @@
+#!markdown
+
+# 0.8. Abstract Types
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/0-basics.
+
+It covers topics for section [0.8. Abstract Types](https://gienieczko.com/teaching/csharp/0-basics/8-abstract-types).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Abstract classes
+
+An abstract type is a type that cannot be instantiated. Such a class is only useful as a base class for some other class. In C# we have a keyword to explicitly mark a class as abstract:
+
+#!csharp
+
+public abstract class Duck
+{
+    public string Name { get; }
+
+    protected Duck(string name) => Name = name;
+}
+
+#!markdown
+
+The constructor could just as well be public, as the compiler disallows us from calling it directly anyway,
+but that's kinda weird, the convention is to make it explicitly protected.
+
+An abstract class by itself hardly makes sense. Usually we make them abstract because there's some functionality
+that we require deriving types to implement, in the form of abstract methods.
+
+#!csharp
+
+public abstract class DuckBase
+{
+    public string Name { get; }
+
+    public abstract string QuackMessage { get; }
+
+    protected DuckBase(string name) => Name = name;
+
+    public void Quack() => Console.WriteLine(QuackMessage);
+}
+
+public class Duck : DuckBase
+{
+    public override string QuackMessage => "Quack!";
+
+    public Duck(string name) : base(name)
+    {
+    }
+}
+
+public class DialogueDuck : DuckBase
+{
+    public override string QuackMessage => $"{Name}: Quack!";
+
+    public DialogueDuck(string name) : base(name)
+    {
+    }
+}
+
+var duck = new Duck("Peter");
+duck.Quack();
+var dialogueDuck = new DialogueDuck("Peter");
+dialogueDuck.Quack();
+
+#!markdown
+
+## Interfaces
+
+Abstract classes are useful where we have some data and behaviour that is core for multiple objects,
+but there's an implementation detail that we don't really care about and can make generic. However,
+it's very often the case that we entirely don't care about the exact implementation, we just want our
+types to conform to some specification. That's where interfaces kick in.
+
+An interface can contain only declarations of method signatures<sup>*</sup>.
+A type implementing an interface has to implement all of those methods (or be abstract).
+
+By convention, every interface in .NET has a name starting with an uppercase `I` and followed by a usual name in PascalCase.
+
+<sup>*</sup> This is a fat lie, because default interface implementations exist, but we pretend they don't for now.
+
+#!csharp
+
+public interface IDuck
+{
+    // public is implied
+    void Quack();
+}
+
+public class Duck : IDuck
+{
+    public void Quack() => Console.WriteLine("Quack!");
+}
+
+#!markdown
+
+A type can implement multiple interfaces.
+
+#!csharp
+
+public interface IDuck
+{
+    // public is implied
+    void Quack();
+}
+
+public interface INamed
+{
+    string Name { get; }
+}
+
+public class Duck : IDuck, INamed
+{
+    public string Name { get; }
+
+    public Duck(string name) => Name = name;
+
+    public void Quack() => Console.WriteLine("Quack!");
+}
+
+#!markdown
+
+Interfaces are workhorses of abstraction in .NET.
+Every type implementing given interfaces is implicitly convertible to that interface.
+So, if we want to print a name of any object that has one, never mind if it's a duck, a person, or a planet:
+
+#!csharp
+
+public class Person : INamed
+{
+    public string Name { get; }
+
+    public Person(string name) => Name = name;
+}
+
+public class Planet : INamed
+{
+    public string Name { get; }
+
+    public Planet(string name) => Name = name;
+}
+
+public void PrintName(INamed named) => Console.WriteLine(named.Name);
+
+var peter = new Duck("Peter");
+var jon = new Person("Jon");
+var neptune = new Planet("Neptune");
+
+PrintName(peter);
+PrintName(jon);
+PrintName(neptune);
+
+#!markdown
+
+Implementing an interface avoids many problems that come from regular inheritance:
+
+- interfaces contain no data, so the diamond problem doesn't occur – hence we can implement more than one interface on a given type;
+- interfaces contain no implementations, so there is no brittle base class problem – changes to the interface cannot silently cause implementing types to become incorrect.
+
+As we'll see, the BCL exposes many interfaces, but the inheritance hierarchy is very flat.
+
+#!markdown
+
+## Static classes
+
+Static classes are also abstract types, but they're the complete opposite of abstract classes and interfaces
+– they cannot be instantiated _or_ derived from. They're basically `abstract sealed`. Their methods must all be
+static.
+
+The purpose is to allow something comparable to free functions in other languages, so functions not related to any particular instance.
+In C# you cannot just declare a free function, it must be contained within a static class. `Math` is a classical example of a static class
+– it contains all the mathematical functions, and they wouldn't really make sense declared on any particular concrete class.
+
+#!csharp
+
+public static class PrintHelper
+{
+    public static void PrintAsDialogue(INamed named, string message) =>
+        Console.WriteLine($"{named.Name}: {message}");
+}
+
+PrintHelper.PrintAsDialogue(neptune, "It's pretty dark in here.");
+
+#!markdown
+
+## Summary
+
+We now know how to create abstractions in C#. We've met abstract classes and the arguably most important abstraction available in .NET, interfaces.
+We also know where to group static methods that don't really make sense on any concrete type.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [0.9. Strings](https://gienieczko.com/teaching/csharp/0-basics/9-strings),
+or straight to the next notebook, `9-strings.dib`.

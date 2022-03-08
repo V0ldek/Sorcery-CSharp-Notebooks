@@ -1,0 +1,209 @@
+#!markdown
+
+# 0.9. Strings
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/0-basics.
+
+It covers topics for section [0.9. Strings](https://gienieczko.com/teaching/csharp/0-basics/9-strings).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## String operations
+
+Some of the operators are overloaded for strings. Most importantly, we can concatenate them with `+`:
+
+#!csharp
+
+var alice = "Alice";
+var has = " has ";
+var acat = "a cat.";
+
+Console.WriteLine(alice + has + acat);
+
+#!markdown
+
+We can get a strings length:
+
+#!csharp
+
+Console.WriteLine(alice.Length);
+
+#!markdown
+
+We can also concatenate an array of strings with a delimiter using `Join`, or without using `Concat`:
+
+#!csharp
+
+var strings = new []
+{
+    "alice",
+    "has",
+    "a",
+    "cat"
+};
+
+Console.WriteLine(string.Concat(strings));
+Console.WriteLine(string.Join(' ', strings));
+
+#!markdown
+
+## String comparison
+
+Internally, a string is a pointer to a structure that holds the characters and a length.
+By default, the `==` operator and `Equals` method would give true if and only if the string was the exact
+same pointer. However, both are overloaded for string to compare the actual contents.
+
+#!csharp
+
+var sentence1 = string.Join(' ', strings);
+var sentence2 = string.Join(' ', strings);
+
+Console.WriteLine($"sentence1: {sentence1}");
+Console.WriteLine($"sentence2: {sentence2}");
+Console.WriteLine($"ReferenceEquals: {object.ReferenceEquals(sentence1, sentence2)}");
+Console.WriteLine($"Equals: {sentence1.Equals(sentence2)}");
+Console.WriteLine($"==: {sentence1 == sentence2}");
+
+#!markdown
+
+## String indexer
+
+String also has an indexer that allows you to query its individual chars:
+
+#!csharp
+
+Console.WriteLine(alice[0]);
+Console.WriteLine(alice[^1]);
+Console.WriteLine(alice[1..^1]);
+
+#!markdown
+
+## `StringBuilder`
+
+#!markdown
+
+Strings in C# are immutable.
+
+#!csharp
+
+var first = "First";
+var second = "Second";
+var saveFirst = first;
+
+first += second;
+
+Console.WriteLine(first);
+Console.WriteLine(second);
+Console.WriteLine(saveFirst);
+Console.WriteLine(object.ReferenceEquals(first, saveFirst));
+
+#!markdown
+
+That means that constructing strings using default `+` concatenation is bound to be inefficient, as you have to copy the string over and over again
+and create new instances. To programmatically build up a string we use the `StringBuilder` class located in `System.Text`. The basic
+methods available are `Append` and `AppendLine`. To construct the final string we use `ToString`.
+
+We can even create a crude benchmark to see that it is indeed faster, using the `Stopwatch` class from `System.Diagnostics`,
+which gives us access to a time-keeping device.
+
+#!csharp
+
+using System.Text;
+using System.Diagnostics;
+
+const int Iterations = 50_000;
+
+string RunNaiveConcatenation()
+{
+    string result = "";
+
+    for (var i = 0; i < Iterations; i += 1)
+    {
+        result += i.ToString();
+    }
+
+    return result;
+}
+
+string RunStringBuilder()
+{
+    StringBuilder result = new ();
+
+    for (var i = 0; i < Iterations; i += 1)
+    {
+        result.Append(i);
+    }
+
+    return result.ToString();
+}
+
+var stopwatch = new Stopwatch();
+stopwatch.Start();
+RunNaiveConcatenation();
+stopwatch.Stop();
+
+Console.WriteLine($"Naive: {stopwatch.Elapsed}");
+
+stopwatch.Restart();
+RunStringBuilder();
+stopwatch.Stop();
+
+Console.WriteLine($"StringBuilder: {stopwatch.Elapsed}");
+
+#!markdown
+
+## `nameof`
+
+#!markdown
+
+There's a small utility keyword that turns the name of a language symbol into its string representation.
+It's very useful when we want to print the name of a class or method, because for the purposes of an IDE
+it counts as usage of the symbol and therefore is affected by things like automatic renaming.
+
+#!csharp
+
+public class Duck
+{
+    public string Name { get; }
+
+    public void Quack() => Console.WriteLine("Quack!");
+}
+
+Console.WriteLine(nameof(Duck));
+Console.WriteLine(nameof(Duck.Name));
+Console.WriteLine(nameof(Duck.Quack));
+
+#!markdown
+
+`nameof` gets automatically expanded to the string constant that it represents at compile-time, so there's no penalty to using it.
+
+#!markdown
+
+## Summary
+
+We've learnt how to use strings, concatenate and compare them and how to efficiently construct bigger strings with `StringBuilder`.
+We've also met the `nameof` utility. 
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [0.10. Attributes](https://gienieczko.com/teaching/csharp/0-basics/10-attributes),
+or straight to the next notebook, `10-attributes.dib`.

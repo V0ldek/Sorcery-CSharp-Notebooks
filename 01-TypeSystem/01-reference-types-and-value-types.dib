@@ -1,0 +1,258 @@
+#!markdown
+
+# 1.1. Reference Types and Value Types
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
+
+It covers topics for section [1.1. Reference Types and Value Types](https://gienieczko.com/teaching/csharp/1-type-system/1-reference-types-and-value-types).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Reference semantics
+
+All types that we defined thus far, using the `class` keyword, were **reference types**.
+They exhibit **reference semantics**, where we never handle the actual raw bytes of the
+instance, we always do it via a reference.
+
+When we have a variable of a reference type, we actually have a single pointer to the instance
+allocated on the heap. When we pass it to another method it points to the same object,
+so operations on the instance are visible in both places.
+
+#!csharp
+
+class C
+{
+    public int Value { get; private set; }
+
+    public void Increment() => Value += 1;
+}
+
+void Foo()
+{
+    var c = new C();
+    c.Increment();
+    
+    Console.WriteLine($"Value in Foo before Bar: {c.Value}");
+    Bar(c);
+    Console.WriteLine($"Value in Foo after Bar: {c.Value}");
+}
+
+void Bar(C c)
+{
+    Console.WriteLine($"Value in Bar before Increment: {c.Value}");
+    c.Increment();
+    Console.WriteLine($"Value in Bar after Increment: {c.Value}");
+}
+
+Foo();
+
+#!markdown
+
+![Memory diagram](img/sorcery-reference-types.svg "Memory diagram")
+
+#!markdown
+
+This also transfers to more complex reference chains, references inside reference types also point to the managed heap:
+
+#!csharp
+
+class C
+{
+    public int Value { get; private set; }
+
+    public void Increment() => Value += 1;
+}
+
+class B
+{
+    public C C { get; } = new C();
+}
+
+
+void Foo()
+{
+    var b = new B();
+    b.C.Increment();
+    
+    Console.WriteLine($"Value in Foo before Bar: {b.C.Value}");
+    Bar(b);
+    Console.WriteLine($"Value in Foo after Bar: {b.C.Value}");
+}
+
+void Bar(B b)
+{
+    Console.WriteLine($"Value in Bar before Increment: {b.C.Value}");
+    b.C.Increment();
+    Console.WriteLine($"Value in Bar after Increment: {b.C.Value}");
+}
+
+Foo();
+
+#!markdown
+
+![Memory diagram 2](img/sorcery-reference-types-2.svg "Memory diagram 2")
+
+#!markdown
+
+## Value semantics
+
+Reference semantics are great for modelling objects in an OOP environment.
+It gives each instance its unique identity -- an object has its own place in memory.
+Two instances are different from each other, even if they contain the exact same data.
+They might be "equal" for some definition of an equality relation, but they are never
+**referentially equal**.
+We've even shown that before with strings:
+
+#!csharp
+
+var sentence1 = string.Join(", ", new [] {"Hello", "World"});
+var sentence2 = string.Join(", ", new [] {"Hello", "World"});
+
+Console.WriteLine($"sentence1: {sentence1}");
+Console.WriteLine($"sentence2: {sentence2}");
+Console.WriteLine($"ReferenceEquals: {object.ReferenceEquals(sentence1, sentence2)}"); // <---
+
+#!markdown
+
+This makes sense for some objects, but not for all. For example, we typically don't think of `int`s as having their own identity, they're just `int`s. There's nothing more to them than their value. We'd be very surprised if output of this code was "2":
+
+#!csharp
+
+void Foo()
+{
+    int x = 0;
+
+    x += 1;
+    Bar(x);
+    Console.WriteLine(x);
+}
+
+void Bar(int x) => x += 1;
+
+Foo();
+
+#!markdown
+
+Integers aren't reference types, they're **value types**. Their data is held in-place, there's no reference serving as an indirection to the heap. "In-place" means directly in the stack frame, or inside the data of an object already on the heap.
+
+#!markdown
+
+![Memory diagram](img/sorcery-value-types.svg "Memory diagram")
+
+#!markdown
+
+The same is true for references themselves! In fact, all arguments in C# are _passed by value_ by default:
+they are copied when we pass them to methods or assign somewhere:
+
+#!csharp
+
+void Foo()
+{
+    var x = new object();
+    
+    Console.WriteLine($"Hash in Foo before Bar: {x.GetHashCode()}");
+    Bar(x);
+    Console.WriteLine($"Hash in Foo after Bar: {x.GetHashCode()}");
+}
+
+void Bar(object x)
+{
+    Console.WriteLine($"Value in Bar before reassignment: {x.GetHashCode()}");
+    x = new object();
+    Console.WriteLine($"Value in Bar after reassignment: {x.GetHashCode()}");
+}
+
+Foo();
+
+#!markdown
+
+Out of the base builtin types we've encountered only `string` and `object` were reference types, the rest were value types.
+
+#!markdown
+
+## Custom value types
+
+What we've said thus far is nothing revolutionary: Java employs a similar approach,
+having a number of special builtin types that exist outside of the normal rules and are
+handled specially by the JVM as values.
+
+.NET, however, is different -- it allows custom value types! You can declare them with the `struct` keyword:
+
+#!csharp
+
+struct PointStruct
+{
+    public double X { get; set; }
+    public double Y { get; set; }
+
+    public double DistanceFromZero => Math.Sqrt(X * X + Y * Y);
+
+    public void Multiply(double k)
+    {
+        X = k * X;
+        Y = k * Y;
+    }
+}
+
+class PointClass
+{
+    public double X { get; set; }
+    public double Y { get; set; }
+
+    public double DistanceFromZero => Math.Sqrt(X * X + Y * Y);    
+
+    public void Multiply(double k)
+    {
+        X = k * X;
+        Y = k * Y;
+    }
+}
+
+void Foo()
+{
+    // Small feature here: you can use keywords as names of variables
+    // if you escape them with the verbatim symbol '@'.
+    var @struct = new PointStruct { X = 15, Y = -8 };
+    var @class = new PointClass { X = 15, Y = -8 };
+
+    Console.WriteLine($"[Struct] DistanceFromZero before Bar: {@struct.DistanceFromZero}");
+    Bar(@struct);
+    Console.WriteLine($"[Struct] DistanceFromZero before Bar: {@struct.DistanceFromZero}");
+
+    Console.WriteLine($"[Class] DistanceFromZero before Bar: {@class.DistanceFromZero}");
+    Bar(@class);
+    Console.WriteLine($"[Class] DistanceFromZero before Bar: {@class.DistanceFromZero}");
+}
+
+void Bar(PointStruct @struct)
+{
+    Console.WriteLine($"[Struct] DistanceFromZero in Bar before Multiply: {@struct.DistanceFromZero}");
+    @struct.Multiply(2.0f);
+    Console.WriteLine($"[Struct] DistanceFromZero in Bar after Multiply: {@struct.DistanceFromZero}");
+}
+
+void Bar(PointClass @class)
+{
+    Console.WriteLine($"[Class] DistanceFromZero in Bar before Multiply: {@class.DistanceFromZero}");
+    @class.Multiply(2.0f);
+    Console.WriteLine($"[Class] DistanceFromZero in Bar after Multiply: {@class.DistanceFromZero}");
+}
+
+Foo();
