@@ -372,6 +372,16 @@ virtual method dispatch happens at runtime depending on the actual type of the i
 
 #!csharp
 
+public class Duck
+{
+    public virtual void Quack() => Console.WriteLine("Quack!");
+}
+
+public class LoudDuck : Duck
+{
+    public override void Quack() => Console.WriteLine("QUACK!!!");
+}
+
 void QuackDuck(Duck duck)
 {
     Console.WriteLine("A duck quacks like:");

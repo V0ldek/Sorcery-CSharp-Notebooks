@@ -156,16 +156,19 @@ string RunStringBuilder()
 
 var stopwatch = new Stopwatch();
 stopwatch.Start();
-RunNaiveConcatenation();
+var x = RunNaiveConcatenation();
 stopwatch.Stop();
 
 Console.WriteLine($"Naive: {stopwatch.Elapsed}");
 
 stopwatch.Restart();
-RunStringBuilder();
+var y = RunStringBuilder();
 stopwatch.Stop();
 
 Console.WriteLine($"StringBuilder: {stopwatch.Elapsed}");
+
+Console.WriteLine(x == y);
+Console.WriteLine(x.Length);
 
 #!markdown
 

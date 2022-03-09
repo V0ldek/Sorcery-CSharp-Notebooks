@@ -140,7 +140,7 @@ public class Duck : IDuck, INamed
 #!markdown
 
 Interfaces are workhorses of abstraction in .NET.
-Every type implementing given interfaces is implicitly convertible to that interface.
+Every type implementing given interfaces is convertible to that interface.
 So, if we want to print a name of any object that has one, never mind if it's a duck, a person, or a planet:
 
 #!csharp
