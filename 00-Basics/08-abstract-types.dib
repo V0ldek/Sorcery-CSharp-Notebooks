@@ -180,6 +180,39 @@ As we'll see, the BCL exposes many interfaces, but the inheritance hierarchy is 
 
 #!markdown
 
+### Extending interfaces
+
+An interface can inherit from another interface (or a number of them). In that case any type implementing it must also implement all ancestors.
+
+#!csharp
+
+// Intentionally does not compile.
+public interface ISwimming
+{
+    void Swim();
+}
+
+public interface INamed
+{
+    string Name { get; }
+}
+
+public interface INamedDuck : INamed, ISwimming
+{
+    void Quack();
+}
+
+class Duck : INamedDuck
+{
+    public string Name { get; }
+
+    public Duck(string name) => Name = name;
+
+    public void Quack() => Console.WriteLine("Quack!");
+}
+
+#!markdown
+
 ## Static classes
 
 Static classes are also abstract types, but they're the complete opposite of abstract classes and interfaces
