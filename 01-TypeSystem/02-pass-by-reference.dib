@@ -1,0 +1,252 @@
+#!markdown
+
+# 1.2. Pass by Reference
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
+
+It covers topics for section [1.2. Pass by Reference](https://gienieczko.com/teaching/csharp/1-type-system/1-pass-by-reference).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Pass by value
+
+C# uses pass-by-value by default. What that means is that whenever you pass an argument
+to a method, assign it to a field, etc., the value gets copied and placed in the receiver.
+
+Now, underneath the implementation details may vary. It might be the case that the compiler optimises such a case
+and doesn't copy, but rather _moves_ the entire value into the receiver. However, semantically it's the same:
+the receiver gets a full copy of the initial value.
+
+"But wait", you may ask, "didn't we just cover how reference types _don't_ work that way"?
+Not really. We said that a value of a reference type is a _reference_ to the memory on the heap where the data of the instance resides.
+The value itself, the one that we pass around, assign to fields, etc., is just a simple pointer.
+It takes `sizeof(nint)` bytes, points to some place in the managed heap, and otherwise is not different
+from any other integer. When we pass it around, we always copy it.
+
+#!csharp
+
+class C
+{
+    public int Value { get; init; }
+}
+
+void Foo()
+{
+    var c = new C { Value = 42 };
+    Bar(c);
+    Console.WriteLine(c.Value);
+}
+
+void Bar(C c)
+{
+    c = new C { Value = 17 };
+}
+
+Foo();
+
+#!markdown
+
+This is all well and intuitive. The `c` parameter in `Bar` is a local variable of that method and assigning to it doesn't affect anything outside. This is pass-by-value.
+
+#!markdown
+
+## Pass by reference
+
+Semantics of pass-by-reference are different: instead of copying the value passed we pass a reference to it, so that
+the parameter inside of the called method is not an independent value, but just an alias to the original value.
+In C# this is done using the `ref` modifier both in the parameter declaration and when calling the method:
+
+#!csharp
+
+class C
+{
+    public int Value { get; init; }
+}
+
+void Foo()
+{
+    var c = new C { Value = 42 };
+    Bar(ref c);
+    Console.WriteLine(c.Value);
+}
+
+void Bar(ref C c)
+{
+    c = new C { Value = 17 };
+}
+
+Foo();
+
+#!markdown
+
+C#'s definite assignment rules require `ref` arguments to be initialised when they are passed.
+
+#!csharp
+
+// Intentionally does not compile.
+class C
+{
+    public int Value { get; init; }
+}
+
+void Foo()
+{
+    C c;
+    Bar(ref c);
+    Console.WriteLine(c.Value);
+}
+
+void Bar(ref C c)
+{
+    c = new C { Value = 17 };
+}
+
+Foo();
+
+#!markdown
+
+The `ref` modifier says "this is some input reference that this method can use and modify", so a read-write relationship.
+There is also the `out` modifier, which is a write relationship -- the method is expected to fill out the reference to a possibly
+uninitialised value.
+
+#!csharp
+
+// Intentionally does not compile.
+class C
+{
+    public int Value { get; init; }
+}
+
+void Foo()
+{
+    C c;
+    Bar(out c);
+    Console.WriteLine(c.Value);
+}
+
+void Bar(out C c)
+{
+    c = new C { Value = 17 };
+}
+
+Foo();
+
+#!markdown
+
+This is most commonly used to return more than one value from a method: each of the return values becomes an `out` parameter.
+
+### `TryX` idiom
+
+There is a very useful and widespread idiom in C# for defining methods that perform some action with the possibility of failure.
+Usually such methods are defined with an exception-throwing method and a `Try` counterpart that returns a `bool`.
+For example, there are two methods that parse a `string` into an `int` -- `int Parse(string)` and `bool TryParse(string, out int)`:
+
+#!csharp
+
+var x = int.Parse("10");
+
+Console.WriteLine(x);
+
+#!csharp
+
+var x = int.Parse("not an int");
+
+Console.WriteLine(x);
+
+#!csharp
+
+int x;
+var success = int.TryParse("10", out x);
+
+Console.WriteLine(success);
+Console.WriteLine(x);
+
+#!csharp
+
+int x;
+var success = int.TryParse("not an int", out x);
+
+Console.WriteLine(success);
+Console.WriteLine(x);
+
+#!markdown
+
+There's a more ergonomic way of using `out` if we're creating a new variable for the result:
+
+#!csharp
+
+int.TryParse("10", out int x);
+
+#!markdown
+
+or even:
+
+#!csharp
+
+int.TryParse("10", out var x);
+
+#!markdown
+
+If we don't care for the value, for example we just want to check if a string is a valid number without using the number, we can use a discard:
+
+#!csharp
+
+Console.WriteLine(int.TryParse("10", out _));
+
+#!markdown
+
+## Overloading
+
+It is legal for methods to differ only with "referenceness" of the parameter:
+
+#!csharp
+
+void Foo(int x) => Console.WriteLine($"{x} by value");
+
+void Foo(ref int x) => Console.WriteLine($"{x} by ref");
+
+var i = 42;
+Foo(i);
+Foo(ref i);
+
+#!markdown
+
+However, methods differing only with `out`/`ref` are not allowed:
+
+#!csharp
+
+void Foo(ref int x) => Console.WriteLine($"{x} by ref");
+
+void Foo(out int x) => x = 42;
+
+#!markdown
+
+## Summary
+
+We now know the difference between pass-by-value and pass-by-reference semantics.
+We know that C# uses pass-by-value by default, but if pass-by-reference is required we can achieve it with `out` and `ref`.
+We've learnt a useful idiom, the `TryX` pattern.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [1.3. Equality](https://gienieczko.com/teaching/csharp/1-type-system/3-equality),
+or straight to the next notebook, `03-equality.dib`.

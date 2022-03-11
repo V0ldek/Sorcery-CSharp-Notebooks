@@ -187,13 +187,308 @@ Out of the base builtin types we've encountered only `string` and `object` were 
 
 #!markdown
 
-## Custom value types
+## Custom value types -- `enum`
 
 What we've said thus far is nothing revolutionary: Java employs a similar approach,
 having a number of special builtin types that exist outside of the normal rules and are
 handled specially by the JVM as values.
 
-.NET, however, is different -- it allows custom value types! You can declare them with the `struct` keyword:
+.NET, however, is different -- it allows custom value types! The simplest are `enum`s:
+
+#!csharp
+
+enum GameStatus
+{
+    Ongoing,
+    HeroDefeated,
+    DungeonCleared
+}
+
+GameStatus status = GameStatus.HeroDefeated;
+
+Console.WriteLine(status);
+
+#!markdown
+
+An `enum` models a value from a finite, usually small, set of possible values.
+All `enum`s are value types, as in reality they are represented by a single integral value.
+By default it's an `int`, but it can be changed:
+
+#!csharp
+
+enum ByteGameStatus : byte
+{
+    Ongoing,
+    HeroDefeated,
+    DungeonCleared
+}
+
+class C { }
+
+Console.WriteLine(sizeof(GameStatus));
+Console.WriteLine(sizeof(ByteGameStatus));
+
+#!markdown
+
+The `sizeof` keyword allows us to get the size of a value type in bytes.
+Usually, it's best to leave it as an `int`, unless it's clear that changing it to something smaller would
+alleviate some memory issue.
+
+#!markdown
+
+Because of this representation, there's a mapping from enum values and integral values, and a conversion between the two.
+
+#!csharp
+
+Console.WriteLine((int)GameStatus.HeroDefeated);
+Console.WriteLine((GameStatus)1);
+
+#!markdown
+
+You can even specify the mapping yourself, which is usually only useful when interfacing with a different technology
+that requires certain numeric values to represent the same logical value as our enum, e.g. HTTP status codes:
+
+#!csharp
+
+enum HttpStatusCode
+{
+    Ok = 200,
+    BadRequest = 400,
+    NotFound = 404,
+    InternalServerError = 500
+}
+
+Console.WriteLine((int)HttpStatusCode.BadRequest);
+Console.WriteLine((HttpStatusCode)400);
+
+#!markdown
+
+### The bad, and the ugly
+
+There's a couple of ripple effects stemming from this. Number one, when receiving values of an `enum`
+from the outside, we cannot assume that it is actually a correct value. For example:
+
+#!csharp
+
+// Intentionally does not compile.
+enum State
+{
+    On,
+    Off
+}
+
+State Toggle(State state)
+{
+    if (state == State.On) { return State.Off; }
+    if (state == State.Off) { return State.On; }
+}
+
+#!markdown
+
+The compiler complains that if the value is neither `State.On` nor `State.Off` the method doesn't return anything.
+That's possible, since this is completely valid C# code:
+
+#!csharp
+
+enum State
+{
+    On,
+    Off
+}
+
+State Toggle(State state)
+{
+    Console.WriteLine($"Received {state}");
+
+    if (state == State.On) { return State.Off; }
+    if (state == State.Off) { return State.On; }
+    
+    return state;
+}
+
+Console.WriteLine(Toggle(State.On));
+Console.WriteLine(Toggle(State.Off));
+Console.WriteLine(Toggle((State)2));
+
+#!markdown
+
+Unfortunately, `enum`s are not suited for representing type-safe union types, where we can be certain
+that the value is from exactly one of the variants we declared. Even more unfortunately, there is currently
+no such mechanism in C# _at all_. It's one of the major pain points of the language and there is active
+design work on actual union types.
+
+
+More on this: since the default values for the underlying types are `0`, the default value for the `enum` is `0`.
+It is therefore advised that all `enum`s have a variant mapped to `0`, even if it otherwise doesn't make sense,
+just to make sure that the default is indeed a valid value of an `enum`:
+
+#!csharp
+
+enum StateNonCompliant
+{
+    On = 1,
+    Off = 2
+}
+
+enum StateCompliant
+{
+    None = 0,
+    On = 1,
+    Off = 2
+}
+
+class C
+{
+    public StateNonCompliant StateNonCompliant { get; }
+    public StateCompliant StateCompliant { get; }
+}
+
+var c = new C();
+
+Console.WriteLine(c.StateNonCompliant);
+Console.WriteLine(c.StateCompliant);
+
+#!markdown
+
+### Flags
+
+This, however, also allows a trick, called _flags_. These represent a set of attributes that are not mutually exclusive.
+
+#!csharp
+
+[Flags]
+enum MagicTypes
+{
+    None = 0,
+    Fire = 1,
+    Ice = 2,
+    Earth = 4,
+    Air = 8,
+    Darkness = 16
+}
+
+#!markdown
+
+They are, by convention, named with a plural, marked with the `System.FlagsAttribute`, and, crucially, the values assigned to its variants are powers of two.
+Thanks to this, we can define values that have any subset of the flags, using **bitwise operations**.
+
+#!csharp
+
+var fireball = MagicTypes.Fire;
+var frostfireBlast = MagicTypes.Fire | MagicTypes.Ice;
+
+MagicTypes Enhance(MagicTypes type, MagicTypes enhancement) => type | enhancement;
+
+bool IsDarkMagic(MagicTypes type) => (type & MagicTypes.Darkness) != 0;
+
+var enhancedFrostfireBlash = Enhance(frostfireBlast, MagicTypes.Darkness);
+
+Console.WriteLine($"Fireball: {fireball}");
+Console.WriteLine($"Frostfire Blast: {frostfireBlast}");
+Console.WriteLine($"Frostfire Blast (enhanced): {enhancedFrostfireBlash}");
+Console.WriteLine($"Is Frostfire Blast dark? {IsDarkMagic(frostfireBlast)}");
+Console.WriteLine($"Is enhanced Frostfire Blast dark? {IsDarkMagic(enhancedFrostfireBlash)}");
+
+#!markdown
+
+This is an example of an attribute having a non-trivial effect on the type we define it on.
+Without the `FlagsAttribute` the `ToString` method of the `enum` behaves differently:
+
+#!csharp
+
+enum MagicTypes
+{
+    None = 0,
+    Fire = 1,
+    Ice = 2,
+    Earth = 4,
+    Air = 8,
+    Darkness = 16
+}
+
+Console.WriteLine(MagicTypes.Fire);
+Console.WriteLine(MagicTypes.Fire | MagicTypes.Darkness);
+
+#!markdown
+
+For convenience, we can define combined values as members of the `enum` to give them clearer names:
+
+#!csharp
+
+[Flags]
+enum MagicTypes
+{
+    None = 0,
+    Fire = 1,
+    Ice = 2,
+    Earth = 4,
+    Air = 8,
+    Darkness = 16,
+
+    Frostfire = Fire | Ice
+}
+
+Console.WriteLine(MagicTypes.Frostfire);
+Console.WriteLine(MagicTypes.Fire | MagicTypes.Ice);
+Console.WriteLine(MagicTypes.Frostfire == (MagicTypes.Fire | MagicTypes.Ice));
+
+#!markdown
+
+## Custom value types -- `struct`
+
+Enums aren't that exciting, but one of the most beautiful aspects of .NET is that we can define our own complex value
+types resembling the ones already built-in to the language with basically no artificial restrictions. We can declare them with the `struct` keyword:
+
+#!csharp
+
+struct Point
+{
+    public double X { get; set; }
+    public double Y { get; set; }
+
+    public double DistanceFromZero => Math.Sqrt(X * X + Y * Y);
+
+    public void Multiply(double k)
+    {
+        X = k * X;
+        Y = k * Y;
+    }
+}
+
+var point = new Point { X = 15, Y = -8 };
+
+Console.WriteLine(point.DistanceFromZero);
+
+point.Multiply(2.0f);
+
+Console.WriteLine(point.DistanceFromZero);
+
+#!markdown
+
+Structs are fully fledged types and can contain any of the members already known to us,
+constructors, properties, methods, etc. Their memory layout is, again, that of value types:
+
+#!csharp
+
+class Triangle
+{
+    public Point A { get; init; }
+
+    public Point B { get; init; }
+    
+    public Point C { get; init; }
+}
+
+var triangle = new Triangle { A = new() { X = 1.0 }, B = new() { X = 2.0, Y = 3.0 }, C = new() { Y = 4.0 } };
+
+#!markdown
+
+![Memory diagram](img/sorcery-value-types-2.svg "Memory diagram")
+
+#!markdown
+
+The above struct violates the most important guideline for `struct`s -- they should be immutable.
+The fact that value types are always copied when we pass them around or store in variables can confuse the users:
 
 #!csharp
 
@@ -256,3 +551,417 @@ void Bar(PointClass @class)
 }
 
 Foo();
+
+#!markdown
+
+The above code might be a bit surprising, especially if the user doesn't know that `PointStruct` is a struct (it could be just as well named `Point`).
+Therefore the core guideline for value types is: **value types should be immutable**. This corresponds to how we intuitively think about
+value operations: `i + 1` just returns a new integer that's bigger from `i` by `1`. If we want to change `i`, we write `i = i + 1`, or the shorthand
+`i += 1` or `i++`. Mutable value types are useful in very specific scenarios and must be handled with care. To illustrate that, try to guess the output of the following program:
+
+#!csharp
+
+struct Integer
+{
+    public int Value { get; private set; }
+
+    public void SetTo(int n) => Value = n;
+}
+
+class Class
+{
+    public Integer Integer { get; }
+}
+
+var @class = new Class();
+
+@class.Integer.SetTo(42);
+
+Console.WriteLine(@class.Integer.Value);
+
+#!markdown
+
+Yup. I even needed to use a `SetTo` method, because if you try to do it with a property setter the compiler
+will immediately tell you that the operation makes no sense:
+
+#!csharp
+
+// Intentionally does not compile.
+struct Integer
+{
+    public int Value { get; set; }
+}
+
+class Class
+{
+    public Integer Integer { get; }
+}
+
+var @class = new Class();
+
+@class.Integer.Value = 42;
+
+Console.WriteLine(@class.Integer.Value);
+
+#!markdown
+
+Since `Integer` has value semantics, `@class.Integer` just returns a copy of the `Integer` stored in the `Class` instance.
+In the first snippet, we get this temporary copy, modify it, and immediately discard it, since we never assigned it to anything.
+In the second snippet we're trying to set a property on the temporary, and the compiler doesn't even know what code to emit for that,
+so it errors.
+
+There are legitimate uses for mutable structs, but these are rare. We'll talk about one of them, `HashCode`, in one of the next sections.
+
+### `readonly` `struct`s
+
+There's a way to make this enforced by the compiler.
+If we declare the `struct` as `readonly` it can no longer be mutable:
+
+#!csharp
+
+// Intentionally does not compile.
+readonly struct Integer
+{
+    public int Value { get; private set; }
+
+    public void SetTo(int n) => Value = n;
+}
+
+#!markdown
+
+The recommendation is to make all of your `struct`s `readonly`.
+If you ever actually need your `struct` to be mutable, it's still worthwhile to mark non-mutability
+on a more granular level, for methods:
+
+#!csharp
+
+struct Integer
+{
+    public int Value { get; private set; }
+
+    public readonly int Squared => Value * Value;
+
+    public void SetTo(int n) => Value = n;
+
+    public readonly int AddTo(int other) => Value + other;
+}
+
+#!markdown
+
+This communicates your intent better and enables some optimisations for the compiler.
+
+#!markdown
+
+### Value type inheritance
+
+All value types, including `enum`s, inherit from a special type, `System.ValueType` (which in turn inherits from `object`).
+However, value types _cannot_ participate in inheritance: we cannot inherit from a `struct`, we cannot make a `struct` inherit from 
+a `class` or a `struct`.
+
+This should be easy to see when we consider the memory layout again.
+Reference types support polymorphism naturally, since the actual data of the class
+lies somewhere in memory and we just change the view we have on it. For structs
+there's no good semantics for a cast from a "substruct" to a "base struct".
+
+### Value type interfaces
+
+Value types _can_, however, implement interfaces!
+
+#!csharp
+
+interface IProvideDistance
+{
+    double Distance { get; }
+}
+
+readonly struct Point : IProvideDistance
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+
+    public double Distance => Math.Sqrt(X * X + Y * Y);
+}
+
+void PrintDistance(IProvideDistance x) => Console.WriteLine(x.Distance);
+
+var point = new Point { X = 17, Y = 8 };
+
+PrintDistance(point);
+
+#!markdown
+
+## Boxing
+
+There's a tad of magic in the above code. Structs implementing interfaces are implicitly convertible to that interface type.
+They are also implicitly convertible to `object`, because everything in C# is:
+
+#!csharp
+
+readonly struct Point
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+
+    public override string ToString() => $"X: {X}, Y: {Y}";
+}
+
+void Print(object x) => Console.WriteLine(x);
+
+var point = new Point { X = 17, Y = 8 };
+
+Print(point);
+
+#!markdown
+
+But _how_? A variable of a value type is a bunch of bytes stored in-place, while an `object` is a reference to the heap!
+The answer is boxing. This time, a conversion to `object` is not just an identity reference conversion, it's a **boxing conversion**.
+
+The `Point` value is copied to the heap and a reference to it is passed to `Print`.
+In this case, after `Print` returns there's no more references to that boxed `Point` on the heap,
+so it becomes eligible for garbage collection and never seen again. The same happened before, when we
+used `Point` as a value of type `IProvideDistance`.
+
+A boxed value can be unboxed by using the cast operator:
+
+#!csharp
+
+void PrintPoint(object x)
+{
+    Point point = (Point) x;
+
+    Console.WriteLine($"({point.X}, {point.Y})");
+}
+
+var point = new Point { X = 17, Y = 8 };
+PrintPoint(point);
+
+#!markdown
+
+Note that this IS NOT a cast. It's a special unbox operation. 
+If we look at the IL generated from the code we'll see a special `box Point` instruction before the call,
+and an equally special `unbox.any Point` instruction inside `PrintPoint`.
+The type specified in the unboxing must exactly match the boxed type, the following code fails at runtime:
+
+#!csharp
+
+long Foo(object x)
+{
+    var l = (long) x;
+    return l + 1;
+}
+
+int i = 42;
+Console.WriteLine(Foo(i));
+
+#!markdown
+
+... even though there's an explicit (and even implicit) conversion from `int` to `long`.
+Every value type can be boxed and then extracted from the box, we don't need to do anything special to our custom value types to allow this.
+
+#!markdown
+
+Boxing is far from ideal. To use a value in this way we must always perform an allocation.
+We will learn how to use value types for their interfaces in a more efficient manner in the generics section.
+
+#!markdown
+
+## Default values
+
+Every type `T` in .NET has a default value for its instances that is used in one of three cases:
+
+1. when an array `T[]` of the type is declared all of its elements are initialised to the default value;
+2. when a field of the type `T` has no initialiser and an instance of the enclosing type gets created;
+3. when the user explicitly asks for it using `default(T)`.
+
+The default value of a type is always the all-zeroes initialisation of all of its data.
+This means that for reference types the default is the `null` pointer, which we will cover in detail later in this module.
+For value types this is the same as putting the default value in all of its fields.
+So, naturally, for numeric types this will be the `0` in the given type (`0`, `0L`, `0.0`, `0.0f`...);
+for `bool` it's `false`; for `char` it's the NULL character `'\0'`.
+
+The below example illustrates all three of these cases:
+
+#!csharp
+
+readonly struct Point
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+
+    public override string ToString() => $"X: {X}, Y: {Y}";
+}
+
+class C
+{
+    public Point Point { get; }
+}
+
+var array = new Point[1];
+var c = new C();
+
+Console.WriteLine(array[0]);
+Console.WriteLine(c.Point);
+Console.WriteLine(default(Point));
+
+#!markdown
+
+Note: the `default` keyword does what you expect it to do, and the type can be omitted if it is obvious:
+
+#!csharp
+
+Point point = default;
+
+Console.WriteLine(point);
+
+#!markdown
+
+This presents a peculiar wrinkle in the type system. Up until C# 10 `struct`s could not have any field initialisers
+or define parameterless constructors -- since the default value is always zero-initialised field initialisers wouldn't run,
+and a parameterless constructor always exists and just zero-initialises the fields.
+
+This has been relaxed in C# 10, and it means that stuff might not work just like you think it does.
+It is still a general recommendation to make sure that custom value types make sense when zero-initialised.
+
+For example:
+
+#!csharp
+
+readonly struct HttpStatusCode
+{
+    public int Status { get; private init; } = 200;
+
+    public string Reason { get; private init; } = "Ok";
+
+    public static HttpStatusCode Ok() => new();
+
+    public static HttpStatusCode BadRequest() => new() { Status = 400, Reason = "Bad Request" };
+
+    public override string ToString() => $"{Status} ({Reason})";
+}
+
+var withNew = new HttpStatusCode();
+var withDefault = default(HttpStatusCode);
+var withArray = new HttpStatusCode[1];
+
+Console.WriteLine(withNew);
+Console.WriteLine(withDefault);
+Console.WriteLine(withArray[0]);
+
+#!markdown
+
+A more robust way of dealing with this would be:
+
+#!csharp
+
+readonly struct HttpStatusCode
+{
+    private readonly int _status;
+
+    private readonly string _reason;
+
+    public int Status 
+    { 
+        get => _status == 0 ? 200 : _status;
+        private init => _status = value;
+    }
+
+    public string Reason 
+    { 
+        get => _status == 0 ? "Ok" : _reason;
+        private init => _reason = value;
+    }
+
+    public static HttpStatusCode Ok() => new() { Status = 200, Reason = "Ok" };
+
+    public static HttpStatusCode BadRequest() => new() { Status = 400, Reason = "Bad Request" };
+
+    public override string ToString() => $"{Status} ({Reason})";
+}
+
+var withNew = new HttpStatusCode();
+var withDefault = default(HttpStatusCode);
+var withArray = new HttpStatusCode[1];
+
+Console.WriteLine(withNew);
+Console.WriteLine(withDefault);
+Console.WriteLine(withArray[0]);
+
+#!markdown
+
+Constructors of `struct`s must explicitly initialise all fields.
+
+#!csharp
+
+readonly struct Point
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+
+    public Point(double x) => X = x;
+}
+
+#!markdown
+
+## Why and when to define value types
+
+Why, there are many reasons!
+
+First of all, value semantics are very useful. There are a myriad of types that make
+much more sense as values than entities with identity. Dates, timestamps, numbers (rationals, complex numbers),
+values associated with a currency, colours, thin wrappers over reference types providing additional semantics...
+
+Next, these values are more performant when we're handling a lot of them. To allocate an array of $N$
+reference types we need to allocate the array, and then allocate $N$ objects on the heap. An array of $N$
+value types, on the other hand, requires a single allocation and zero-initialisation of a span of memory.
+
+The answer to "when" is very easy -- when you want the objects to have value semantics, or you have identified
+an issue with performance relating to excessive allocations and want to micro-optimise that.
+
+#!markdown
+
+## Unified type system
+
+Remember all the stuff about .NET having an unified type system? Time to tie the last loose end:
+the C# keywords `int`, `bool`, `object`, `string`, etc., are just aliases. They refer to types defined
+in .NET and required for all implementations of the CLR. Here's the mapping between aliases and their structs defined in the BCL:
+
+- `bool` $\equiv$ `System.Boolean`
+- `byte` $\equiv$ `System.Byte`
+- `sbyte` $\equiv$ `System.SByte`
+- `char` $\equiv$ `System.Char`
+- `decimal` $\equiv$ `System.Decimal`
+- `double` $\equiv$ `System.Double`
+- `float` $\equiv$ `System.Single`
+- `int` $\equiv$ `System.Int32`
+- `uint` $\equiv$ `System.UInt32`
+- `nint` $\equiv$ `System.IntPtr`
+- `nuint` $\equiv$ `System.UIntPtr`
+- `long` $\equiv$ `System.Int64`
+- `ulong` $\equiv$ `System.UInt64`
+- `short` $\equiv$ `System.Int16`
+- `ushort` $\equiv$ `System.UInt16`
+
+... and the two classes:
+
+- `object` $\equiv$ `System.Object`
+- `string` $\equiv$ `System.String`
+
+These are exactly equivalent. The difference between `int` and `Int32`, `string.Concat` and `String.Concat`, is merely syntactical.
+In C#, by convention, we use the lowercase aliases for all purposes.
+
+#!markdown
+
+## Summary
+
+We've examined the two kinds of types in .NET: reference and value types. We know how they are laid out in memory and that value type semantics mean they are entirely copied whenever they are passed or assigned somewhere. We know how to declare enums and custom structs, and know the default values for all types in the language. We also met the concept of boxing and its implications on performance.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [1.2. Pass by Reference](https://gienieczko.com/teaching/csharp/1-type-system/2-pass-by-reference),
+or straight to the next notebook, `02-pass-by-reference.dib`.

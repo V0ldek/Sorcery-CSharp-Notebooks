@@ -5,9 +5,15 @@
         "Mateusz",
         "Memberwise",
         "nameof",
+        "nint",
+        "nuint",
         "oftentimes",
+        "referenceness",
+        "sbyte",
+        "struct",
         "structs",
         "subtyping",
-        "ulong"
+        "ulong",
+        "ushort"
     ]
 }
