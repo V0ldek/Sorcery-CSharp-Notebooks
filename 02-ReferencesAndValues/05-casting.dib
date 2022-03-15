@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/2-references-and-values.
 
-It covers topics for section [1.5. Casting](https://gienieczko.com/teaching/csharp/1-type-system/5-casting).
+It covers topics for section [2.5. Casting](https://gienieczko.com/teaching/csharp/2-references-and-values/5-casting).
 
 ### Notebook flow
 
@@ -224,5 +224,5 @@ We know when to use which cast.
 
 ## Next up:
 
-Continue with the next section, [1.6. Pass by Reference](https://gienieczko.com/teaching/csharp/1-type-system/6-pass-by-reference),
+Continue with the next section, [2.6. Pass by Reference](https://gienieczko.com/teaching/csharp/2-references-and-values/6-pass-by-reference),
 or straight to the next notebook, `06-pass-by-reference.dib`.

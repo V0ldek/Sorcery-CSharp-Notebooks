@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/0-basics.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-object-orientation.
 
-It covers topics for section [0.8. Abstract Types](https://gienieczko.com/teaching/csharp/0-basics/8-abstract-types).
+It covers topics for section [0.2. Abstract Types](https://gienieczko.com/teaching/csharp/1-object-orientation/2-abstract-types).
 
 ### Notebook flow
 
@@ -244,5 +244,5 @@ We also know where to group static methods that don't really make sense on any c
 
 ## Next up:
 
-Continue with the next section, [0.9. Strings](https://gienieczko.com/teaching/csharp/0-basics/9-strings),
-or straight to the next notebook, `09-strings.dib`.
+Continue with the next section, [1.3. Strings](https://gienieczko.com/teaching/csharp/1-object-orientation/3-strings),
+or straight to the next notebook, `03-strings.dib`.

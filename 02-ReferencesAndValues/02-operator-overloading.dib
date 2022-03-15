@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/2-references-and-values.
 
-It covers topics for section [1.2. Operator Overloading](https://gienieczko.com/teaching/csharp/1-type-system/2-operator-overloading).
+It covers topics for section [2.2. Operator Overloading](https://gienieczko.com/teaching/csharp/2-references-and-values/2-operator-overloading).
 
 ### Notebook flow
 
@@ -152,5 +152,5 @@ We've learnt how to overload operators to make our custom value types more ergon
 
 ## Next up:
 
-Continue with the next section, [1.3. Exceptions](https://gienieczko.com/teaching/csharp/1-type-system/3-exceptions),
+Continue with the next section, [2.3. Exceptions](https://gienieczko.com/teaching/csharp/2-references-and-values/3-exceptions),
 or straight to the next notebook, `03-exceptions.dib`.

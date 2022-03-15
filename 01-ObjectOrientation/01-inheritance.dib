@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/0-basics.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-object-orientation.
 
-It covers topics for section [0.7. Inheritance](https://gienieczko.com/teaching/csharp/0-basics/7-inheritance).
+It covers topics for section [1.1. Inheritance](https://gienieczko.com/teaching/csharp/1-object-orientation/1-inheritance).
 
 ### Notebook flow
 
@@ -642,5 +642,5 @@ We also know how implicit an explicit casts for related types work.
 
 ## Next up:
 
-Continue with the next section, [0.8. Abstract Types](https://gienieczko.com/teaching/csharp/0-basics/8-abstract-types),
-or straight to the next notebook, `08-abstract-types.dib`.
+Continue with the next section, [1.2. Abstract Types](https://gienieczko.com/teaching/csharp/1-object-orientation/2-abstract-types),
+or straight to the next notebook, `02-abstract-types.dib`.

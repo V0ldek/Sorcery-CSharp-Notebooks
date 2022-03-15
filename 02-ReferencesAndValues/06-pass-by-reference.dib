@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/2-references-and-values.
 
-It covers topics for section [1.6. Pass by Reference](https://gienieczko.com/teaching/csharp/1-type-system/6-pass-by-reference).
+It covers topics for section [2.6. Pass by Reference](https://gienieczko.com/teaching/csharp/2-references-and-values/6-pass-by-reference).
 
 ### Notebook flow
 
@@ -249,4 +249,4 @@ We've learnt a useful idiom, the `TryX` pattern.
 ## Next up:
 
 This is the end of the module, next up is the Assignment!
-Click here to go there: [Assignment 1. - Equipment](https://gienieczko.com/teaching/csharp/1-type-system/assignment/1-equipment).
+Click here to go there: [Assignment 2. - Lustrous Loot](https://gienieczko.com/teaching/csharp/2-references-and-values/assignment/2-lustrous-loot).

@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/2-references-and-values.
 
-It covers topics for section [1.4. Generics](https://gienieczko.com/teaching/csharp/1-type-system/4-generics).
+It covers topics for section [1.4. Generics](https://gienieczko.com/teaching/csharp/2-references-and-values/4-generics).
 
 ### Notebook flow
 
@@ -558,5 +558,5 @@ We know how to restrict those types to conform to certain expectations and use t
 
 ## Next up:
 
-Continue with the next section, [1.5. Nullability](https://gienieczko.com/teaching/csharp/1-type-system/5-nullability),
+Continue with the next section, [1.5. Nullability](https://gienieczko.com/teaching/csharp/2-references-and-values/5-nullability),
 or straight to the next notebook, `05-nullability.dib`.

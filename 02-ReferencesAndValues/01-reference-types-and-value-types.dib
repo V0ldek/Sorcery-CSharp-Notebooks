@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/2-references-and-values.
 
-It covers topics for section [1.1. Reference Types and Value Types](https://gienieczko.com/teaching/csharp/1-type-system/1-reference-types-and-value-types).
+It covers topics for section [2.1. Reference Types and Value Types](https://gienieczko.com/teaching/csharp/2-references-and-values/1-reference-types-and-value-types).
 
 ### Notebook flow
 
@@ -1008,5 +1008,5 @@ We've examined the two kinds of types in .NET: reference and value types. We kno
 
 ## Next up:
 
-Continue with the next section, [1.2. Overloading Operators](https://gienieczko.com/teaching/csharp/1-type-system/2-overloading-operators),
+Continue with the next section, [2.2. Overloading Operators](https://gienieczko.com/teaching/csharp/2-references-and-values/2-overloading-operators),
 or straight to the next notebook, `02-overloading-operators.dib`.

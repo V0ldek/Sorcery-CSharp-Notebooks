@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/2-references-and-values.
 
-It covers topics for section [1.7. Equality](https://gienieczko.com/teaching/csharp/1-type-system/7-equality).
+It covers topics for section [1.7. Equality](https://gienieczko.com/teaching/csharp/2-references-and-values/7-equality).
 
 ### Notebook flow
 
@@ -110,5 +110,5 @@ To go further, we need to talk about operator overloading.
 
 ## Next up:
 
-Continue with the next section, [1.4. Nested Types](https://gienieczko.com/teaching/csharp/1-type-system/4-nested-types),
+Continue with the next section, [1.4. Nested Types](https://gienieczko.com/teaching/csharp/2-references-and-values/4-nested-types),
 or straight to the next notebook, `04-nested-types.dib`.

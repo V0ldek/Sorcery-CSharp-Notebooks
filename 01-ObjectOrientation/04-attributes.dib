@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/0-basics.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-object-orientation.
 
-It covers topics for section [0.10. Attributes](https://gienieczko.com/teaching/csharp/0-basics/10-attributes).
+It covers topics for section [1.4. Attributes](https://gienieczko.com/teaching/csharp/1-object-orientation/4-attributes).
 
 ### Notebook flow
 
@@ -90,5 +90,5 @@ We've learnt how to use existing attributes on parts of our code. We're now read
 
 ## Next up:
 
-Continue with the next section, [0.11. Testing with xUnit](https://gienieczko.com/teaching/csharp/0-basics/11-testing-with-xunit).
+Continue with the next section, [1.5. Testing with xUnit](https://gienieczko.com/teaching/csharp/1-object-orientation/5-testing-with-xunit).
 The next section has no notebook associated, we'll get back to notebooks in the next module.

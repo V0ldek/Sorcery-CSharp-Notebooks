@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/0-basics.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-object-orientation.
 
-It covers topics for section [0.6. Classes](https://gienieczko.com/teaching/csharp/0-basics/6-classes).
+It covers topics for section [1.0. Classes](https://gienieczko.com/teaching/csharp/1-object-orientation/0-classes).
 
 ### Notebook flow
 
@@ -1181,5 +1181,5 @@ We know how to create and initialise objects.
 
 ## Next up:
 
-Continue with the next section, [0.7. Inheritance](https://gienieczko.com/teaching/csharp/0-basics/7-inheritance),
-or straight to the next notebook, `07-inheritance.dib`.
+Continue with the next section, [1.1. Inheritance](https://gienieczko.com/teaching/csharp/1-object-orientation/1-inheritance),
+or straight to the next notebook, `01-inheritance.dib`.

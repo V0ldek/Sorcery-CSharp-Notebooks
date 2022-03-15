@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/0-basics.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-object-orientation.
 
-It covers topics for section [0.9. Strings](https://gienieczko.com/teaching/csharp/0-basics/9-strings).
+It covers topics for section [1.3. Strings](https://gienieczko.com/teaching/csharp/1-object-orientation/3-strings).
 
 ### Notebook flow
 
@@ -208,5 +208,5 @@ We've also met the `nameof` utility.
 
 ## Next up:
 
-Continue with the next section, [0.10. Attributes](https://gienieczko.com/teaching/csharp/0-basics/10-attributes),
-or straight to the next notebook, `10-attributes.dib`.
+Continue with the next section, [1.4. Attributes](https://gienieczko.com/teaching/csharp/1-basics/4-attributes),
+or straight to the next notebook, `4-attributes.dib`.
