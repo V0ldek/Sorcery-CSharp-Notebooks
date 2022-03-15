@@ -1,0 +1,461 @@
+#!markdown
+
+# 1.3. Exceptions
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
+
+It covers topics for section [1.3. Exceptions](https://gienieczko.com/teaching/csharp/1-type-system/3-exceptions).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## The exception model and `try` `catch`
+
+C# uses exceptions as its primary error handling model.
+They are thrown using the `throw` keyword, which we've incidentally seen now and then,
+and can be caught and handled with `try` `catch` blocks.
+
+#!csharp
+
+int Foo(string input)
+{
+    var n = int.Parse(input);
+    return n + 1;
+}
+
+try
+{
+    var n = Foo("user input");
+    Console.WriteLine($"User input was: {n}");
+}
+catch
+{
+    Console.WriteLine("Exception!");
+}
+
+#!markdown
+
+There are two common ways of dealing with exceptions.
+One is handling, where we actually expect the logic to fail under some outside circumstances
+and want to somehow gracefully handle the error. That usually means that we want to specify
+what type of exceptions we're expecting.
+
+#!csharp
+
+int Foo(string input)
+{
+    var n = int.Parse(input);
+    return n + 1;
+}
+
+int n;
+
+try
+{
+    n = Foo("user input");
+}
+catch (FormatException exception)
+{
+    Console.WriteLine($"Exception! {exception}");
+    n = 0;
+}
+
+Console.WriteLine($"Continuing with: {n}");
+
+#!markdown
+
+A `catch` block which specifies what type of exception to catch will only catch exceptions
+of that type, or a derived one.
+
+#!csharp
+
+int Foo(string input)
+{
+    throw new NotImplementedException();
+}
+
+int n;
+
+try
+{
+    n = Foo("user input");
+}
+catch (FormatException exception)
+{
+    Console.WriteLine($"Exception! {exception}");
+    n = 0;
+}
+
+Console.WriteLine($"Continuing with: {n}");
+
+#!markdown
+
+This carries with it two things. One, we can have more than one `catch` block, each specifying a different type
+of exception and handling that specific one. Two, C# enforces that every exception inherits from the base
+`System.Exception` class, which contains basic information carried by all exceptions, such as failure message
+and the stack trace. Therefore, we can catch all exceptions by specifying `Exception` as the type.
+
+#!csharp
+
+int Foo(string input)
+{
+    throw new NotImplementedException();
+}
+
+int n;
+
+try
+{
+    n = Foo("user input");
+}
+catch (FormatException exception)
+{
+    Console.WriteLine($"Formatting exception! {exception}");
+    n = 0;
+}
+catch (Exception exception)
+{
+    Console.WriteLine($"Some other exception! {exception}");
+    n = 0;
+}
+
+Console.WriteLine($"Continuing with: {n}");
+
+#!markdown
+
+Going back, I mentioned two common ways of exception handling. The other one is not really handling -- we don't expect a failure, 
+but if it happens we want to do something before crashing, for example log the error somewhere.
+In that case, we catch the exception, perform some logic, and then rethrow the exception again,
+which is done with an empty `throw` statement:
+
+#!csharp
+
+int Foo(string input)
+{
+    throw new NotImplementedException();
+}
+
+int n;
+
+try
+{
+    n = Foo("user input");
+}
+catch (FormatException exception)
+{
+    Console.WriteLine($"Formatting exception! {exception}");
+    n = 0;
+}
+catch (Exception exception)
+{
+    Console.WriteLine($"Some other exception! {exception}");
+    throw;
+}
+
+Console.WriteLine($"Continuing with: {n}");
+
+#!markdown
+
+It's also common to wrap exceptions in some other, high-level exception type and throw that.
+
+#!markdown
+
+## Custom exceptions
+
+Custom exceptions are useful when you want the end user to get a concrete type of an exception that they
+can catch, but also don't want to use any information. To implement a custom exception type we need
+to extend the `Exception` class.
+
+#!csharp
+
+public class CustomException : Exception
+{
+}
+
+#!markdown
+
+We can put any additional info that we want our exceptions to have as properties on this class.
+There are two base constructors that you usually want to use in a custom type:
+
+#!csharp
+
+public class CustomException : Exception
+{
+    public CustomException(string message) : base(message)
+    {
+    }
+
+    public CustomException(string message, Exception innerException) : base(message, innerException)
+    {
+    }
+}
+
+#!markdown
+
+The first one creates an exception with a given user-readable message.
+The other one additionally passes a context of a different exception that has occurred.
+Continuing our idea of parsing an integer, we probably want to include the user input that caused the exception in it:
+
+#!csharp
+
+public class CustomException : Exception
+{
+    public string UserInput { get; }
+    
+    public CustomException(string userInput, Exception innerException) 
+        : base($"Unhandled exception while parsing user input: '{userInput}'", innerException) =>
+        UserInput = userInput;
+}
+
+#!markdown
+
+Now we can rethrow our custom exception, wrapping over the original one:
+
+#!csharp
+
+int Foo(string input)
+{
+    throw new NotImplementedException();
+}
+
+int n;
+var userInput = "user input";
+
+try
+{
+    n = Foo(userInput);
+}
+catch (FormatException exception)
+{
+    Console.WriteLine($"Formatting exception! {exception}");
+    n = 0;
+}
+catch (Exception exception)
+{
+    Console.WriteLine($"Some other exception! {exception}");
+    throw new CustomException(userInput, exception);
+}
+
+Console.WriteLine($"Continuing with: {n}");
+
+#!markdown
+
+## Filtering exceptions
+
+Exceptions can be additionally filtered not only by their type, but also by arbitrary boolean conditions.
+For example, imagine we have some service that can experience transient errors (e.g. connecting to a webserver that can
+fail due to network issues). We can write a retry logic using the filter:
+
+#!csharp
+
+using System.Net;
+using System.Threading;
+
+void ConnectToService()
+{
+    Console.WriteLine("Throw");
+    throw new WebException("Transient error.");
+}
+
+void ConnectWithRetry()
+{
+    var retries = 3;
+
+    while (true)
+    {
+        try
+        {
+            ConnectToService();
+            return;
+        }
+        catch(WebException) when (retries > 0)
+        {
+            Console.WriteLine("Error, retrying...");
+            Thread.Sleep(1000);
+            retries -= 1;
+        }
+    }
+}
+
+ConnectWithRetry();
+
+#!markdown
+
+Another application is different catch logic for different types of exceptions on a more granular level than their type.
+For example, `SqlException` has a property `Number` specifying the error number from the SQL database. To only catch
+an exception from PostgreSQL pertaining to a unique constraint violation (so it'd mean a record with given key already exists)
+we'd write:
+
+```csharp
+catch (SqlException exception) when (exception.Number == 23505)
+{
+    ...
+}
+```
+
+#!markdown
+
+## The `finally` block
+
+The `finally` block runs after the `try` `catch` block regardless of whether an exception was thrown or not.
+
+#!csharp
+
+try
+{
+    Console.WriteLine("Try.");
+    throw new InvalidOperationException();
+}
+catch
+{
+    Console.WriteLine("Catch.");
+    throw;
+}
+finally
+{
+    Console.WriteLine("Finally.");
+}
+
+#!csharp
+
+try
+{
+    Console.WriteLine("Try.");
+}
+catch
+{
+    Console.WriteLine("Catch.");
+    throw;
+}
+finally
+{
+    Console.WriteLine("Finally.");
+}
+
+#!markdown
+
+This can be used to perform any cleanup concerning the attempted operation.
+We will talk about this more in-depth in a later module when discussing `IDisposable`.
+
+#!markdown
+
+## How does this work?
+
+When execution reaches a `throw exception` statement, the CLR examines the execution stack
+to find a `catch` statement that would catch this exception, and then beings _unwinding the stack_,
+which basically means popping stack frames one after another while respecting `finally` blocks.
+
+When the exception is caught execution resumes in the `catch` block. If it's not caught,
+the application is terminated.
+
+#!markdown
+
+## When to use exceptions?
+
+Exception usage is a very contentious topic among engineers.
+One thing that almost everyone agrees on is that you should not use exceptions for control flow.
+Exceptions are meant to model _exceptional_ situations. The stack unwinding process is extremely
+expensive when compared to normal execution and has very non-obvious, non-local semantics.
+
+I find characterisation by [Eric Lippert](https://ericlippert.com/2008/09/10/vexing-exceptions/) useful when thinking about exceptions.
+He divides exceptions into four categories:
+
+1. **Fatal exceptions** --
+   These are exceptions that basically always result in the application dying in a fiery explosion,
+   for example `OutOfMemoryException` or `ThreadAbortException`. These are exceptions that shouldn't
+   be caught, as there's no way mere mortals could fix them - you can't conjure more memory and there's
+   literally no way to stop a thread abort from user-level code.
+2. **Boneheaded exceptions** --
+   exceptions caused by bugs and erroneous user code, such as `NullReferenceException` or `IndexOutOfBoundsException`.
+   These shouldn't be caught either -- they indicate a bug in your code that needs to be fixed.
+   A correctly written application should never encounter these.
+3. **Vexing exceptions** -- are exceptions you find when using badly designed libraries.
+   It's not at all clear why the user has to catch this exception, since it naturally occurs
+   during normal execution and isn't really exceptional. An example is, quite ironically, the exception thrown by
+   `int.Parse` -- most of use cases of it are parsing user-supplied data, which obviously will be wrong a lot of the time.
+   Avoid throwing such exceptions. You need to catch these exceptions, unless the library exposes a better method,
+   like `int.TryParse`, that doesn't suffer from this issue.
+4. **Exogenous exceptions** -- (from _exo_, external, and _geneia_, to produce) exceptions that absolutely _must_
+   be caught, because they're a result of reality being weird and dirty. Things like `FileNotFoundException` or
+   `HttpRequestException` _will_ happen even in the most crisp production code, because filesystems are weird and
+   network failures occur all the time.
+
+Your application should not introduce vexing exceptions.
+
+If your application interfaces with the real world it might need to throw exogenous exceptions when the real world gets messy.
+
+It's not likely that your code will need to throw a fatal exception, unless it is really low-level.
+
+Boneheaded exceptions, on the other hand? A lot. Of. Them.
+
+#!markdown
+
+## Defensive programming
+
+In C#, we embrace the [fail-fast](https://en.wikipedia.org/wiki/Fail-fast) approach.
+Your public facing methods might receive arguments that make no sense and it is your duty to tell the user that, immediately.
+
+Here's a bunch of exceptions you will need in your daily life:
+
+- `System.ArgumentNullException` -- when an argument is `null` and shouldn't be; we'll cover nullability in section 1.5.
+- `System.ArgumentOutOfRangeException` -- when an argument is outside of range of possible values, for example you expected
+a positive number, or a non-zero number; this is also used when an enum is received with a value that isn't a valid variant
+of the enum.
+- `System.ArgumentException` -- base class of the above two, used when they are not applicable, but the argument is invalid in some other way.
+- `System.InvalidOperationException` -- a general error for when the current state of the system does not allow for a given operation;
+it's best to enforce such constraints on type level, but sometimes it's impossible; I used it in the code of the executable for your
+first micro-assignment -- there's a `GameEngine` class that executes the game turn-by-turn, and calling `ProcessTurn` when
+the game is already over (dungeon cleared, hero died...) triggers an `InvalidOperationException`.
+
+You should always write your methods so that arguments are validated as soon as possible and the user informed on incorrect usage immediately.
+So, when we write a modulo method...
+
+#!csharp
+
+int Modulo(int x, int m)
+{
+    if (m == 0)
+    {
+        throw new ArgumentOutOfRangeException(nameof(m));
+    }
+
+    return x % m;
+}
+
+Console.WriteLine(Modulo(5, 3));
+Console.WriteLine(Modulo(5, 0));
+
+#!markdown
+
+Most ubiquitously you'll see this when handling reference types and checking them for `null`.
+
+#!markdown
+
+## Summary
+
+We've learnt how to throw, catch, and rethrow exceptions. We can define our own exception types.
+We know how to use advanced filters with the `when` clause. We know when to use exceptions
+and the most common exceptions used in defensive programming.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [1.4. Nested Types](https://gienieczko.com/teaching/csharp/1-type-system/4-nested-types),
+or straight to the next notebook, `04-nested-types.dib`.

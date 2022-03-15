@@ -1,0 +1,796 @@
+#!markdown
+
+# 1.5. Nullability
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
+
+It covers topics for section [1.5. Nullability](https://gienieczko.com/teaching/csharp/1-type-system/5-nullability).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## The Billion-Dollar Mistake
+
+> I call it my billion-dollar mistake. It was the invention of the null reference in 1965. At that time, I was designing the first comprehensive type system for references in an object oriented language (ALGOL W). My goal was to ensure that all use of references should be absolutely safe, with checking performed automatically by the compiler. But I couldn't resist the temptation to put in a null reference, simply because it was so easy to implement. This has led to innumerable errors, vulnerabilities, and system crashes, which have probably caused a billion dollars of pain and damage in the last forty years.
+
+C#, unfortunately, suffers from the billion-dollar mistake as well.
+The fact that reference types can be assigned the special `null` value causes ripples through the language's
+design to this day. In this section we will learn all the additional nooks and crannies introduced
+to the language to make living with it easier. 
+
+#!markdown
+
+![Sad Hoare](img/sadhoare.jpg "Sad Hoare")
+
+_Sir Hoare, he gets sad every time a `NullReferenceException` is thrown_
+
+#!markdown
+
+The fundamental problem is simple. You can assign `null` to any reference type value, 
+but trying to call anything on it immediately causes a runtime exception.
+
+#!csharp
+
+class C 
+{ 
+    public int Value { get; init; }
+}
+
+C c = null;
+
+Console.WriteLine(c.Value);
+
+#!markdown
+
+The `NullReferenceException` is another example of a **boneheaded exception**.
+It absolutely must not be throw by correct production code. If it's possible
+for a value to be `null` it should be validated, either inside the state of a class
+(in which case an `InvalidOperationException` is probably in place), or at the entry to a method
+(where we defensively throw an `ArgumentNullException`).
+
+#!markdown
+
+## Nullable Reference Types
+
+The largest facility for null-safe programming came in C# 8 in the form of Nullable Reference Types (NRT).
+In notebook scripts we enable it with a special compiler directive `#nullable enable`,
+in projects it's enabled by default in the `.csproj` with the `<Nullable>enable</Nullable>` option.
+
+It makes all reference types non-nullable by default in the eyes of the compiler analysis.
+Assigning a `null` reference to a non-nullable variable results in a compiler warning.
+
+#!csharp
+
+#nullable enable
+
+class C 
+{ 
+    public int Value { get; init; }
+}
+
+C c = null;
+
+Console.WriteLine(c.Value);
+
+#!markdown
+
+These warnings are very often promoted to errors in project settings.
+There are two ways of fixing such warnings.
+
+1. If the value really should not be `null`, then this probably indicates a bug and should be fixed
+in a way that will disallow a `null` being assigned.
+2. We actually want this value to be nullable, in which case we need to annotate it with a special `?` type annotation:
+
+#!csharp
+
+#nullable enable
+
+class C 
+{ 
+    public int Value { get; init; }
+}
+
+C? c = null;
+
+Console.WriteLine(c.Value);
+
+#!markdown
+
+Now assigning is no longer a warning, but dereferencing the value without first checking for `null` is.
+The fix is natural:
+
+#!csharp
+
+#nullable enable
+
+class C 
+{ 
+    public int Value { get; init; }
+}
+
+C? c = null;
+
+if (c == null)
+{
+    Console.WriteLine("null");
+}
+else
+{
+    Console.WriteLine(c.Value);
+}
+
+#!markdown
+
+This also catches null-initialisation, which is usually a bug:
+
+#!csharp
+
+#nullable enable
+
+class C 
+{ 
+    public string Value { get; init; }
+}
+
+var c = new C();
+
+Console.WriteLine(c.Value.Length);
+
+#!markdown
+
+Again, you either need to fix it by supplying a default value...
+
+#!csharp
+
+#nullable enable
+
+class C 
+{ 
+    public string Value { get; init; } = "";
+}
+
+var c = new C();
+
+Console.WriteLine(c.Value.Length);
+
+#!markdown
+
+... forcing the users to use a constructor that will initialise the value...
+
+#!csharp
+
+#nullable enable
+
+class C 
+{ 
+    public string Value { get; init; }
+
+    public C(string value) => Value = value;
+}
+
+var c = new C("value");
+
+Console.WriteLine(c.Value.Length);
+
+#!markdown
+
+... or marking it as nullable and forcing users to handle the possibility of a new value down the line.
+
+#!csharp
+
+#nullable enable
+
+class C 
+{ 
+    public string? Value { get; init; }
+}
+
+var c = new C();
+
+Console.WriteLine(c.Value.Length);
+
+#!markdown
+
+### The bang operator
+
+Sometimes the compiler tries its hardest to help us and marks a usage as possible null dereference, even
+though it's clearly impossible.
+
+#!csharp
+
+#nullable enable
+
+string? s = null;
+
+for (var i = 0; i < 10; i += 1)
+{
+    s += "a";
+}
+
+Console.WriteLine(s.Length);
+
+#!markdown
+
+In such cases we can tell the compiler to f... to go do something else with the bang operator (also called, less excitingly, the null-forgiving operator):
+
+#!csharp
+
+#nullable enable
+
+string? s = null;
+
+for (var i = 0; i < 10; i += 1)
+{
+    s += "a";
+}
+
+Console.WriteLine(s!.Length);
+
+#!markdown
+
+**It is always preferable to use the bang operator if we are sure the value cannot be null to leaving the warning hanging!**
+Don't leave unresolved warnings in your code.
+
+#!markdown
+
+## Why this sucks
+
+NRTs are extremely useful. They make public APIs much safer with explicit annotations
+on which methods accept nulls, which return nulls. They're not perfect though. Far from it.
+
+The most important wrinkle is that NRTs are **compile-time only**. They work with the C#
+compiler's analysis and that's it. The CLR has no idea about any of those annotations.
+A `string?` and `string` are exactly the same at runtime (they're both `System.String`).
+So they are in no way a hard guarantee that your code is correct.
+What's more important, they're not enough as a public API guarantee.
+
+We write an API like this:
+
+#!csharp
+
+#nullable enable
+
+public class Public
+{
+    public void Receive(string notnull)
+    {
+        var length = notnull.Length;
+
+        // ...
+    }
+}
+
+#!markdown
+
+In our code passing a `null` to this method is a warning (or even an error if we want).
+
+#!csharp
+
+#nullable enable
+
+var p = new Public();
+p.Receive(null);
+
+#!markdown
+
+But if the outside code doesn't have the nullable context enabled? Or if they purposefully use the bang operator to make it go through? 
+
+#!csharp
+
+var p = new Public();
+p.Receive(null!);
+
+#!markdown
+
+Therefore **defensive programming is still a must** for public-facing APIs.
+
+#!csharp
+
+#nullable enable
+
+public class Public
+{
+    public void Receive(string notnull)
+    {
+        if (notnull == null)
+        {
+            throw new ArgumentNullException(nameof(notnull));
+        }
+
+        var length = notnull.Length;
+
+        // ...
+    }
+}
+
+#!markdown
+
+Unfortunately, the billion dollar mistake will haunt us, probably forever.
+
+It's important to remember that this feature was introduced in C# _8_. That's 2019,
+19 years since C#'s initial release. At this point there was _so much_ code written in C#
+it'd be impossible to do something radical like enforcing non-nullability in the runtime.
+
+#!markdown
+
+But it's clearly a correct usage of our API. Making the property nullable is prohibitively restrictive:
+
+#!markdown
+
+To make this work, we can leave the property as non-nullable, but annotate it with the `AllowNullAttribute`:
+
+#!markdown
+
+You can do the reverse with `DisallowNullAttribute`:
+
+#!markdown
+
+## Null-coalescing operators
+
+To make handling null checks less painful we have a handful of operators called null-coalescing operators.
+
+### `??` (null-coalescing operator)
+
+#!csharp
+
+#nullable enable
+
+class C 
+{ 
+    public string? Value { get; init; }
+}
+
+var c = new C();
+
+// These two blocks are equivalent.
+{
+    var v = c.Value;
+    x = v == null ? "default" : v;
+}
+{
+    var x = c.Value ?? "default";
+}
+
+#!markdown
+
+In English: `x ?? y` means `x`, if it is not null, or the default value of `y`, if `x` is null.
+The operator is lazy, just like all conditionals -- if `x` is not null then `y` is never evaluated.
+
+#!csharp
+
+#nullable enable
+
+class C 
+{ 
+    private string _value = "default";
+
+    public string Value
+    {
+        get => _value;
+        set => _value = value ?? throw new ArgumentNullException(nameof(value));
+    }
+}
+
+var c = new C();
+
+c.Value = "nonnull";
+Console.WriteLine(c.Value);
+
+c.Value = null!;
+
+#!markdown
+
+### `??=` (null-coalescing assignment)
+
+#!csharp
+
+#nullable enable
+
+class C 
+{ 
+    public string? Value { get; set; }
+}
+
+var c = new C();
+
+// These two blocks are equivalent.
+{
+    if (c.Value == null)
+    {
+        c.Value = "default";
+    }
+}
+{
+    c.Value ??= "default";    
+}
+
+#!markdown
+
+In English: `x ??= y` does nothing, if `x` is not null, otherwise assigns `y` to `x`.
+
+#!markdown
+
+### `?.` (null-conditional operator)
+
+This is the funkiest of the operators. It is used instead of standard member access `.` and short-circuits
+the entire expression to `null` if the instance on which we try to do the access is null.
+
+#!csharp
+
+#nullable enable
+
+class C
+{
+    public string Value { get; init; } = "";
+}
+
+C? c = null;
+
+string? x = c?.Value;
+
+Console.WriteLine(x ?? "null");
+
+#!markdown
+
+It also works with indexers:
+
+#!csharp
+
+#nullable enable
+
+string? First(string?[]? array) => array?[0];
+
+Console.WriteLine(First(new [] { "first", "second" }) ?? "null");
+Console.WriteLine(First(null) ?? "null");
+
+#!markdown
+
+The expression's type must permit a `null`. This is a warning:
+
+#!csharp
+
+#nullable enable
+
+class C
+{
+    public string Value { get; init; } = "";
+}
+
+C? c = null;
+
+string x = c?.Value;
+
+Console.WriteLine(x ?? "null");
+
+#!markdown
+
+And this is a hard error:
+
+#!csharp
+
+#nullable enable
+
+class C
+{
+    public int Value { get; init; }
+}
+
+C? c = null;
+
+int x = c?.Value;
+
+Console.WriteLine(x);
+
+#!markdown
+
+Hmm, `int?`? What's that? We know nullability for reference types, it's pretty straight-forward,
+but for _value types_...?
+
+#!markdown
+
+## Nullable Value Types
+
+Value types cannot be `null` by themselves. The 32-bits of an `int` cover all $2^{32}$ possible values of an `int` 
+and nothing else, there's no room for a magical `null` value.
+However, .NET has first class support for Nullable Value Types with the same syntax as NRTs:
+
+#!csharp
+
+int? nullable = null;
+
+Console.WriteLine(nullable?.ToString() ?? "null");
+
+nullable = 42;
+
+Console.WriteLine(nullable?.ToString() ?? "null");
+
+#!markdown
+
+_(NVTs have been around since forever, C# 2, NRTs are new, so it's actually NRTs inheriting the syntax from NVTs)_
+
+The `?` is actually syntactic sugar for a completely different type, the generic `Nullable<T>`.
+Here's the shortened definition:
+
+#!csharp
+
+public struct Nullable<T> where T : struct
+{
+    private readonly bool _hasValue;
+    internal T _value;
+
+    public Nullable(T value)
+    {
+        _value = value;
+        _hasValue = true;
+    }
+
+    public readonly bool HasValue => _hasValue;
+
+    public readonly T Value => _hasValue ? _value : throw new InvalidOperationException("Nullable object must have a value.");
+
+    public readonly T GetValueOrDefault() => _value;
+
+    public readonly T GetValueOrDefault(T defaultValue) => _hasValue ? _value : default(T);
+
+    // ...
+}
+
+#!markdown
+
+It's pretty natural -- we enrich the value type with a boolean field that marks whether it's a `null` or not. There's first class support from the language to make sure that the `null` literal is convertible to a `Nullable<T>` and that null-coalescing operators work with them. Also, `default(Nullable<T>)` is `null` for any value type `T`.
+
+The usage is the same as with NRTs, only that here we actually have a completely different type at runtime,
+so to actually access the value we need to use the defined properties and methods:
+
+#!csharp
+
+void Foo(int x)
+{
+    Console.WriteLine(x);
+}
+
+int? nullable = 42;
+Foo(nullable.Value);
+
+#!markdown
+
+There's also an explicit conversion that is equivalent:
+
+#!csharp
+
+void Foo(int x)
+{
+    Console.WriteLine(x);
+}
+
+int? nullable = 42;
+Foo((int) nullable);
+
+#!csharp
+
+void Foo(int x)
+{
+    Console.WriteLine(x);
+}
+
+int? nullable = null;
+Foo((int) nullable);
+
+#!markdown
+
+The conversion in the other direction is implicit:
+
+#!csharp
+
+void Foo(int? x)
+{
+    Console.WriteLine(x?.ToString() ?? "null");
+}
+
+int n = 42;
+Foo(n);
+
+#!markdown
+
+### Boxing NVTs
+
+When an NVT is boxed the box contains only the value, since
+the reference can already handle `null` values. It's a small optimisation.
+
+#!csharp
+
+#nullable enable
+
+void Bar(object? x)
+{
+    var nullable = (int?) x;
+    Console.WriteLine(nullable?.ToString() ?? "null");
+}
+
+int? nullable = 42;
+Bar(nullable);
+
+#!csharp
+
+#nullable enable
+
+void Bar(object? x)
+{
+    var nullable = (int?) x;
+    Console.WriteLine(nullable?.ToString() ?? "null");
+}
+
+int? nullable = null;
+Bar(nullable);
+
+#!csharp
+
+#nullable enable
+
+void Bar(object? x)
+{
+    var nullable = (int) x;
+    Console.WriteLine(nullable);
+}
+
+int? nullable = 42;
+Bar(nullable);
+
+#!csharp
+
+#nullable enable
+
+void Bar(object? x)
+{
+    var nullable = (int) x;
+    Console.WriteLine(nullable);
+}
+
+int? nullable = null;
+Bar(nullable);
+
+#!markdown
+
+## Lifted operators
+
+The operators that work on `T` also work on `T?`. They are **lifted** from `T`
+with special semantics concerning the `null` values.
+
+### `==` and `!=`
+
+A `null` is only equal to another `null`. Non-null values are compared as normal.
+
+### `<`, `<=`, `>`, `>=`
+
+All comparisons involving a `null` return `false`.
+
+### Logical operators
+
+Logical operators assume a `null` value is unknown, so it pessimistically could be anything.
+Therefore `true | null` is `true`, but `false | null` is `null`. Similarly for `&`, `false & null` is `false`,
+but `true & null` is `null`.
+
+### Everything else
+
+Other operators return `null` when any of the operands is `null`, mimicking the way
+operators work in SQL.
+
+#!csharp
+
+int? @null = null;
+int? notnull = 42;
+
+Console.WriteLine($"null < null: {@null < null}");
+Console.WriteLine($"null <= null: {@null <= null}");
+Console.WriteLine($"null == null: {@null == null}");
+Console.WriteLine($"null > null: {@null > null}");
+Console.WriteLine($"null < notnull: {@null < notnull}");
+Console.WriteLine($"null == notnull: {@null == notnull}");
+Console.WriteLine($"null > notnull: {@null > notnull}");
+Console.WriteLine($"null <= null: {@null <= null}");
+
+Console.WriteLine($"null + null: {@null + null}");
+Console.WriteLine($"null + notnull: {@null + notnull}");
+
+#!csharp
+
+bool? n = null;
+bool? t = true;
+bool? f = false;
+
+Console.WriteLine($"true & null: {t & n}");
+Console.WriteLine($"false & null: {f & n}");
+Console.WriteLine($"null & null: {n & n}");
+Console.WriteLine($"true | null: {t | n}");
+Console.WriteLine($"false | null: {f | n}");
+Console.WriteLine($"null | null: {n | n}");
+
+#!markdown
+
+## When to use NVTs?
+
+When we want to model absence of a value as different from the default value.
+This is **always** better than cheating by using magical values.
+
+For example of a violation of this, consider the `Array.IndexOf` method defined on arrays:
+
+#!csharp
+
+int[] vals = new [] { 1, 2, 3 };
+
+Console.WriteLine($"Array.IndexOf(1): {Array.IndexOf(vals, 1)}");
+Console.WriteLine($"Array.IndexOf(2): {Array.IndexOf(vals, 2)}");
+Console.WriteLine($"Array.IndexOf(3): {Array.IndexOf(vals, 3)}");
+Console.WriteLine($"Array.IndexOf(4): {Array.IndexOf(vals, 4)}");
+
+#!markdown
+
+This is stupid, plain and simple. Looks like C, or worse, Go.
+
+The reason for it is simple, though (and reasonable) -- it's an old API, introduced in the very first C# version, and NVTs are from C# 2.
+
+This should clearly be:
+
+#!csharp
+
+int? IndexOf<T>(T[] array, T value)
+{
+    var result = Array.IndexOf(array, value);
+    return result == -1 ? null : result;
+}
+
+Console.WriteLine($"IndexOf(1): {IndexOf(vals, 1)}");
+Console.WriteLine($"IndexOf(2): {IndexOf(vals, 2)}");
+Console.WriteLine($"IndexOf(3): {IndexOf(vals, 3)}");
+Console.WriteLine($"IndexOf(4): {IndexOf(vals, 4)}");
+
+#!markdown
+
+## When to use NRTs?
+
+Always.
+
+#!markdown
+
+## ...
+
+#!markdown
+
+No, really. Always. Literally no reason to disable it.
+
+Introducing NRTs to an existing codebase that did not use it earlier is Pain, capitalised P, tears, blood, sweat and all those things.
+But for new projects there is _literally_, _unequivocally_, _no reason_ to disable NRTs.
+They make everything safer. They eliminate a swath of possible bugs. They're your friend.
+They're not perfect, but they're doing their damn best.
+
+#!markdown
+
+## Summary
+
+We are now deeply saddened by `null` existing along with Sir Hoare.
+We've learned how to cope with NRTs and how to use the more reliable NVT feature to model absence of a value.
+We know how these features interact with generics and that we can use a variety of attributes
+to help the compiler give us the best static analysis possible.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [1.6. Casting](https://gienieczko.com/teaching/csharp/1-type-system/6-casting),
+or straight to the next notebook, `06-casting.dib`.

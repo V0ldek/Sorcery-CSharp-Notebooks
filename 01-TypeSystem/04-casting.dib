@@ -1,0 +1,228 @@
+#!markdown
+
+# 1.6. Casting
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
+
+It covers topics for section [1.6. Casting](https://gienieczko.com/teaching/csharp/1-type-system/6-casting).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## "Hard" casting
+
+We've already met the "hard" cast operator that performs a forceful conversion that either succeeds or crashes the program.
+It's actually overloaded, it can perform reference conversions (downcasting), narrowing numeric conversions,
+convert NVTs to the underlying value type, and box/unbox.
+
+#!csharp
+
+class Parent
+{
+}
+
+class Child : Parent
+{
+}
+
+Parent a = new Child();
+var downcast = (Child) a;
+
+long b = 1_000_000_000_000_000L;
+int narrowing = (int) b;
+
+int? c = 42;
+int extractValue = (int) c;
+
+object box = (object) 42;
+int unbox = (int) box;
+
+Console.WriteLine(downcast);
+Console.WriteLine(narrowing);
+Console.WriteLine(extractValue);
+Console.WriteLine(unbox);
+
+#!markdown
+
+As we said, it crashes on runtime in any of these cases:
+
+#!csharp
+
+Parent a = new Parent();
+var downcast = (Child) a;
+
+#!csharp
+
+int? c = null;
+int extractValue = (int) c;
+
+#!csharp
+
+object box = (object) 42L;
+int unbox = (int) box;
+
+#!markdown
+
+## Fallible casting with `as`
+
+The `as` operator can perform a downcast or an unboxing, but instead of crashing on failure returns `null`.
+
+#!csharp
+
+#nullable enable
+
+class Parent
+{
+}
+
+class Child : Parent
+{
+}
+
+Parent a = new Child();
+var downcast = a as Child;
+
+Parent b = new Parent();
+var failedDowncast = b as Child;
+
+object box = (object) 42;
+int? unbox = box as int?;
+long? failedUnbox = box as long?;
+
+Console.WriteLine(downcast?.ToString() ?? "null");
+Console.WriteLine(failedDowncast?.ToString() ?? "null");
+Console.WriteLine(unbox?.ToString() ?? "null");
+Console.WriteLine(failedUnbox?.ToString() ?? "null");
+
+#!markdown
+
+## The `is` pattern
+
+The `as` operator is only useful when combined with a `null` check of the result.
+Very often we want to write something like this:
+
+#!csharp
+
+#nullable enable
+
+class Parent
+{
+}
+
+class Child : Parent
+{
+}
+
+void Foo(Parent parent)
+{
+    Child? child = parent as Child;
+
+    if (child != null)
+    {
+        // code using child
+    }
+}
+
+#!markdown
+
+The `is` pattern is a much more concise of doing this. First of all, when used directly, it just checks whether
+the value is of a given type:
+
+#!csharp
+
+class Parent
+{
+}
+
+class Child : Parent
+{
+}
+
+class GrandChild : Child
+{
+}
+
+Parent x = new Child();
+
+Console.WriteLine(x is Parent);
+Console.WriteLine(x is Child);
+Console.WriteLine(x is GrandChild);
+
+#!markdown
+
+Next, it's actually a _pattern_. We'll cover pattern matching in a later module,
+but `is` is our first example of a pattern. It allows us to immediately declare a variable:
+
+#!csharp
+
+#nullable enable
+
+class Parent
+{
+}
+
+class Child : Parent
+{
+}
+
+void Foo(Parent parent)
+{
+    if (parent is Child child)
+    {
+        Console.WriteLine(object.ReferenceEquals(parent, child));
+    }
+}
+
+Foo(new Child());
+
+#!markdown
+
+If the cast succeeds then the variable is filled with the same reference but downcast.
+
+#!markdown
+
+## When to use which cast?
+
+Use the "hard" cast when:
+
+- You are sure that it should succeed and a failure indicates an unexpected bug in your logic.
+The hard cast will then fail with an exception and immediately tell you something is wrong,
+following the fail-fast approach.
+- You are performing numeric conversions, since that's the only way to do them.
+
+Use the `as` cast or the `is` pattern when:
+- The cast can fail at runtime and it's expected -- you will branch depending
+on the cast's result.
+- Use `is` when it makes the code shorter, which is most of the time.
+Use `as` if you only want to perform the cast and pass the variable somewhere.
+
+#!markdown
+
+## Summary
+
+We've learned the difference between "hard" and "soft" casts.
+We've met our first pattern, the `is` type pattern, and the `as` operator.
+We know when to use which cast.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [1.7. Equality](https://gienieczko.com/teaching/csharp/1-type-system/7-equality),
+or straight to the next notebook, `07-equality.dib`.

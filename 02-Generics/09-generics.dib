@@ -1,0 +1,526 @@
+#!markdown
+
+# 1.4. Generics
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
+
+It covers topics for section [1.4. Generics](https://gienieczko.com/teaching/csharp/1-type-system/4-generics).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Polymorphism with generics
+
+We've learnt of one way of creating code that is generalised for many different types,
+but it doesn't cover all the bases. A classical example is collections, for example a stack.
+To write a stack that works with all possible types of objects without generics we'd write something terrible like this:
+
+#!csharp
+
+class TerribleStack
+{
+    private readonly object[] _array = new object[1000];
+    private int _top;
+
+    public int Count => _top;
+
+    public bool IsEmpty => Count == 0;
+
+    public bool IsFull => Count == _array.Length;
+
+    public void Push(object element)
+    {
+        if (IsFull)
+        {
+            throw new InvalidOperationException("Capacity exceeded.");
+        }
+
+        _array[_top] = element;
+        _top += 1;
+    }
+
+    public object Pop()
+    {
+        if (IsEmpty)
+        {
+            throw new InvalidOperationException("Stack is empty.");
+        }
+
+        _top -= 1;
+        return _array[_top];
+    }
+}
+
+void PrintStack(TerribleStack stack)
+{
+    while (!stack.IsEmpty)
+    {
+        Console.WriteLine(stack.Pop());
+    }
+}
+
+TerribleStack IntStack()
+{
+    var stack = new TerribleStack();
+    stack.Push(17);
+    stack.Push(42);
+    stack.Push(0);
+
+    return stack;
+}
+
+TerribleStack StringStack()
+{
+    var stack = new TerribleStack();
+    stack.Push("seventeen");
+    stack.Push("forty-two");
+    stack.Push("zero");
+
+    return stack;
+}
+
+Console.WriteLine("IntStack:");
+PrintStack(IntStack());
+
+Console.WriteLine("StringStack:");
+PrintStack(StringStack());
+
+#!markdown
+
+It works, but it's terrible. For example, how would we sum a stack? We'd need to write something like this:
+
+#!csharp
+
+int SumIntStack(TerribleStack stack)
+{
+    int sum = 0;
+
+    while (!stack.IsEmpty)
+    {
+        sum += (int) stack.Pop();
+    }
+
+    return sum;
+}
+
+Console.WriteLine(SumIntStack(IntStack()));
+
+#!markdown
+
+But there's nothing stopping us from doing this:
+
+#!csharp
+
+Console.WriteLine(SumIntStack(StringStack()));
+
+#!markdown
+
+Also, there's no one stopping us from doing something insane like this:
+
+#!csharp
+
+TerribleStack AbsolutelyBarbaricStack()
+{
+    var stack = new TerribleStack();
+    stack.Push(17);
+    stack.Push("forty-two");
+    stack.Push(new object());
+
+    return stack;
+}
+
+#!markdown
+
+All type safety is lost. Moreover, every `int` in this scenario has to be boxed to be properly stored on the stack,
+which would make such collections prohibitively non-performant. What we want is a stack that works with any type of objects,
+but with exactly one such type at a time, decided by the user at compile-time. That's generics:
+
+#!csharp
+
+class Stack<T>
+{
+    private readonly T[] _array = new T[1000];
+    private int _top;
+
+    public int Count => _top;
+
+    public bool IsEmpty => Count == 0;
+
+    public bool IsFull => Count == _array.Length;
+
+    public void Push(T element)
+    {
+        if (IsFull)
+        {
+            throw new InvalidOperationException("Capacity exceeded.");
+        }
+
+        _array[_top] = element;
+        _top += 1;
+    }
+
+    public T Pop()
+    {
+        if (IsEmpty)
+        {
+            throw new InvalidOperationException("Stack is empty.");
+        }
+
+        _top -= 1;
+        return _array[_top];
+    }
+}
+
+void PrintStack<T>(Stack<T> stack)
+{
+    while (!stack.IsEmpty)
+    {
+        Console.WriteLine(stack.Pop());
+    }
+}
+
+Stack<int> IntStack()
+{
+    var stack = new Stack<int>();
+    stack.Push(17);
+    stack.Push(42);
+    stack.Push(0);
+
+    return stack;
+}
+
+Stack<string> StringStack()
+{
+    var stack = new Stack<string>();
+    stack.Push("seventeen");
+    stack.Push("forty-two");
+    stack.Push("zero");
+
+    return stack;
+}
+
+Console.WriteLine("IntStack:");
+PrintStack(IntStack());
+
+Console.WriteLine("StringStack:");
+PrintStack(StringStack());
+
+#!markdown
+
+Now this doesn't compile:
+
+#!csharp
+
+var stack = new Stack<int>();
+stack.Push("seventeen");
+
+#!markdown
+
+The sum method just specifies that it works on stacks of ints:
+
+#!csharp
+
+int SumIntStack(Stack<int> stack)
+{
+    int sum = 0;
+
+    while (!stack.IsEmpty)
+    {
+        sum += stack.Pop();
+    }
+
+    return sum;
+}
+
+Console.WriteLine(SumIntStack(IntStack()));
+
+#!markdown
+
+And this doesn't compile:
+
+#!csharp
+
+Console.WriteLine(SumIntStack(StringStack()));
+
+#!markdown
+
+And if we really want this for some reason, we can get back our `TerribleStack` from this:
+
+#!csharp
+
+Stack<object> AbsolutelyBarbaricStack()
+{
+    var stack = new Stack<object>();
+    stack.Push(17);
+    stack.Push("forty-two");
+    stack.Push(new object());
+
+    return stack;
+}
+
+#!markdown
+
+## What's going on here?
+
+When we declare a generic type or method, the compiler emits a, well, generic version of it that acts as a template with a number
+of **generic parameters**.
+Then, whenever we use such a type or method, the compiler creates a specialisation of that generic template with the parameters
+filled to whatever types we specified at place of use. For methods those types are usually inferred from types of the arguments.
+For types we have to specify the generic arguments, as we've seen in examples.
+
+So, the CLR literally creates a special "IntStack", "StringStack", and "ObjectStack" types that have similar code,
+but working on different types. This implies that there's no boxing going on with `Stack<int>` -- the compiler
+actually generates a special type that looks as if we copied and pasted the `Stack<T>` definition and then
+found-and-replaced every occurrence of `T` with `int`.
+
+So, C# generics are better than Java's generics, because the types actually exist at runtime and the CLR
+knows the exact type parameters used, unlike JVM which uses type erasure. On the other hand,
+they're not as insanely powerful as C++ templates, because they still have to type-check in the
+generic version before they are instantiated.
+
+We can observe this behaviour with `static` members. Since `static` means "exactly one for the entire type",
+then every instantiation of a generic type must have a separate `static` member:
+
+#!csharp
+
+class Static<T>
+{
+    public static int Counter { get; set; }
+}
+
+Static<int>.Counter = 42;
+Static<bool>.Counter = 17;
+Static<string>.Counter = -1;
+Static<object>.Counter = 3721;
+
+Console.WriteLine(Static<int>.Counter);
+Console.WriteLine(Static<bool>.Counter);
+Console.WriteLine(Static<string>.Counter);
+Console.WriteLine(Static<object>.Counter);
+
+Static<object>.Counter = 0;
+
+Console.WriteLine(Static<int>.Counter);
+Console.WriteLine(Static<bool>.Counter);
+Console.WriteLine(Static<string>.Counter);
+Console.WriteLine(Static<object>.Counter);
+
+#!markdown
+
+We can also have more than one generic parameter. In that case the type gets created for every combination of type arguments
+that are used:
+
+#!csharp
+
+class Static2<T1, T2>
+{
+    public static int Counter { get; set; }
+}
+
+Static2<int, bool>.Counter = 42;
+Static2<string, object>.Counter = -1;
+Static2<object, object>.Counter = 3721;
+
+Console.WriteLine(Static2<int, bool>.Counter);
+Console.WriteLine(Static2<string, object>.Counter);
+Console.WriteLine(Static2<object, object>.Counter);
+
+Static2<object, object>.Counter = 0;
+
+Console.WriteLine(Static2<int, bool>.Counter);
+Console.WriteLine(Static2<string, object>.Counter);
+Console.WriteLine(Static2<object, object>.Counter);
+
+#!markdown
+
+## Generic constraints
+
+We can do a few useful things with unconstrained generics, like general-purpose collections, or a swap method:
+
+#!csharp
+
+void Swap<T>(ref T x, ref T y)
+{
+    var z = x;
+    x = y;
+    y = z;
+}
+
+var i = "first";
+var j = "second";
+
+Swap(ref i, ref j);
+
+Console.WriteLine(i);
+Console.WriteLine(j);
+
+#!markdown
+
+But oftentimes we have some piece of code that generalises over many objects, but with specific constraints.
+Remember our showcase of boxing with the `Point` struct?
+
+#!csharp
+
+interface IProvideDistance
+{
+    double Distance { get; }
+}
+
+readonly struct Point : IProvideDistance
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+
+    public double Distance => Math.Sqrt(X * X + Y * Y);
+}
+
+void PrintDistance(IProvideDistance x) => Console.WriteLine(x.Distance);
+
+var point = new Point { X = 17, Y = 8 };
+
+PrintDistance(point);
+
+#!markdown
+
+Well, now we know how to do it without boxing: make `PrintDistance` generic!
+But, we also need to tell the compiler that we want the generic type to implement the `IProvideDistance` interface.
+
+#!csharp
+
+interface IProvideDistance
+{
+    double Distance { get; }
+}
+
+readonly struct Point : IProvideDistance
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+
+    public double Distance => Math.Sqrt(X * X + Y * Y);
+}
+
+void PrintDistance<T>(T x) where T : IProvideDistance => 
+    Console.WriteLine(x.Distance);
+
+var point = new Point { X = 17, Y = 8 };
+
+PrintDistance(point);
+
+#!markdown
+
+We can add many different constraints for a parameter, effectively getting
+something that wouldn't even be expressible without generics:
+
+#!csharp
+
+interface IProvideEuclideanDistance
+{
+    double EuclideanDistance { get; }
+}
+
+interface IProvideManhattanDistance
+{
+    double ManhattanDistance { get; }
+}
+
+readonly struct Point2D : IProvideEuclideanDistance, IProvideManhattanDistance
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+
+    public double EuclideanDistance => Math.Sqrt(X * X + Y * Y);
+
+    public double ManhattanDistance => X + Y;
+}
+
+readonly struct Point3D : IProvideEuclideanDistance, IProvideManhattanDistance
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+
+    public double Z { get; init; }
+
+    public double EuclideanDistance => Math.Sqrt(X * X + Y * Y + Z * Z);
+
+    public double ManhattanDistance => X + Y + Z;
+}
+
+double DistanceDifference<T>(T x) where T : IProvideEuclideanDistance, IProvideManhattanDistance => 
+    x.ManhattanDistance - x.EuclideanDistance;
+
+var point2d = new Point2D { X = 17, Y = 8 };
+var point3d = new Point3D { X = 17, Y = 8, Z = -4 };
+
+Console.WriteLine(DistanceDifference(point2d));
+Console.WriteLine(DistanceDifference(point3d));
+
+#!markdown
+
+We can also specify a base class constraint instead of an interface or restrict a type with another type.
+There's a number of special constraints as well:
+
+- `T : class` -- only reference types can be given as `T`;
+- `T : struct` -- only value types can be given as `T`;
+- `T : new ()` -- only types with a parameterless constructor can be given as `T`;
+
+and a few concerning nullability, which we cover in the next section.
+
+#!markdown
+
+## Generic types and inheritance
+
+Generic types work seamlessly with inheritance. We can specify any number of generic arguments on the type
+from which we derive and add our own:
+
+#!csharp
+
+class A<T1, T2, T3> { }
+
+class B<T> : A<int, T, object> { }
+
+class C<T1, T2, T3, T4> : A<T1, T2, T3> { }
+
+#!markdown
+
+For example we can create a concrete class that provides some additional utilities available only for stacks of integers:
+
+#!csharp
+
+class IntStack : Stack<int>
+{
+}
+
+#!markdown
+
+## Summary
+
+We added a powerful tool to our toolbox which allows us to create generic code that works with a variety of types.
+We know how to restrict those types to conform to certain expectations and use these constraints for more specific code.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [1.5. Nullability](https://gienieczko.com/teaching/csharp/1-type-system/5-nullability),
+or straight to the next notebook, `05-nullability.dib`.

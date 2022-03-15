@@ -401,9 +401,7 @@ enum MagicTypes
     None = 0,
     Fire = 1,
     Ice = 2,
-    Earth = 4,
-    Air = 8,
-    Darkness = 16
+    Darkness = 4
 }
 
 Console.WriteLine(MagicTypes.Fire);
@@ -421,9 +419,7 @@ enum MagicTypes
     None = 0,
     Fire = 1,
     Ice = 2,
-    Earth = 4,
-    Air = 8,
-    Darkness = 16,
+    Darkness = 4,
 
     Frostfire = Fire | Ice
 }
@@ -576,30 +572,6 @@ class Class
 var @class = new Class();
 
 @class.Integer.SetTo(42);
-
-Console.WriteLine(@class.Integer.Value);
-
-#!markdown
-
-Yup. I even needed to use a `SetTo` method, because if you try to do it with a property setter the compiler
-will immediately tell you that the operation makes no sense:
-
-#!csharp
-
-// Intentionally does not compile.
-struct Integer
-{
-    public int Value { get; set; }
-}
-
-class Class
-{
-    public Integer Integer { get; }
-}
-
-var @class = new Class();
-
-@class.Integer.Value = 42;
 
 Console.WriteLine(@class.Integer.Value);
 
