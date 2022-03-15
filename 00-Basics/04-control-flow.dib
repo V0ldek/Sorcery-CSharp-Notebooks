@@ -183,13 +183,13 @@ void Foo()
 
 Those rules are more restrictive than they need to, but it helps avoid mistakes
 where it could be not immediately clear to a developer which usage of a name refers to which declaration.
-This is usually not a problem if you write your code cleanly enough.
+This is usually not a problem if we write our code cleanly enough.
 
 #!markdown
 
 ## Definite assignment
 
-C# is memory safe, and thus you cannot access a variable before it was _definitely assigned_.
+C# is memory safe, and thus we cannot access a variable before it was _definitely assigned_.
 
 #!csharp
 
@@ -273,11 +273,11 @@ Console.WriteLine(Foo(42));
 
 #!markdown
 
-This isn't that common, though. You can probably see that the above example is artificial and could be easily fixed.
+This isn't that common, though. It's probably pretty clear that the above example is artificial and could be easily fixed.
 And for natural patterns, the compiler is pretty good at catching them.
 
 The important takeaway here is that we prevent a whole class of errors that would result from forgetting to initialize
-a variable. There is a way to initialize to a default value, but you need to do it explicitly – we'll cover that later.
+a variable. There is a way to initialize to a default value, but we need to do it explicitly – we'll cover that later.
 
 #!markdown
 

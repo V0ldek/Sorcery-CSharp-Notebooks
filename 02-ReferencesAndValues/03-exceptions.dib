@@ -29,7 +29,7 @@ That's kind of the point of doing all this in notebooks.
 
 Exceptions in .NET are a way of abruptly aborting computation
 once something exceptional happens. Exceptions stem either 
-1. from bugs in your code, like `IndexOutOfRangeException` or `NullReferenceException`; or
+1. from bugs in our code, like `IndexOutOfRangeException` or `NullReferenceException`; or
 2. from unfortunate realities of the world around us: network partitions,
 file system failures, etc.
 
@@ -42,12 +42,12 @@ throwing exceptions with the `throw` keyword will be useful.
 ## Defensive programming
 
 In C#, we embrace the [fail-fast](https://en.wikipedia.org/wiki/Fail-fast) approach.
-Your public facing methods might receive arguments that make no sense and it is your duty to tell the user that, immediately.
+Our public facing methods might receive arguments that make no sense and it is our duty to tell the user that, immediately.
 
-Here's a bunch of exceptions you will need in your daily life:
+Here's a bunch of exceptions we all need in our daily life:
 
 - `System.ArgumentNullException` -- when an argument is `null` and shouldn't be; we'll cover nullability in section 1.5.
-- `System.ArgumentOutOfRangeException` -- when an argument is outside of range of possible values, for example you expected
+- `System.ArgumentOutOfRangeException` -- when an argument is outside of range of possible values, for example we expected
 a positive number, or a non-zero number; this is also used when an enum is received with a value that isn't a valid variant
 of the enum.
 - `System.ArgumentException` -- base class of the above two, used when they are not applicable, but the argument is invalid in some other way.
@@ -76,7 +76,7 @@ Console.WriteLine(Modulo(5, 0));
 
 #!markdown
 
-Most ubiquitously you'll see this when handling reference types and checking them for `null`.
+Most ubiquitously we'll see this when handling reference types and checking them for `null`.
 
 #!markdown
 

@@ -28,7 +28,7 @@ That's kind of the point of doing all this in notebooks.
 ## Attributes as metadata
 
 Attributes are a mechanism of adding metadata to code elements, be it assemblies, members, parameters or the like.
-An attribute is a special class that inherits from `System.Attribute`. We'll talk about creating your own later,
+An attribute is a special class that inherits from `System.Attribute`. We'll talk about creating our own later,
 but for now we'll be using existing ones.
 
 To use an attribute we put it above the annotated symbol in brackets and invoke one of its constructors.
@@ -51,7 +51,7 @@ duck.Quack();
 
 #!markdown
 
-You can also initialise properties of the attribute, if it has any.
+We can also initialise properties of the attribute, if it has any.
 For example, inside `System.Xml.Serialization` there's the `XmlTypeAttribute` that takes the name of the element
 that a class will be translated to as its required parameter, but it also has a `Namespace` property to optionally set the XML namespace.
 

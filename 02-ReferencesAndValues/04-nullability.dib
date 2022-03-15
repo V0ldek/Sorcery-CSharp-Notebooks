@@ -42,7 +42,7 @@ _Sir Hoare, he gets sad every time a `NullReferenceException` is thrown_
 
 #!markdown
 
-The fundamental problem is simple. You can assign `null` to any reference type value, 
+The fundamental problem is simple. We can assign `null` to any reference type value, 
 but trying to call anything on it immediately causes a runtime exception.
 
 #!csharp
@@ -257,7 +257,7 @@ on which methods accept nulls, which return nulls. They're not perfect though. F
 The most important wrinkle is that NRTs are **compile-time only**. They work with the C#
 compiler's analysis and that's it. The CLR has no idea about any of those annotations.
 A `string?` and `string` are exactly the same at runtime (they're both `System.String`).
-So they are in no way a hard guarantee that your code is correct.
+So they are in no way a hard guarantee that our code is correct.
 What's more important, they're not enough as a public API guarantee.
 
 We write an API like this:

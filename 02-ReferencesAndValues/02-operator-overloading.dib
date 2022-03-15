@@ -144,6 +144,29 @@ on 2D vectors a lot, we'd want `Point` to have all of those operators.
 
 #!markdown
 
+## Operator overloading sanity check
+
+Overloading operators is a delicate matter.
+The .NET team have [design guidelines](https://docs.microsoft.com/en-us/dotnet/standard/design-guidelines/operator-overloads)
+for operator overloads, one of which is:
+
+> DO NOT be cute when defining operator overloads.
+
+More specifically:
+
+> it is not appropriate to use the logical union operator to union two database queries, or to **use the shift operator to write to a stream**.
+
+As a general guideline, mostly value types benefit from overloading operators.
+The `string` type is a reference type, but honestly, that's more of a vestige of the old-timey C# without generics.
+It behaves as a value type for all intents and purposes.
+Overall, it should be obvious what a given operator does in the context of a type.
+For strings it is -- it's naturally concatenation.
+For our `Point` it is as well, adding vectors together is as obvious as it gets.
+Defining a magical `*` operator that performs IO operations on a database when
+you multiply it with a JSON document is not.
+
+#!markdown
+
 ## Summary
 
 We've learnt how to overload operators to make our custom value types more ergonomic to use.

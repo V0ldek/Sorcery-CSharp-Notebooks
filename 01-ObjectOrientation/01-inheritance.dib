@@ -66,7 +66,7 @@ _but also_ of some type `U` where `U : T` is one of the aspects of **polymorphis
 While the _mechanism_ is just "copying" members to the derived type,
 the _semantics_ of inheritance is that it models an **is-a** relationship.
 It's up to you when designing a class to make sure converting from derived to base
-always makes logical sense in your hierarchy.
+always makes logical sense in our hierarchy.
 
 Most pitfalls with OOP start with using inheritance wrong, so we'll be putting a lot of emphasis on this.
 
@@ -202,7 +202,7 @@ public class Duck
     {
         if (!PrepareQuack())
         {
-            Console.WriteLine($"{Name} cannot quack anymore...");
+            Console.WriteLine($"{Name} cannot quack any more...");
             return;
         }
 
@@ -272,7 +272,7 @@ public class Duck
     {
         if (!PrepareQuack())
         {
-            Console.WriteLine($"{Name} cannot quack anymore...");
+            Console.WriteLine($"{Name} cannot quack any more...");
             return;
         }
 
@@ -527,7 +527,7 @@ disguisedDuck.Quack();
 
 #!markdown
 
-Sometimes you might actually want to do that.
+Sometimes we might actually want to do that.
 The use cases are limited and usually have to do with patching up an old API.
 In those cases, the `new` keyword silences the warning by explicitly opting-in to the
 rather confusing, non-polymorphic semantics.
@@ -559,10 +559,10 @@ disguisedDuck.Quack();
 We end on a very important life lesson: usually, the best kind of inheritance is no inheritance.
 That's right. The easiest way to paint yourself into a terrible situation in OOP is by using inheritance,
 and a lot of the time there are much better alternatives to it. Other languages live without it. 
-We don't really know how yet, because generics are a topic of the next module, but making your code generic doesn't require subtyping.
+We don't really know how yet, because generics are a topic for future modules, but making our code generic doesn't require subtyping.
 
 
-For example, in Rust you have to consciously opt in to dynamic dispatching of method implementations
+For example, in Rust one has to consciously opt in to dynamic dispatching of method implementations
 using their `dyn` traits.
 
 C# made the frankly unfortunate decision of making types derivable by default, even though they did the
@@ -593,7 +593,7 @@ Here's a wisdom:
 **Use `sealed` as the default**. You need to consciously make effort to make your class effectively derivable,
 so if you don't want it, don't allow it.
 
-Oh, you can also use `sealed` to block further overrides of a virtual method:
+Oh, we can also use `sealed` to block further overrides of a virtual method:
 
 #!csharp
 

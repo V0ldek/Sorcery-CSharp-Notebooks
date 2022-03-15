@@ -44,7 +44,7 @@ The special accessibilities are a combo of `protected` and something else:
 - `protected internal` – `protected` OR `internal`; accessible from within this assembly, and from derived types in a different assembly;
 
 These are much less common. The `private protected` is very useful for avoiding class brittleness,
-and one could argue you should use it more often that `protected` itself, though.
+and one could argue it should be uses more often that `protected` itself, though.
 
 #!markdown
 
@@ -79,7 +79,7 @@ visible from the outside are exposed via special methods called **properties**.
 
 #!markdown
 
-A class has an accessibility modifier. The default, if you don't specify any yourself, is `internal`.
+A class has an accessibility modifier. The default, if we don't specify any ourselves, is `internal`.
 
 #!csharp
 
@@ -117,7 +117,7 @@ public class Duck
 The naming convention for `private` and `internal` fields is camelCase starting with an underscore.
 Some people also omit the underscore, but then prefix every usage of a field with `this.` to distinguish it.
 
-There is no naming convention for `public` or `protected` fields, because you should never use them.
+There is no naming convention for `public` or `protected` fields, because they should never be used.
 
 #!markdown
 
@@ -271,7 +271,7 @@ var duck = new Duck();
 It is possible to delegate work to a different constructor.
 The pattern we used above with two constructors, `Duck(string)` and `Duck(string, int)` is actually quite common.
 We allow the user to create an instance providing only a name, which will set the number of quacks to a default,
-or to provide both. You can delegate to a different constructor using the `this` constructor initialiser.
+or to provide both. We can delegate to a different constructor using the `this` constructor initialiser.
 
 #!csharp
 
@@ -352,7 +352,7 @@ public class Duck
     {
         if (_remainingQuacks == 0)
         {
-            Console.WriteLine($"{_name} is exhausted, they cannot quack anymore...");
+            Console.WriteLine($"{_name} is exhausted, they cannot quack any more...");
             return;
         }
 
@@ -446,8 +446,8 @@ Console.WriteLine(duck.Name);
 ### Expression-bodied members
 
 This is all very cumbersome. But it can be better!
-First of all, let me introduce you to your new best friend, **expression bodies**.
-If a method is a one-liner you can make it shorter:
+First of all, let me introduce our new best friend, **expression bodies**.
+If a method is a one-liner we can make it shorter:
 
 #!csharp
 
@@ -505,12 +505,12 @@ Console.WriteLine(duck.Name);
 
 #!markdown
 
-As you can see, if the statement on the right-hand-side of `=>` is an expression,
+If the statement on the right-hand-side of `=>` is an expression,
 the value of a method call is that expression. If it's just a single statement,
 then the method is considered `void` (constructors are basically `void` methods).
 
 This is getting better and better. Public setters are rather rare, so we can remove it.
-But wait! When your property is just an expression bodied getter you can use an even terser syntax!
+But wait! When a property is just an expression bodied getter we can use an even terser syntax!
 
 #!csharp
 
@@ -587,7 +587,7 @@ public class Duck
     {
         if (RemainingQuacks == 0)
         {
-            Console.WriteLine($"{_name} is exhausted, they cannot quack anymore...");
+            Console.WriteLine($"{_name} is exhausted, they cannot quack any more...");
             return;
         }
 
@@ -631,7 +631,7 @@ class Point
 #!markdown
 
 However, it is often the case that we have some fields that are immutable.
-I'd argue most of your data shouldn't be mutable if it doesn't have to.
+I'd argue most custom types shouldn't be mutable if they don't have to.
 We can enforce that by using the `readonly` modifier on the field.
 
 #!csharp
@@ -717,7 +717,7 @@ public class Duck
     {
         if (RemainingQuacks == 0)
         {
-            Console.WriteLine($"{_name} is exhausted, they cannot quack anymore...");
+            Console.WriteLine($"{_name} is exhausted, they cannot quack any more...");
             return;
         }
 
@@ -771,7 +771,7 @@ public class Duck
     {
         if (RemainingQuacks == 0)
         {
-            Console.WriteLine($"{Name} is exhausted, they cannot quack anymore...");
+            Console.WriteLine($"{Name} is exhausted, they cannot quack any more...");
             return;
         }
 
@@ -836,7 +836,7 @@ public class Duck
     {
         if (RemainingQuacks == 0)
         {
-            Console.WriteLine($"{Name} is exhausted, they cannot quack anymore...");
+            Console.WriteLine($"{Name} is exhausted, they cannot quack any more...");
             return;
         }
 
@@ -964,7 +964,7 @@ public class Duck
     {
         if (RemainingQuacks == 0)
         {
-            Console.WriteLine($"{Name} is exhausted, they cannot quack anymore...");
+            Console.WriteLine($"{Name} is exhausted, they cannot quack any more...");
             return;
         }
 
@@ -1075,7 +1075,7 @@ public class Duck
     {
         if (RemainingQuacks == 0)
         {
-            Console.WriteLine($"{Name} is exhausted, they cannot quack anymore...");
+            Console.WriteLine($"{Name} is exhausted, they cannot quack any more...");
             return;
         }
 
@@ -1104,7 +1104,7 @@ duck.Quack();
 
 Deciding which overload to use is done at compile-time.
 The exact algorithm for that, called overload resolution, is notoriously complicated.
-In most cases it works as you'd expect.
+In most cases it works as we'd expect.
 
 #!markdown
 
@@ -1143,15 +1143,15 @@ Console.WriteLine(Point.UnitY.DistanceFromZero);
 #!markdown
 
 Note that while declaring public fields is a Bad Idea™ and public setters are best avoided,
-mutable static fields are a sure way to blow your foot off. Mutable statics are global variables
+mutable static fields are a sure way to shoot yourself in the foot. Mutable statics are global variables
 and they are as bad as they would be in C – they're ugly, they break, like, _all_ principles of OOP
-and they're not thread-safe. You better have a really good reason for using them.
+and they're not thread-safe. You should only use them when you have a _very_ good reason.
 
 #!markdown
 
 ### Constants
 
-You can also declare constants within types. They are implicitly static,
+We can also declare constants within types. They are implicitly static,
 follow the same rules as const locals, and their names are in PascalCase.
 
 #!csharp

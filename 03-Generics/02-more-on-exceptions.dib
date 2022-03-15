@@ -178,7 +178,7 @@ It's also common to wrap exceptions in some other, high-level exception type and
 
 ## Custom exceptions
 
-Custom exceptions are useful when you want the end user to get a concrete type of an exception that they
+Custom exceptions are useful when we want the end user to get a concrete type of an exception that they
 can catch, but also don't want to use any information. To implement a custom exception type we need
 to extend the `Exception` class.
 
@@ -191,7 +191,7 @@ public class CustomException : Exception
 #!markdown
 
 We can put any additional info that we want our exceptions to have as properties on this class.
-There are two base constructors that you usually want to use in a custom type:
+There are two base constructors that we usually want to use in a custom type:
 
 #!csharp
 
@@ -403,47 +403,6 @@ If your application interfaces with the real world it might need to throw exogen
 It's not likely that your code will need to throw a fatal exception, unless it is really low-level.
 
 Boneheaded exceptions, on the other hand? A lot. Of. Them.
-
-#!markdown
-
-## Defensive programming
-
-In C#, we embrace the [fail-fast](https://en.wikipedia.org/wiki/Fail-fast) approach.
-Your public facing methods might receive arguments that make no sense and it is your duty to tell the user that, immediately.
-
-Here's a bunch of exceptions you will need in your daily life:
-
-- `System.ArgumentNullException` -- when an argument is `null` and shouldn't be; we'll cover nullability in section 1.5.
-- `System.ArgumentOutOfRangeException` -- when an argument is outside of range of possible values, for example you expected
-a positive number, or a non-zero number; this is also used when an enum is received with a value that isn't a valid variant
-of the enum.
-- `System.ArgumentException` -- base class of the above two, used when they are not applicable, but the argument is invalid in some other way.
-- `System.InvalidOperationException` -- a general error for when the current state of the system does not allow for a given operation;
-it's best to enforce such constraints on type level, but sometimes it's impossible; I used it in the code of the executable for your
-first micro-assignment -- there's a `GameEngine` class that executes the game turn-by-turn, and calling `ProcessTurn` when
-the game is already over (dungeon cleared, hero died...) triggers an `InvalidOperationException`.
-
-You should always write your methods so that arguments are validated as soon as possible and the user informed on incorrect usage immediately.
-So, when we write a modulo method...
-
-#!csharp
-
-int Modulo(int x, int m)
-{
-    if (m == 0)
-    {
-        throw new ArgumentOutOfRangeException(nameof(m));
-    }
-
-    return x % m;
-}
-
-Console.WriteLine(Modulo(5, 3));
-Console.WriteLine(Modulo(5, 0));
-
-#!markdown
-
-Most ubiquitously you'll see this when handling reference types and checking them for `null`.
 
 #!markdown
 

@@ -28,11 +28,11 @@ That's kind of the point of doing all this in notebooks.
 ## Arrays
 
 Arrays are a very special type. They define a collection of values of fixed size that is stored in a contiguous fragment of memory.
-You can create an array of any (well, almost any, we'll talk about ref structs near the end) type `T` by saying `T[]`. Creating a new
+We can create an array of any (well, almost any, we'll talk about ref structs near the end) type `T` by saying `T[]`. Creating a new
 array is done with `new T[size]`. Arrays are initialised to the default value for a given type (which we'll learn in the next module).
 
-You can index into an array with its indexer, both for reading and writing values. Arrays are `0`-indexed.
-To get the length of the array you use the `Length` property.
+We can index into an array with its indexer, both for reading and writing values. Arrays are `0`-indexed.
+To get the length of the array we use the `Length` property.
 
 #!csharp
 
@@ -55,7 +55,7 @@ You can initialize arrays immediately by using a **collection initializer**:
 
 #!csharp
 
-var x = new[] { 2, 2, 0, 7, 3, 7, 2, 1 }; // You can omit the type if it is obvious. This is an `int[]`.
+var x = new[] { 2, 2, 0, 7, 3, 7, 2, 1 }; // We can omit the type if it is obvious. This is an `int[]`.
 
 for (var i = 0; i < x.Length; i += 1)
 {
@@ -65,7 +65,7 @@ for (var i = 0; i < x.Length; i += 1)
 #!markdown
 
 Indexing outside of bounds of the array causes a runtime error, called an **exception**. 
-We won't get the magic powers for dealing with exceptions until module 2, but you should never
+We don't have the magic powers to handle exceptions yet, but we should never
 index out of bounds anyway.
 
 #!csharp
@@ -173,7 +173,7 @@ foreach (var row in jagged)
 #!markdown
 
 This is the right one to use in most cases and is rather simple to understand.
-It generalises to any dimension you want, so a 4-dimensional jagged array is a `T[][][][]`.
+It generalises to any dimension we want, so a 4-dimensional jagged array is a `T[][][][]`.
 
 #!markdown
 
@@ -193,7 +193,7 @@ foreach (var element in multidimensional)
 }
 Console.WriteLine();
 
-// To get lengths of dimensions you need to use `GetLength(dimension)`.
+// To get lengths of dimensions we need to use `GetLength(dimension)`.
 for (var i = 0; i < multidimensional.GetLength(0); i += 1)
 {
     for (var j = 0; j < multidimensional.GetLength(1); j += 1)
@@ -208,10 +208,10 @@ for (var i = 0; i < multidimensional.GetLength(0); i += 1)
 A multidimensional array is allocated as a single contiguous sequence of elements of size
 equal to the array's "volume", so the product of all dimension lengths.
 To not waste space, you should only use them when the data you're storing actually is
-a multidimensional hyperrectangle. Contiguous access also makes it more desirable when
-you often read through the entire array element-by-element.
+a multidimensional hyperrectangle. Contiguous access also makes it more desirable when 
+the entire array is read element-by-element regularly.
 
-Most of the time, you should use jagged arrays, unless you are truly modelling something rectangular in nature,
+Most of the time, you should use jagged arrays, unless you're truly modelling something rectangular in nature,
 like a game board or a grid.
 
 #!markdown

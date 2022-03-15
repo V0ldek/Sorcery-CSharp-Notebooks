@@ -516,7 +516,7 @@ class IntStack : Stack<int>
 ## Generic type inference
 
 When we're using generic types directly we need to specify all type arguments,
-as you've seen when accessing static members or invoking the constructors.
+as we've seen when accessing static members or invoking the constructors.
 
 For methods, the parameters are ususally inferred, but not always:
 
@@ -540,7 +540,7 @@ Foo(child1, child2);
 
 #!markdown
 
-In that case you can specify them directly or cast some of the arguments to the correct type.
+In that case we can specify them directly or cast some of the arguments to the correct type.
 
 #!csharp
 

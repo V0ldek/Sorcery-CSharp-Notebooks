@@ -245,7 +245,7 @@ Console.WriteLine((GameStatus)1);
 
 #!markdown
 
-You can even specify the mapping yourself, which is usually only useful when interfacing with a different technology
+We can even specify the mapping ourselves, which is usually only useful when interfacing with a different technology
 that requires certain numeric values to represent the same logical value as our enum, e.g. HTTP status codes:
 
 #!csharp
@@ -591,8 +591,8 @@ class PointClass
 
 void Foo()
 {
-    // Small feature here: you can use keywords as names of variables
-    // if you escape them with the verbatim symbol '@'.
+    // Small feature here: we can use keywords as names of variables
+    // if we escape them with the verbatim symbol '@'.
     var @struct = new PointStruct { X = 15, Y = -8 };
     var @class = new PointClass { X = 15, Y = -8 };
 
@@ -693,7 +693,7 @@ struct Integer
 
 #!markdown
 
-This communicates your intent better and enables some optimisations for the compiler.
+This communicates intent better and enables some optimisations for the compiler.
 
 #!markdown
 
@@ -853,7 +853,7 @@ Console.WriteLine(default(Point));
 
 #!markdown
 
-Note: the `default` keyword does what you expect it to do, and the type can be omitted if it is obvious:
+Note: the `default` keyword does what we expect it to do, and the type can be omitted if it is obvious:
 
 #!csharp
 

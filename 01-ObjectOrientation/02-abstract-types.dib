@@ -220,7 +220,7 @@ Static classes are also abstract types, but they're the complete opposite of abs
 static.
 
 The purpose is to allow something comparable to free functions in other languages, so functions not related to any particular instance.
-In C# you cannot just declare a free function, it must be contained within a static class. `Math` is a classical example of a static class
+In C# we cannot just declare a free function, it must be contained within a static class. `Math` is a classical example of a static class
 – it contains all the mathematical functions, and they wouldn't really make sense declared on any particular concrete class.
 
 #!csharp

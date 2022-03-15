@@ -114,8 +114,8 @@ Console.WriteLine(number);
 
 ### Type inference
 
-Most of the time variables are declared and immediatelly assigned, and their type is known.
-In such cases you can use the `var` keyword to say "the type of this variable is the same as the type of the expression on the right".
+Most of the time variables are declared and immediately assigned, and their type is known.
+In such cases we can use the `var` keyword to say "the type of this variable is the same as the type of the expression on the right".
 
 #!csharp
 
@@ -127,7 +127,7 @@ var s = "string literal"; // `s` is a `string`.
 There are competing styles of using `var`:
 
 1. Use `var` always where possible – preferred by me, in line with how most modern languages work 
-(Rust is implictly typed by default, so is Kotlin, so are all functional languages)
+(Rust is implicitly typed by default, so is Kotlin, so are all functional languages)
 2. Use `var` where the type on the right is "obvious" – this has the problem of the definition of "obvious" being nebulous,
 and if styling rules are open to interpretation they lead to inconsistencies;
 3. Never use `var` – this is simply unpractical and unnecessarily verbose.
@@ -162,7 +162,7 @@ String literals are located within double quotes.
 
 Char literals are located within single quotes.
 
-Integral literals are of type `int`. Decimal literals are of type `double`. You can change that behaviour with suffixes `U`, `L`, `UL`, `F` and `M`.
+Integral literals are of type `int`. Decimal literals are of type `double`. We can change that behaviour with suffixes `U`, `L`, `UL`, `F` and `M`.
 
 #!csharp
 
@@ -178,7 +178,7 @@ var i = 4.2M;             // g is `decimal`
 
 #!markdown
 
-There are a few more useful ways of putting a literal numeric value. First off, you can use underscores to make values more readable:
+There are a few more useful ways of putting a literal numeric value. First off, we can use underscores to make values more readable:
 
 #!csharp
 
@@ -190,7 +190,7 @@ Console.WriteLine(y);
 
 #!markdown
 
-You can declare binary and hexadecimal integral values:
+We can declare binary and hexadecimal integral values:
 
 #!csharp
 
@@ -202,7 +202,7 @@ Console.WriteLine(y);
 
 #!markdown
 
-Finally, you can declare decimal values with scientific notation:
+Finally, we can declare decimal values with scientific notation:
 
 #!csharp
 
@@ -217,7 +217,7 @@ Console.WriteLine(y);
 ## Type safety and conversions
 
 C# is statically typed. A variable has its type assigned at declaration and it cannot change.
-You can only perform operations on it that are valid for the declared type.
+We can only perform operations on it that are valid for the declared type.
 
 #!csharp
 
@@ -314,14 +314,14 @@ Console.WriteLine(y);
 ## Operators
 
 Operators are special functions with special names and semantics. 
-There is a fixed pool of operators, so you cannot define your own `:-->:@$` operator that does something magical
-as you can in Haskell for example.
+There is a fixed pool of operators, so we cannot define our own `:-->:@$` operator that does something magical
+as we can in Haskell for example.
 
 #!markdown
 
 ### Arithmetic operators
 
-For binary operators we have the usual suspects: `*`, `/`, `%`, `+`, and `-`, defined as you might expect.
+For binary operators we have the usual suspects: `*`, `/`, `%`, `+`, and `-`, defined as we might expect.
 
 #!csharp
 
@@ -518,7 +518,7 @@ Console.WriteLine(path);
 
 #!markdown
 
-You can also include multiline strings this way:
+We can also include multiline strings this way:
 
 #!csharp
 

@@ -85,7 +85,7 @@ Console.WriteLine($"==: {sentence1 == sentence2}");
 
 ## String indexer
 
-String also has an indexer that allows you to query its individual chars:
+String also has an indexer that allows us to query its individual chars:
 
 #!csharp
 
@@ -116,7 +116,7 @@ Console.WriteLine(object.ReferenceEquals(first, saveFirst));
 
 #!markdown
 
-That means that constructing strings using default `+` concatenation is bound to be inefficient, as you have to copy the string over and over again
+That means that constructing strings using default `+` concatenation is bound to be inefficient, as we have to copy the string over and over again
 and create new instances. To programmatically build up a string we use the `StringBuilder` class located in `System.Text`. The basic
 methods available are `Append` and `AppendLine`. To construct the final string we use `ToString`.
 

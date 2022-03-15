@@ -27,7 +27,7 @@ That's kind of the point of doing all this in notebooks.
 
 ## Pass by value
 
-C# uses pass-by-value by default. What that means is that whenever you pass an argument
+C# uses pass-by-value by default. What that means is that whenever we pass an argument
 to a method, assign it to a field, etc., the value gets copied and placed in the receiver.
 
 Now, underneath the implementation details may vary. It might be the case that the compiler optimises such a case
