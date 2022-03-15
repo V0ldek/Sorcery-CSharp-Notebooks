@@ -88,5 +88,5 @@ We know the most common exceptions used in defensive programming.
 
 ## Next up:
 
-Continue with the next section, [1.4. Nested Types](https://gienieczko.com/teaching/csharp/1-type-system/4-nested-types),
-or straight to the next notebook, `04-nested-types.dib`.
+Continue with the next section, [1.4. Nullability](https://gienieczko.com/teaching/csharp/1-type-system/4-nullability),
+or straight to the next notebook, `04-nullability.dib`.

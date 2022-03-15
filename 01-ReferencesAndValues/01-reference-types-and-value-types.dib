@@ -430,6 +430,79 @@ Console.WriteLine(MagicTypes.Frostfire == (MagicTypes.Fire | MagicTypes.Ice));
 
 #!markdown
 
+### `switch`
+
+C# provides a pretty powerful `switch` syntax.
+In general it allows for pattern matching, which we will cover in the next module.
+For now, it allows us to switch on some constant values, like enums:
+
+#!csharp
+
+enum MagicType
+{
+    None = 0,
+    Fire = 1,
+    Ice = 2,
+    Darkness = 3,
+}
+
+void Foo(MagicType type)
+{
+    switch (type)
+    {
+        case MagicType.Fire:
+            Console.WriteLine("I'm on fire!");
+            break;
+        case MagicType.Ice:
+            Console.WriteLine("So... cold...");
+            break;
+        case MagicType.Darkness:
+            Console.WriteLine("AaaaAAAAaaaAAaaHHH!");
+            break;
+        default:
+            Console.WriteLine("Ouch!");
+            break;
+    }
+}
+
+Foo(MagicType.Fire);
+Foo(MagicType.Ice);
+
+#!markdown
+
+If the purpose of the switch is to produce an expression then there's shorter syntax:
+
+#!csharp
+
+enum MagicType
+{
+    None = 0,
+    Fire = 1,
+    Ice = 2,
+    Darkness = 3,
+}
+
+void Foo(MagicType type)
+{
+    var message = type switch
+    {
+        MagicType.Fire => "I'm on fire!",
+        MagicType.Ice => "So... cold...",
+        MagicType.Darkness => "AaaaAAAAaaaAAaaHHH!",
+        _ => "Ouch!"
+    };
+    Console.WriteLine(message);
+}
+
+Foo(MagicType.Fire);
+Foo(MagicType.Ice);
+
+#!markdown
+
+The underscore is a discard, or a catch-all: it catches all cases not covered before.
+
+#!markdown
+
 ## Custom value types -- `struct`
 
 Enums aren't that exciting, but one of the most beautiful aspects of .NET is that we can define our own complex value
@@ -935,5 +1008,5 @@ We've examined the two kinds of types in .NET: reference and value types. We kno
 
 ## Next up:
 
-Continue with the next section, [1.2. Pass by Reference](https://gienieczko.com/teaching/csharp/1-type-system/2-pass-by-reference),
-or straight to the next notebook, `02-pass-by-reference.dib`.
+Continue with the next section, [1.2. Overloading Operators](https://gienieczko.com/teaching/csharp/1-type-system/2-overloading-operators),
+or straight to the next notebook, `02-overloading-operators.dib`.

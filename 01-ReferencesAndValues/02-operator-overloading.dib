@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
 
-It covers topics for section [1.2. Overloading Operators](https://gienieczko.com/teaching/csharp/1-type-system/2-overloading-operators).
+It covers topics for section [1.2. Operator Overloading](https://gienieczko.com/teaching/csharp/1-type-system/2-operator-overloading).
 
 ### Notebook flow
 
@@ -141,3 +141,16 @@ Console.WriteLine($"point * 3: {point * 3}");
 Operators are usually overloaded for value types, where they can provide
 an ergonomic API if they are used a lot. For example, in code that would operate
 on 2D vectors a lot, we'd want `Point` to have all of those operators.
+
+#!markdown
+
+## Summary
+
+We've learnt how to overload operators to make our custom value types more ergonomic to use.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [1.3. Exceptions](https://gienieczko.com/teaching/csharp/1-type-system/3-exceptions),
+or straight to the next notebook, `03-exceptions.dib`.

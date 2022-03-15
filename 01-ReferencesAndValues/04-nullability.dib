@@ -1,6 +1,6 @@
 #!markdown
 
-# 1.5. Nullability
+# 1.4. Nullability
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
 
-It covers topics for section [1.5. Nullability](https://gienieczko.com/teaching/csharp/1-type-system/5-nullability).
+It covers topics for section [1.4. Nullability](https://gienieczko.com/teaching/csharp/1-type-system/4-nullability).
 
 ### Notebook flow
 
@@ -790,5 +790,5 @@ We've learned how to cope with NRTs and how to use the more reliable NVT feature
 
 ## Next up:
 
-Continue with the next section, [1.6. Casting](https://gienieczko.com/teaching/csharp/1-type-system/6-casting),
-or straight to the next notebook, `06-casting.dib`.
+Continue with the next section, [1.5. Casting](https://gienieczko.com/teaching/csharp/1-type-system/5-casting),
+or straight to the next notebook, `05-casting.dib`.

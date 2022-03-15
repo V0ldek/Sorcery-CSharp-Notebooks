@@ -1,6 +1,6 @@
 #!markdown
 
-# 1.2. Pass by Reference
+# 1.6. Pass by Reference
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
 
-It covers topics for section [1.2. Pass by Reference](https://gienieczko.com/teaching/csharp/1-type-system/2-pass-by-reference).
+It covers topics for section [1.6. Pass by Reference](https://gienieczko.com/teaching/csharp/1-type-system/6-pass-by-reference).
 
 ### Notebook flow
 
@@ -248,5 +248,5 @@ We've learnt a useful idiom, the `TryX` pattern.
 
 ## Next up:
 
-Continue with the next section, [1.3. Equality](https://gienieczko.com/teaching/csharp/1-type-system/3-equality),
-or straight to the next notebook, `03-equality.dib`.
+This is the end of the module, next up is the Assignment!
+Click here to go there: [Assignment 1. - Equipment](https://gienieczko.com/teaching/csharp/1-type-system/assignment/1-equipment).

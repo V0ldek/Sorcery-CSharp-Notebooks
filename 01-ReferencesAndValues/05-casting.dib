@@ -1,6 +1,6 @@
 #!markdown
 
-# 1.6. Casting
+# 1.5. Casting
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
 
-It covers topics for section [1.6. Casting](https://gienieczko.com/teaching/csharp/1-type-system/6-casting).
+It covers topics for section [1.5. Casting](https://gienieczko.com/teaching/csharp/1-type-system/5-casting).
 
 ### Notebook flow
 
@@ -224,5 +224,5 @@ We know when to use which cast.
 
 ## Next up:
 
-Continue with the next section, [1.7. Equality](https://gienieczko.com/teaching/csharp/1-type-system/7-equality),
-or straight to the next notebook, `07-equality.dib`.
+Continue with the next section, [1.6. Pass by Reference](https://gienieczko.com/teaching/csharp/1-type-system/6-pass-by-reference),
+or straight to the next notebook, `06-pass-by-reference.dib`.
