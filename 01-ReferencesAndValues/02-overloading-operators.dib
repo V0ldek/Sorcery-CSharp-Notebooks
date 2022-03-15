@@ -1,6 +1,6 @@
 #!markdown
 
-# 1.7. Equality
+# 1.2. Overloading Operators
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/1-type-system.
 
-It covers topics for section [1.7. Equality](https://gienieczko.com/teaching/csharp/1-type-system/7-equality).
+It covers topics for section [1.2. Overloading Operators](https://gienieczko.com/teaching/csharp/1-type-system/2-overloading-operators).
 
 ### Notebook flow
 
@@ -25,85 +25,6 @@ That's kind of the point of doing all this in notebooks.
 
 #!markdown
 
-## Default equality
-
-Since the `bool Equals(object)` method is defined on `object`, every pair of objects can be compared for equality.
-Default equality semantics differ for reference and value types.
-Reference types, by default, have **referential equality** -- two objects are equal iff they point to the exact
-same object on the heap. The `Equals` method and `==` operator are exactly the same in this case.
-
-#!csharp
-
-class C
-{
-    public int Value { get; init; }
-}
-
-var c1 = new C { Value = 42 };
-var c2 = new C { Value = 42 };
-
-Console.WriteLine(c1.Equals(c2));
-Console.WriteLine(c1.Equals(c1));
-Console.WriteLine(c1 == c2);
-Console.WriteLine(c1 == c1);
-
-#!markdown
-
-Value types on the other hand define **structural equality** by default.
-They are equal if and only if all of their fields are equal.
-
-_(This makes it a recursive definition, but that's fine since we cannot define a struct that contains itself in the first place)_
-
-#!csharp
-
-readonly struct Point
-{
-    public double X { get; init; }
-
-    public double Y { get; init; }
-}
-
-readonly struct Triangle
-{
-    public Point A { get; init; }
-    
-    public Point B { get; init; }
-    
-    public Point C { get; init; }
-}
-
-var triangle = new Triangle
-{
-    A = new() { X = 17, Y = 42 },
-    B = new() { X = -3, Y = 17 },
-    C = new() { X = 2 },
-};
-
-var otherTriangle = new Triangle
-{
-    A = new() { X = 17, Y = 42 },
-    B = new() { X = -3, Y = 17 },
-    C = new() { X = 2 },
-};
-
-Console.WriteLine(triangle.Equals(otherTriangle));
-
-#!markdown
-
-The `==` operator is _not_ defined on structs by default:
-
-#!csharp
-
-// Intentionally does not compile.
-triangle == otherTriangle
-
-#!markdown
-
-We came across a dichotomy here: `Equals` is not necessarily the same as `==`, and `==` doesn't even have to be defined.
-To go further, we need to talk about operator overloading.
-
-#!markdown
-
 ## Overloading operators
 
 C# stands between Java and C++ when it comes to operator overloading.
@@ -112,7 +33,7 @@ manner and we cannot overload all of them, for example we can't overload assignm
 
 Operators are public static methods with special names and a restricted signature.
 At least one of their parameters must be the type within which the operator is overloaded.
-The `==` operator returns a `bool` and accepts a pair of arguments.
+Let's define a struct:
 
 #!csharp
 
@@ -122,33 +43,14 @@ public readonly struct Point
     public double X { get; init; }
 
     public double Y { get; init; }
-
-    public static bool operator ==(Point point, Point other) => point.X == other.X && point.Y == other.Y;
 }
 
 #!markdown
 
-This doesn't compile, because C# requires that we also overload `!=`.
-There is rarely any reason for the definition to be different than the negation of `==`.
-
-#!csharp
-
-// Intentionally does not compile
-public readonly struct Point
-{
-    public double X { get; init; }
-
-    public double Y { get; init; }
-
-    public static bool operator ==(Point point, Point other) => point.X == other.X && point.Y == other.Y;
-
-    public static bool operator !=(Point point, Point other) => !(point == other);
-}
-
-#!markdown
-
-While we're at it, we can overload the `+` and `-` operators to be able to add two points together,
-as well as `*` to be able to multiply by a scalar, and a unary negation:
+We can overload a few things to make this value type more ergonomic:
+- `+` and `-` to do linear transformations on the points;
+- ... as well as `*` by a scalar, again, for linear transformations;
+- unary negation.
 
 #!csharp
 
@@ -169,10 +71,6 @@ public readonly struct Point
 
     public static Point operator -(Point point) => new() { X = -point.X, Y = -point.Y };
 
-    public static bool operator ==(Point point, Point other) => point.X == other.X && point.Y == other.Y;
-
-    public static bool operator !=(Point point, Point other) => !(point == other);
-
     public override string ToString() => $"({X}, {Y})";
 }
 
@@ -181,17 +79,17 @@ var unitY = new Point { Y = 1 };
 
 var point = unitX + unitY;
 
-Console.WriteLine($"unitX == unitY: {unitX == unitY}");
 Console.WriteLine($"unitX + unitY: {point}");
+Console.WriteLine($"unitX - unitY: {unitX - unitY}");
 Console.WriteLine($"-point: {-point}");
-Console.WriteLine($"point == (1, 1): {point == new Point { X = 1, Y = 1 }}");
 Console.WriteLine($"3 * point: {3 * point}");
-Console.WriteLine($"3 * point == point * 3: {3 * point == point * 3}");
+Console.WriteLine($"point * 3: {point * 3}");
 
 #!markdown
 
 Multiplication is not commutative by default. In general, C# doesn't assume any specific semantics for the operators,
 except that some of them need to be overloaded in pairs: `==` and `!=`, `<` and `>`, `<=` and `>=`.
+We omit equality and comparison for now, as it's pretty complicated -- we'll revisit it in the next module.
 
 It's customary to provide instance methods that correspond to the operators,
 mainly because operators are very C#-specific, so they don't interoperate well within the CLR.
@@ -224,10 +122,6 @@ public readonly struct Point
 
     public static Point operator -(Point point) => point.Negate();
 
-    public static bool operator ==(Point point, Point other) => point.X == other.X && point.Y == other.Y;
-
-    public static bool operator !=(Point point, Point other) => !(point == other);
-
     public override string ToString() => $"({X}, {Y})";
 }
 
@@ -236,31 +130,14 @@ var unitY = new Point { Y = 1 };
 
 var point = unitX + unitY;
 
-Console.WriteLine($"unitX == unitY: {unitX == unitY}");
 Console.WriteLine($"unitX + unitY: {point}");
+Console.WriteLine($"unitX - unitY: {unitX - unitY}");
 Console.WriteLine($"-point: {-point}");
-Console.WriteLine($"point == (1, 1): {point == new Point { X = 1, Y = 1 }}");
 Console.WriteLine($"3 * point: {3 * point}");
-Console.WriteLine($"3 * point == point * 3: {3 * point == point * 3}");
+Console.WriteLine($"point * 3: {point * 3}");
 
 #!markdown
 
 Operators are usually overloaded for value types, where they can provide
 an ergonomic API if they are used a lot. For example, in code that would operate
 on 2D vectors a lot, we'd want `Point` to have all of those operators.
-
-## `Equals` vs `==`
-
-Back to equality -- the above code gives a warning I've been purposefully ignoring
-thus far. 
-
-#!markdown
-
-## Summary
-
-#!markdown
-
-## Next up:
-
-Continue with the next section, [1.4. Nested Types](https://gienieczko.com/teaching/csharp/1-type-system/4-nested-types),
-or straight to the next notebook, `04-nested-types.dib`.

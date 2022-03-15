@@ -513,6 +513,42 @@ class IntStack : Stack<int>
 
 #!markdown
 
+## Generic type inference
+
+When we're using generic types directly we need to specify all type arguments,
+as you've seen when accessing static members or invoking the constructors.
+
+For methods, the parameters are ususally inferred, but not always:
+
+#!csharp
+
+class Parent { }
+
+class Child1 : Parent { }
+
+class Child2 : Parent { }
+
+public void Foo<T>(T t, T u) => Console.WriteLine("Foo");
+
+Child1 child1 = new Child1();
+Child2 child2 = new Child2();
+
+#!csharp
+
+// Intentionally does not compile
+Foo(child1, child2);
+
+#!markdown
+
+In that case you can specify them directly or cast some of the arguments to the correct type.
+
+#!csharp
+
+Foo<Parent>(child1, child2);
+Foo((Parent)child1, child2);
+
+#!markdown
+
 ## Summary
 
 We added a powerful tool to our toolbox which allows us to create generic code that works with a variety of types.

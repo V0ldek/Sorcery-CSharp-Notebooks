@@ -785,8 +785,6 @@ They're not perfect, but they're doing their damn best.
 
 We are now deeply saddened by `null` existing along with Sir Hoare.
 We've learned how to cope with NRTs and how to use the more reliable NVT feature to model absence of a value.
-We know how these features interact with generics and that we can use a variety of attributes
-to help the compiler give us the best static analysis possible.
 
 #!markdown
 

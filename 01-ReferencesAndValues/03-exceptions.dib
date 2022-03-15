@@ -25,6 +25,20 @@ That's kind of the point of doing all this in notebooks.
 
 #!markdown
 
+## Exceptions
+
+Exceptions in .NET are a way of abruptly aborting computation
+once something exceptional happens. Exceptions stem either 
+1. from bugs in your code, like `IndexOutOfRangeException` or `NullReferenceException`; or
+2. from unfortunate realities of the world around us: network partitions,
+file system failures, etc.
+
+We will not be learning how to `catch` these exceptions yet, as none of the operations
+that we are performing can fail in the reasonable, second way. However,
+throwing exceptions with the `throw` keyword will be useful.
+
+#!markdown
+
 ## Defensive programming
 
 In C#, we embrace the [fail-fast](https://en.wikipedia.org/wiki/Fail-fast) approach.
