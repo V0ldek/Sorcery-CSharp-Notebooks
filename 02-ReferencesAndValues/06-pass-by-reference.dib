@@ -123,7 +123,7 @@ Foo();
 #!markdown
 
 The `ref` modifier says "this is some input reference that this method can use and modify", so a read-write relationship.
-There is also the `out` modifier, which is a write relationship -- the method is expected to fill out the reference to a possibly
+There is also the `out` modifier, which is a write relationship – the method is expected to fill out the reference to a possibly
 uninitialised value.
 
 #!csharp
@@ -156,7 +156,7 @@ This is most commonly used to return more than one value from a method: each of 
 
 There is a very useful and widespread idiom in C# for defining methods that perform some action with the possibility of failure.
 Usually such methods are defined with an exception-throwing method and a `Try` counterpart that returns a `bool`.
-For example, there are two methods that parse a `string` into an `int` -- `int Parse(string)` and `bool TryParse(string, out int)`:
+For example, there are two methods that parse a `string` into an `int` – `int Parse(string)` and `bool TryParse(string, out int)`:
 
 #!csharp
 

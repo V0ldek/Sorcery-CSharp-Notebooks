@@ -114,7 +114,7 @@ Foo();
 ## Value semantics
 
 Reference semantics are great for modelling objects in an OOP environment.
-It gives each instance its unique identity -- an object has its own place in memory.
+It gives each instance its unique identity – an object has its own place in memory.
 Two instances are different from each other, even if they contain the exact same data.
 They might be "equal" for some definition of an equality relation, but they are never
 **referentially equal**.
@@ -187,13 +187,13 @@ Out of the base builtin types we've encountered only `string` and `object` were 
 
 #!markdown
 
-## Custom value types -- `enum`
+## Custom value types – `enum`
 
 What we've said thus far is nothing revolutionary: Java employs a similar approach,
 having a number of special builtin types that exist outside of the normal rules and are
 handled specially by the JVM as values.
 
-.NET, however, is different -- it allows custom value types! The simplest are `enum`s:
+.NET, however, is different – it allows custom value types! The simplest are `enum`s:
 
 #!csharp
 
@@ -503,7 +503,7 @@ The underscore is a discard, or a catch-all: it catches all cases not covered be
 
 #!markdown
 
-## Custom value types -- `struct`
+## Custom value types – `struct`
 
 Enums aren't that exciting, but one of the most beautiful aspects of .NET is that we can define our own complex value
 types resembling the ones already built-in to the language with basically no artificial restrictions. We can declare them with the `struct` keyword:
@@ -556,7 +556,7 @@ var triangle = new Triangle { A = new() { X = 1.0 }, B = new() { X = 2.0, Y = 3.
 
 #!markdown
 
-The above struct violates the most important guideline for `struct`s -- they should be immutable.
+The above struct violates the most important guideline for `struct`s – they should be immutable.
 The fact that value types are always copied when we pass them around or store in variables can confuse the users:
 
 #!csharp
@@ -864,7 +864,7 @@ Console.WriteLine(point);
 #!markdown
 
 This presents a peculiar wrinkle in the type system. Up until C# 10 `struct`s could not have any field initialisers
-or define parameterless constructors -- since the default value is always zero-initialised field initialisers wouldn't run,
+or define parameterless constructors – since the default value is always zero-initialised field initialisers wouldn't run,
 and a parameterless constructor always exists and just zero-initialises the fields.
 
 This has been relaxed in C# 10, and it means that stuff might not work just like you think it does.
@@ -963,7 +963,7 @@ Next, these values are more performant when we're handling a lot of them. To all
 reference types we need to allocate the array, and then allocate $N$ objects on the heap. An array of $N$
 value types, on the other hand, requires a single allocation and zero-initialisation of a span of memory.
 
-The answer to "when" is very easy -- when you want the objects to have value semantics, or you have identified
+The answer to "when" is very easy – when you want the objects to have value semantics, or you have identified
 an issue with performance relating to excessive allocations and want to micro-optimise that.
 
 #!markdown

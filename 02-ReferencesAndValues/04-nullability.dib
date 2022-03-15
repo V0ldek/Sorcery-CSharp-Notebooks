@@ -370,7 +370,7 @@ var c = new C();
 #!markdown
 
 In English: `x ?? y` means `x`, if it is not null, or the default value of `y`, if `x` is null.
-The operator is lazy, just like all conditionals -- if `x` is not null then `y` is never evaluated.
+The operator is lazy, just like all conditionals – if `x` is not null then `y` is never evaluated.
 
 #!csharp
 
@@ -553,7 +553,7 @@ public struct Nullable<T> where T : struct
 
 #!markdown
 
-It's pretty natural -- we enrich the value type with a boolean field that marks whether it's a `null` or not. There's first class support from the language to make sure that the `null` literal is convertible to a `Nullable<T>` and that null-coalescing operators work with them. Also, `default(Nullable<T>)` is `null` for any value type `T`.
+It's pretty natural – we enrich the value type with a boolean field that marks whether it's a `null` or not. There's first class support from the language to make sure that the `null` literal is convertible to a `Nullable<T>` and that null-coalescing operators work with them. Also, `default(Nullable<T>)` is `null` for any value type `T`.
 
 The usage is the same as with NRTs, only that here we actually have a completely different type at runtime,
 so to actually access the value we need to use the defined properties and methods:
@@ -743,7 +743,7 @@ Console.WriteLine($"Array.IndexOf(4): {Array.IndexOf(vals, 4)}");
 
 This is stupid, plain and simple. Looks like C, or worse, Go.
 
-The reason for it is simple, though (and reasonable) -- it's an old API, introduced in the very first C# version, and NVTs are from C# 2.
+The reason for it is simple, though (and reasonable) – it's an old API, introduced in the very first C# version, and NVTs are from C# 2.
 
 This should clearly be:
 

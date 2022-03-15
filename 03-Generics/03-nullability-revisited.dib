@@ -123,7 +123,7 @@ to enable more complex analysis of null-state. These live in `System.Diagnostics
 ### `AllowNullAttribute` and `DisallowNullAttribute`
 
 Imagine you have a property that is never null, but it's sensible for users to provide a `null` value
-in its setter -- in that case a default value gets generated to uphold the non-null guarantee.
+in its setter – in that case a default value gets generated to uphold the non-null guarantee.
 
 #!csharp
 

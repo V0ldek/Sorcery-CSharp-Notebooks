@@ -139,7 +139,7 @@ Console.WriteLine($"Continuing with: {n}");
 
 #!markdown
 
-Going back, I mentioned two common ways of exception handling. The other one is not really handling -- we don't expect a failure, 
+Going back, I mentioned two common ways of exception handling. The other one is not really handling – we don't expect a failure, 
 but if it happens we want to do something before crashing, for example log the error somewhere.
 In that case, we catch the exception, perform some logic, and then rethrow the exception again,
 which is done with an empty `throw` statement:
@@ -383,15 +383,15 @@ He divides exceptions into four categories:
    literally no way to stop a thread abort from user-level code.
 2. **Boneheaded exceptions** --
    exceptions caused by bugs and erroneous user code, such as `NullReferenceException` or `IndexOutOfBoundsException`.
-   These shouldn't be caught either -- they indicate a bug in your code that needs to be fixed.
+   These shouldn't be caught either – they indicate a bug in your code that needs to be fixed.
    A correctly written application should never encounter these.
-3. **Vexing exceptions** -- are exceptions you find when using badly designed libraries.
+3. **Vexing exceptions** – are exceptions you find when using badly designed libraries.
    It's not at all clear why the user has to catch this exception, since it naturally occurs
    during normal execution and isn't really exceptional. An example is, quite ironically, the exception thrown by
-   `int.Parse` -- most of use cases of it are parsing user-supplied data, which obviously will be wrong a lot of the time.
+   `int.Parse` – most of use cases of it are parsing user-supplied data, which obviously will be wrong a lot of the time.
    Avoid throwing such exceptions. You need to catch these exceptions, unless the library exposes a better method,
    like `int.TryParse`, that doesn't suffer from this issue.
-4. **Exogenous exceptions** -- (from _exo_, external, and _geneia_, to produce) exceptions that absolutely _must_
+4. **Exogenous exceptions** – (from _exo_, external, and _geneia_, to produce) exceptions that absolutely _must_
    be caught, because they're a result of reality being weird and dirty. Things like `FileNotFoundException` or
    `HttpRequestException` _will_ happen even in the most crisp production code, because filesystems are weird and
    network failures occur all the time.

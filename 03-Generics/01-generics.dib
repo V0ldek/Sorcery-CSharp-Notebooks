@@ -285,7 +285,7 @@ filled to whatever types we specified at place of use. For methods those types a
 For types we have to specify the generic arguments, as we've seen in examples.
 
 So, the CLR literally creates a special "IntStack", "StringStack", and "ObjectStack" types that have similar code,
-but working on different types. This implies that there's no boxing going on with `Stack<int>` -- the compiler
+but working on different types. This implies that there's no boxing going on with `Stack<int>` – the compiler
 actually generates a special type that looks as if we copied and pasted the `Stack<T>` definition and then
 found-and-replaced every occurrence of `T` with `int`.
 
@@ -480,9 +480,9 @@ Console.WriteLine(DistanceDifference(point3d));
 We can also specify a base class constraint instead of an interface or restrict a type with another type.
 There's a number of special constraints as well:
 
-- `T : class` -- only reference types can be given as `T`;
-- `T : struct` -- only value types can be given as `T`;
-- `T : new ()` -- only types with a parameterless constructor can be given as `T`;
+- `T : class` – only reference types can be given as `T`;
+- `T : struct` – only value types can be given as `T`;
+- `T : new ()` – only types with a parameterless constructor can be given as `T`;
 
 and a few concerning nullability, which we cover in the next section.
 

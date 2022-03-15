@@ -89,7 +89,7 @@ Console.WriteLine($"point * 3: {point * 3}");
 
 Multiplication is not commutative by default. In general, C# doesn't assume any specific semantics for the operators,
 except that some of them need to be overloaded in pairs: `==` and `!=`, `<` and `>`, `<=` and `>=`.
-We omit equality and comparison for now, as it's pretty complicated -- we'll revisit it in the next module.
+We omit equality and comparison for now, as it's pretty complicated – we'll revisit it in the next module.
 
 It's customary to provide instance methods that correspond to the operators,
 mainly because operators are very C#-specific, so they don't interoperate well within the CLR.
@@ -160,7 +160,7 @@ As a general guideline, mostly value types benefit from overloading operators.
 The `string` type is a reference type, but honestly, that's more of a vestige of the old-timey C# without generics.
 It behaves as a value type for all intents and purposes.
 Overall, it should be obvious what a given operator does in the context of a type.
-For strings it is -- it's naturally concatenation.
+For strings it is – it's naturally concatenation.
 For our `Point` it is as well, adding vectors together is as obvious as it gets.
 Defining a magical `*` operator that performs IO operations on a database when
 you multiply it with a JSON document is not.

@@ -29,7 +29,7 @@ That's kind of the point of doing all this in notebooks.
 
 Since the `bool Equals(object)` method is defined on `object`, every pair of objects can be compared for equality.
 Default equality semantics differ for reference and value types.
-Reference types, by default, have **referential equality** -- two objects are equal iff they point to the exact
+Reference types, by default, have **referential equality** – two objects are equal iff they point to the exact
 same object on the heap. The `Equals` method and `==` operator are exactly the same in this case.
 
 #!csharp

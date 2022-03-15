@@ -46,14 +46,14 @@ Our public facing methods might receive arguments that make no sense and it is o
 
 Here's a bunch of exceptions we all need in our daily life:
 
-- `System.ArgumentNullException` -- when an argument is `null` and shouldn't be; we'll cover nullability in section 1.5.
-- `System.ArgumentOutOfRangeException` -- when an argument is outside of range of possible values, for example we expected
+- `System.ArgumentNullException` – when an argument is `null` and shouldn't be; we'll cover nullability in section 1.5.
+- `System.ArgumentOutOfRangeException` – when an argument is outside of range of possible values, for example we expected
 a positive number, or a non-zero number; this is also used when an enum is received with a value that isn't a valid variant
 of the enum.
-- `System.ArgumentException` -- base class of the above two, used when they are not applicable, but the argument is invalid in some other way.
-- `System.InvalidOperationException` -- a general error for when the current state of the system does not allow for a given operation;
+- `System.ArgumentException` – base class of the above two, used when they are not applicable, but the argument is invalid in some other way.
+- `System.InvalidOperationException` – a general error for when the current state of the system does not allow for a given operation;
 it's best to enforce such constraints on type level, but sometimes it's impossible; I used it in the code of the executable for your
-first micro-assignment -- there's a `GameEngine` class that executes the game turn-by-turn, and calling `ProcessTurn` when
+first micro-assignment – there's a `GameEngine` class that executes the game turn-by-turn, and calling `ProcessTurn` when
 the game is already over (dungeon cleared, hero died...) triggers an `InvalidOperationException`.
 
 You should always write your methods so that arguments are validated as soon as possible and the user informed on incorrect usage immediately.

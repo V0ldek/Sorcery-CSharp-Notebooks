@@ -207,7 +207,7 @@ following the fail-fast approach.
 - You are performing numeric conversions, since that's the only way to do them.
 
 Use the `as` cast or the `is` pattern when:
-- The cast can fail at runtime and it's expected -- you will branch depending
+- The cast can fail at runtime and it's expected – you will branch depending
 on the cast's result.
 - Use `is` when it makes the code shorter, which is most of the time.
 Use `as` if you only want to perform the cast and pass the variable somewhere.
