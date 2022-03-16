@@ -37,7 +37,6 @@ Let's define a struct:
 
 #!csharp
 
-// Intentionally does not compile
 public readonly struct Point
 {
     public double X { get; init; }

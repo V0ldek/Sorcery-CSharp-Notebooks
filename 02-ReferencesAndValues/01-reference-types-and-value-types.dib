@@ -598,11 +598,11 @@ void Foo()
 
     Console.WriteLine($"[Struct] DistanceFromZero before Bar: {@struct.DistanceFromZero}");
     Bar(@struct);
-    Console.WriteLine($"[Struct] DistanceFromZero before Bar: {@struct.DistanceFromZero}");
+    Console.WriteLine($"[Struct] DistanceFromZero after Bar: {@struct.DistanceFromZero}");
 
     Console.WriteLine($"[Class] DistanceFromZero before Bar: {@class.DistanceFromZero}");
     Bar(@class);
-    Console.WriteLine($"[Class] DistanceFromZero before Bar: {@class.DistanceFromZero}");
+    Console.WriteLine($"[Class] DistanceFromZero after Bar: {@class.DistanceFromZero}");
 }
 
 void Bar(PointStruct @struct)

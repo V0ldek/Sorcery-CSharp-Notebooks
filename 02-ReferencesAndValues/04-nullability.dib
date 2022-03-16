@@ -179,7 +179,7 @@ Console.WriteLine(c.Value.Length);
 
 class C 
 { 
-    public string Value { get; init; }
+    public string Value { get; }
 
     public C(string value) => Value = value;
 }
@@ -329,18 +329,6 @@ it'd be impossible to do something radical like enforcing non-nullability in the
 
 #!markdown
 
-But it's clearly a correct usage of our API. Making the property nullable is prohibitively restrictive:
-
-#!markdown
-
-To make this work, we can leave the property as non-nullable, but annotate it with the `AllowNullAttribute`:
-
-#!markdown
-
-You can do the reverse with `DisallowNullAttribute`:
-
-#!markdown
-
 ## Null-coalescing operators
 
 To make handling null checks less painful we have a handful of operators called null-coalescing operators.
@@ -361,7 +349,7 @@ var c = new C();
 // These two blocks are equivalent.
 {
     var v = c.Value;
-    x = v == null ? "default" : v;
+    var x = v == null ? "default" : v;
 }
 {
     var x = c.Value ?? "default";
@@ -560,13 +548,13 @@ so to actually access the value we need to use the defined properties and method
 
 #!csharp
 
-void Foo(int x)
+void Foobar(int x)
 {
     Console.WriteLine(x);
 }
 
 int? nullable = 42;
-Foo(nullable.Value);
+Foobar(nullable.Value);
 
 #!markdown
 
@@ -749,7 +737,7 @@ This should clearly be:
 
 #!csharp
 
-int? IndexOf<T>(T[] array, T value)
+int? IndexOf(int[] array, int value)
 {
     var result = Array.IndexOf(array, value);
     return result == -1 ? null : result;
