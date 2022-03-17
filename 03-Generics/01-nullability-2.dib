@@ -1,9 +1,34 @@
 #!markdown
 
+# 3.1. Nullability 2
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+
+It covers topics for section [3.1. Nullability 2](https://gienieczko.com/teaching/csharp/3-advanced-types/1-nullability-2).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
 ## Generic type arguments and nullability
 
 Nullability gets tricky when applied to generic types.
-Before NRTs a type `T?` unambiguously meant `Nullable<T>`. Now it's more tricky.
+Before NRTs a type `T?` unambiguously meant `Nullable<T>`. Now it's ambiguous between NR and NV types.
 
 #!csharp
 
@@ -156,6 +181,10 @@ user.DisplayName = null;
 
 Console.WriteLine(user.DisplayName);
 
+#!markdown
+
+But it's clearly a correct usage of our API. Making the property nullable is prohibitively restrictive:
+
 #!csharp
 
 #nullable enable
@@ -175,6 +204,10 @@ var user = new User();
 
 Console.WriteLine(user.DisplayName);
 Console.WriteLine(user.DisplayName.Length);
+
+#!markdown
+
+To make this work, we can leave the property as non-nullable, but annotate it with the `AllowNullAttribute`:
 
 #!csharp
 
@@ -203,6 +236,10 @@ user.DisplayName = null;
 
 Console.WriteLine(user.DisplayName);
 Console.WriteLine(user.DisplayName.Length);
+
+#!markdown
+
+You can do the reverse with `DisallowNullAttribute`:
 
 #!csharp
 

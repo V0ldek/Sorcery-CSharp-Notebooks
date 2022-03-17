@@ -1,6 +1,6 @@
 #!markdown
 
-# 1.3. Exceptions
+# 3.1. Exceptions
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/2-references-and-values.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
 
-It covers topics for section [1.3. Exceptions](https://gienieczko.com/teaching/csharp/2-references-and-values/3-exceptions).
+It covers topics for section [3.1. Exceptions](https://gienieczko.com/teaching/csharp/2-references-and-values/3-exceptions).
 
 ### Notebook flow
 
