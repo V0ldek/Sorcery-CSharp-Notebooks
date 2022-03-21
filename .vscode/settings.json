@@ -26,5 +26,6 @@
         "timey",
         "ulong",
         "ushort"
-    ]
+    ],
+    "errorLens.enableOnDiffView": true
 }

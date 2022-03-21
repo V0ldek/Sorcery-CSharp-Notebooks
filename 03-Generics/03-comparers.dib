@@ -1,0 +1,161 @@
+#!markdown
+
+# 3.3. Comparers
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+
+It covers topics for section [3.3. Tuples](https://gienieczko.com/teaching/csharp/3-advanced-types/3-tuples).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## `IEqualityComparer<T>`
+
+Sometimes we want to use equality semantics different from the one defined on the type,
+for example when the author of the type didn't bother to override them, or they're not what we want.
+For example, take the `Person` record again:
+
+#!csharp
+
+class Person
+{
+    public string FirstName { get; }
+
+    public string LastName { get; }
+
+    public Person(string firstName, string lastName)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+    }
+
+    public override string ToString() => $"{LastName}, {FirstName}";
+}
+
+#!markdown
+
+But what if we want to have a dictionary that uses `Person` as a key for their first and last name?
+
+In that case, all collections in the BCL accept a special parameter in the constructor of type `IEqualityComparer<T>`.
+
+The interface is pretty simple:
+
+```csharp
+interface IEqualityComparer<T>
+{
+    bool Equals(T? x, T? y);
+
+    int GetHashCode(T obj);
+}
+```
+
+#!markdown
+
+We implement it the same as we were overriding a type's equality semantics.
+
+#!csharp
+
+#nullable enable
+
+class PersonNominalEqualityComparer : IEqualityComparer<Person>
+{
+    public bool Equals(Person? x, Person? y) =>
+        x?.FirstName == y?.FirstName && x?.LastName == y?.LastName;
+
+    public int GetHashCode(Person obj) => HashCode.Combine(obj.FirstName, obj.LastName);
+}
+
+#!markdown
+
+And now our dictionaries can work with this custom comparer:
+
+#!csharp
+
+var person1 = new Person("Alice", "Alisson");
+var person2 = new Person("Alice", "Alisson");
+
+IEqualityComparer<Person> equalityComparer = new PersonNominalEqualityComparer();
+var regularDictionary = new Dictionary<Person, int>();
+var customDictionary = new Dictionary<Person, int>(equalityComparer);
+
+Add(regularDictionary, person1);
+Add(regularDictionary, person2);
+Add(customDictionary, person1);
+Add(customDictionary, person2);
+
+Print("Regular", regularDictionary);
+Print("Custom", customDictionary);
+
+void Add(IDictionary<Person, int> dictionary, Person person)
+{
+    dictionary.TryAdd(person, 0);
+    dictionary[person] += 1;
+}
+
+void Print(string name, IDictionary<Person, int> dictionary) =>
+    Console.WriteLine($"{name}: {string.Join(", ", dictionary)}");
+
+#!markdown
+
+## IComparer<T>
+
+And if we want funny sorting, we also have funny sorting.
+For example, we can extend the above `Person` with our custom comparison:
+
+#!csharp
+
+#nullable enable
+
+class PersonNominalComparer : IComparer<Person>
+{
+    public int Compare(Person? x, Person? y) =>
+        (x?.FirstName, x?.LastName).CompareTo((y?.FirstName, y?.LastName));
+}
+
+#!markdown
+
+See how we utilise tuple comparison to make it extra slick!
+
+#!csharp
+
+var people = new List<Person>
+{
+    new Person("Alice", "Alisson"),
+    new Person("Dave", "Davidoff"),
+    new Person("Bob", "Bobinsky"),
+    new Person("Charlie", "Charlston")
+};
+
+people.Sort(new PersonNominalComparer());
+
+foreach (var person in people)
+{
+    Console.WriteLine(person);
+}
+
+#!markdown
+
+## Summary
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [3.3. Tuples](https://gienieczko.com/teaching/csharp/3-generics/3-tuples),
+or straight to the next notebook, `03-tuples.dib`.

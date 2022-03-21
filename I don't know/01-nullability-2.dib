@@ -25,121 +25,6 @@ That's kind of the point of doing all this in notebooks.
 
 #!markdown
 
-## Generic type arguments and nullability
-
-Nullability gets tricky when applied to generic types.
-Before NRTs a type `T?` unambiguously meant `Nullable<T>`. Now it's ambiguous between NR and NV types.
-
-#!csharp
-
-#nullable enable
-
-public class GenericNull<T>
-{
-   public T? Foo() => default(T?);
-}
-
-var genericObject = new GenericNull<object>();
-var genericNullableObject = new GenericNull<object?>();
-var genericInt = new GenericNull<int>();
-var genericNullableInt = new GenericNull<int?>();
-
-var fooObject = genericObject.Foo();
-var fooNullableObject = genericNullableObject.Foo();
-var fooInt = genericInt.Foo();
-var fooNullableInt = genericNullableInt.Foo();
-
-Console.WriteLine($"object: {fooObject ?? "null"}");
-Console.WriteLine($"object?: {fooNullableObject ?? "null"}");
-Console.WriteLine($"int: {fooInt.ToString() ?? "null"}");
-Console.WriteLine($"int?: {fooNullableInt?.ToString() ?? "null"}");
-
-#!markdown
-
-What's the type `T?` resolved to?
-
-- If `T` is supplied a reference type, `T?` is just `T` with the nullable annotation. 
-So the return type of `GenericNull<object>.Foo()` is the same as `GenericNull<object?>.Foo()`, that is `object?`.
-- If `T` is supplied a value type, `T?` **is the same value type**. It does not change to `Nullable<T>`.
-Therefore if `T` is supplied a `Nullable<T>` then `T?` is also `Nullable<T>`.
-
-This is perhaps counter-intuitive, but is an unfortunate reality of the underlying system.
-Since NVTs are actual differing types and NRTs are just compiler gravy,
-the `T?` means a soft "this might be null" and cannot reasonably change the type to something completely different.
-
-This changes if we constrain `T` to a `class` or a `struct`:
-
-#!csharp
-
-#nullable enable
-
-public class GenericClass<T> where T : class
-{
-   public T? Foo() => default(T?);
-}
-
-public class GenericNullableClass<T> where T : class?
-{
-   public T? Foo() => default(T?);
-}
-
-public class GenericStruct<T> where T : struct
-{
-   public T? Foo() => default(T?);
-}
-
-public class GenericNotNull<T> where T : notnull
-{
-   public T? Foo() => default(T?);
-}
-
-#!markdown
-
-Now these don't compile:
-
-#!csharp
-
-var a = new GenericClass<int>();
-var b = new GenericNullableClass<int>();
-var c = new GenericStruct<object>();
-var d = new GenericStruct<int?>();
-
-#!markdown
-
-The following generate a warning:
-
-#!csharp
-
-#nullable enable
-
-var e = new GenericClass<object?>();
-var f = new GenericNotNull<object?>();
-var g = new GenericNotNull<int?>();
-
-#!markdown
-
-And these are valid and have natural return types for `Foo`:
-
-#!csharp
-
-#nullable enable
-
-var h = new GenericClass<object>();             // Foo returns object?
-var i = new GenericNullableClass<object>();     // Foo returns object?
-var j = new GenericNullableClass<object?>();    // Foo returns object?
-var k = new GenericStruct<int>();               // Foo returns int? (Nullable<int>)
-var l = new GenericNotNull<object>();           // Foo returns object?
-var m = new GenericNotNull<int>();              // Foo returns int
-
-Console.WriteLine($"GenericClass<object>.Foo(): {h.Foo() ?? "null"}");
-Console.WriteLine($"GenericNullableClass<object>.Foo(): {i.Foo() ?? "null"}");
-Console.WriteLine($"GenericNullableClass<object?>.Foo(): {j.Foo() ?? "null"}");
-Console.WriteLine($"GenericStruct<int>.Foo(): {k.Foo()?.ToString() ?? "null"}");
-Console.WriteLine($"GenericNotNull<object>.Foo(): {l.Foo() ?? "null"}");
-Console.WriteLine($"GenericNotNull<int>.Foo(): {m.Foo()}");
-
-#!markdown
-
 ## Nullable static analysis attributes
 
 In addition to the `?` type annotation, a number of attributes were introduced
@@ -631,3 +516,17 @@ class Foo
         }
     }
 }
+
+#!markdown
+
+## Summary
+
+We know how the nullability features interact with generics and that we can use a variety of attributes
+to help the compiler give us the best static analysis possible.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [3.2. Equality](https://gienieczko.com/teaching/csharp/3-generics/2-equality),
+or straight to the next notebook, `02-equality.dib`.

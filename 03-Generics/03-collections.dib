@@ -1,0 +1,622 @@
+#!markdown
+
+# 3.3. Collections
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+
+It covers topics for section [3.3. Collections](https://gienieczko.com/teaching/csharp/3-advanced-types/3-collections).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Collections in the BCL
+
+Okay, the time has finally come to ditch the array.
+
+BCL defines a number of standard collections. There are, technically, two namespaces for this:
+`System.Collections` and `System.Collections.Generic`. The former is now virtually obsolete,
+as it existed before generics were introduced in C#2. Just note that most of the types
+that we describe here have their non-generic equivalents from way back, very similar
+to our `Stack` implementation we used in [`3.0 Generics`](https://gienieczko.com/teaching/csharp/3-advanced-types/0-generics).
+
+## The `IEnumerable<T>` interface
+
+First of all, meet the foundational interface that we will be working with in-depth in the next module:
+`IEnumerable<T>`, defining sequences of elements that can be enumerated.
+
+#!csharp
+
+interface IEnumerable<T>
+{
+    IEnumerator<T> GetEnumerator();
+}
+
+interface IEnumerator<T>
+{
+    T Current { get; }
+
+    bool MoveNext();
+
+    void Reset();
+}
+
+#!markdown
+
+_Note: I'm lying here, skipping over variance of `T`, the fact that these inherit from 
+non-generic `IEnumerable` and `IEnumerator`, respectively, and that enumerator also extends `IDisposable`.
+We'll cover variance and disposing later._
+
+These interfaces implement the 'collection' pattern. We know that `foreach` can enumerate over an array,
+but it can actually enumerate over anything that satisfies the following shape:
+
+- it has a public `GetEnumerator()` method returning some type `E`;
+- the type `E` has a public `Current` property (of any type) and a public `bool MoveNext()`
+method.
+
+Then the `foreach` loop over an expression `x` of type `C`, that has an enumerator `E`, whose type of the `Current` property is `T`:
+
+```csharp
+foreach (V v in x)
+{
+    Code(v);
+}
+```
+
+expands to:
+
+```csharp
+E e = ((C)(x)).GetEnumerator();
+while (e.MoveNext())
+{
+    V v = (V)(T)e.Current;
+    Code(v);
+}
+```
+
+_Note: Liar, liar, skipping over `Dispose`, again, I will rectify it later._
+
+Clearly, anything that implements `IEnumerable<T>` can be enumerated over with a `foreach`.
+
+#!csharp
+
+class MyCollection
+{
+    private readonly int[] _array;
+
+    public MyCollection(int[] array) => _array = array;
+
+    public MyEnumerator GetEnumerator() => new MyEnumerator(_array);
+}
+
+class MyEnumerator
+{
+    private readonly int[] _array;
+
+    private int _currentIndex = -1;
+
+    public int Current => _array[_currentIndex];
+
+    public MyEnumerator(int[] array) => _array = array;
+
+    public bool MoveNext()
+    {
+        if (_currentIndex == _array.Length - 1)
+        {
+            return false;
+        }
+
+        _currentIndex += 1;
+        return true;
+    }
+}
+
+var collection = new MyCollection(new [] { 17, -3, 42, 37, 21 });
+
+foreach (int element in collection)
+{
+    Console.WriteLine(element);
+}
+
+#!markdown
+
+It's better to always implement `IEnumerable<T>`, however we don't have the tools for that yet.
+
+#!markdown
+
+## `ICollection<T>`
+
+Here's `ICollection<T>`, in all its glory:
+
+#!csharp
+
+interface ICollection<T> : IEnumerable<T>
+{
+    int Count { get; }
+
+    bool IsReadOnly { get; }
+
+    void Add(T item);
+
+    void Clear();
+
+    bool Contains(T item);
+
+    void CopyTo(T[] array, int arrayIndex);
+
+    bool Remove(T item);
+}
+
+#!markdown
+
+So collections model things that can be modified in a very controlled fashion.
+They have some number of elements in them, you can `Add` new elements,
+you can `Remove` elements in it, and you can check if the collection `Contains` an element.
+
+#!markdown
+
+## `IList<T>`
+
+#!markdown
+
+`IList<T>` extends collections even further, defining a notion of an order on the elements:
+
+#!csharp
+
+interface IList<T> : ICollection<T>
+{
+    T this[int index] { get; set; }
+
+    int IndexOf(T item);
+
+    void Insert(int index, T item);
+
+    void RemoveAt(int index);
+}
+
+#!markdown
+
+## `IDictionary<TKey, TValue>`
+
+#!markdown
+
+`IDictionary<TKey, TValue>` defines a collection that separates keys defining
+equality from values associated with them.
+
+#!csharp
+
+interface IDictionary<TKey, TValue> : ICollection<KeyValuePair<TKey, TValue>>
+{
+    TValue this[TKey key] { get; set; }
+
+    ICollection<TKey> Keys { get; }
+
+    ICollection<TValue> Values { get; }
+
+    bool ContainsKey(TKey key);
+
+    bool TryGetValue(TKey key, out TValue value);
+
+    void Add(TKey key, TValue value);
+
+    bool Remove(TKey key);
+}
+
+#!markdown
+
+## Read-only views
+
+There are restrictions of these interfaces into read-only views over the collections.
+The read-only views are actually much more useful in APIs, since read access is more
+often used than write.
+
+For the ones we covered above there are the counterparts `IReadOnlyCollection<T>`, `IReadOnlyList<T>`, and `IReadOnlyDictionary<TKey, TValue>`.
+
+#!markdown
+
+## List
+
+The most ubiquitous collection type is `List<T>`.
+It's C++'s `std::vector<T>`, Java's `ArrayList<T>`, Rust's `Vec<T>`, etc.
+A self-resizing array of values.
+
+#!csharp
+
+var list = new List<int>();
+
+list.Add(1);
+list.Add(3);
+
+foreach (var n in list)
+{
+    Console.WriteLine(n);
+}
+
+#!markdown
+
+There's a shorter way to initialize using something called **collection initialisers**:
+
+#!csharp
+
+var list = new List<int> { 1, 3 };
+
+foreach (var n in list)
+{
+    Console.WriteLine(n);
+}
+
+#!markdown
+
+That code is exactly equivalent. Moreover, this syntax works with _all_ collections,
+the requirements are that the type being created needs to implement `IEnumerable` and
+have a public `void Add(T item)` method for some `T`.
+
+#!markdown
+
+Under the hood it works as you might expect: once capacity is reached it reallocates its internal array
+with twice the size. It implements `IList<T>` and `IReadOnlyList<T>`, so it supports indexing:
+
+#!csharp
+
+var list = new List<string> { "Alice", "has", "a", "cat" };
+
+Console.WriteLine($"list[0]: {list[0]}");
+Console.WriteLine($"list[^1]: {list[^1]}");
+
+#!markdown
+
+It doesn't support slicing as of this writing for reasons that elude me.
+I was extremely surprised that it was the case, and apparently not only me,
+because one of core .NET designers [filed an issue about this literally 3 days ago](https://github.com/dotnet/runtime/issues/66773).
+
+As with similar types in other languages there's a performance trick that can be used when we want
+to initialise a `List<T>` with a known number of values. To avoid reallocations during
+adding we can specify initial capacity:
+
+#!csharp
+
+var list = new List<int>();
+var previousCapacity = list.Capacity;
+
+Console.WriteLine("Without initial capacity:");
+
+Console.WriteLine(list.Capacity);
+
+for (var i = 0; i < 50; i += 1)
+{
+    list.Add(i);
+
+    if (previousCapacity != list.Capacity)
+    {
+        Console.WriteLine(list.Capacity);
+        previousCapacity = list.Capacity;
+    }
+}
+
+Console.WriteLine(list.Capacity);
+
+Console.WriteLine("=========================");
+
+var list2 = new List<int>(50);
+previousCapacity = list2.Capacity;
+
+Console.WriteLine("With initial capacity:");
+
+Console.WriteLine(list2.Capacity);
+
+for (var i = 0; i < 50; i += 1)
+{
+    list2.Add(i);
+
+    if (previousCapacity != list2.Capacity)
+    {
+        Console.WriteLine(list2.Capacity);
+        previousCapacity = list2.Capacity;
+    }
+}
+
+Console.WriteLine(list2.Capacity);
+
+#!markdown
+
+## `HashSet<T>`
+
+To drive home our point about equality, here's the `HashSet<T>` type.
+It represents a set, in that every element exists at most one in the collection.
+It provides average-case constant insertion and lookup.
+
+#!csharp
+
+var set = new HashSet<int>();
+
+set.Add(1);
+set.Add(2);
+set.Add(2);
+
+foreach (var x in set)
+{
+    Console.WriteLine(x);
+}
+
+#!markdown
+
+The `HashSet<T>` implements a special `ISet<T>` interface that defines standard mathematical operations on a set:
+`UnionWith`, `IntersectWith`, `ExceptWith`, etc.
+
+#!csharp
+
+var union = Set1();
+union.UnionWith(Set2());
+var intersection = Set1();
+intersection.IntersectWith(Set2());
+var difference = Set1();
+difference.ExceptWith(Set2());
+
+Print("Set1", Set1());
+Print("Set2", Set2());
+Print("Union", union);
+Print("Intersection", intersection);
+Print("Difference", difference);
+
+void Print<T>(string name, HashSet<T> set) => Console.WriteLine($"{name}: {string.Join(", ", set)}");
+
+HashSet<int> Set1() => new HashSet<int>() { 1, 2, 3, 4, 5 };
+HashSet<int> Set2() => new HashSet<int>() { 2, 4, 6, 8 };
+
+#!markdown
+
+Now we can also examine the performance considerations of bad `GetHashCode` implementations.
+
+#!csharp
+
+#nullable enable
+
+using System.Diagnostics;
+
+const int Size = 20_000;
+
+struct BadPoint : IEquatable<BadPoint>
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+
+    public override bool Equals(object? other) => other is BadPoint point && Equals(point);
+
+    public override int GetHashCode() => (int) X;
+
+    public bool Equals(BadPoint other) => X == other.X && Y == other.Y;
+}
+
+struct GoodPoint : IEquatable<GoodPoint>
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+
+    public override bool Equals(object? other) => other is GoodPoint point && Equals(point);
+
+    public override int GetHashCode() => HashCode.Combine(X, Y);
+
+    public bool Equals(GoodPoint other) => X == other.X && Y == other.Y;
+}
+
+var badPointSet = new HashSet<BadPoint>();
+var goodPointSet = new HashSet<GoodPoint>();
+var stopwatch = new Stopwatch();
+
+stopwatch.Start();
+
+for (var i = 0; i < Size; i += 1)
+{
+    double x = 1 + ((double)i / Size);
+    double y = i;
+
+    badPointSet.Add(new() { X = x, Y = y });
+}
+
+Console.WriteLine($"BadPoint: {stopwatch.Elapsed}");
+
+stopwatch.Restart();
+
+for (var i = 0; i < Size; i += 1)
+{
+    double x = 1 + ((double)i / Size);
+    double y = i;
+
+    goodPointSet.Add(new() { X = x, Y = y });
+}
+
+Console.WriteLine($"GoodPoint: {stopwatch.Elapsed}");
+
+#!markdown
+
+## `SortedSet<T>`
+
+[`HashSet<T>` does not guarantee any particular order of enumeration](https://stackoverflow.com/questions/657263/does-hashset-preserve-insertion-order).
+The `SortedSet<T>` structure is based on a red-black tree, provides logarithmic-time insertion and lookup, but guarantees elements are ordered.
+
+#!csharp
+
+var sortedSet = new SortedSet<string> { "Alice", "has", "a", "cat", "!" };
+
+foreach (var x in sortedSet)
+{
+    Console.WriteLine(x);
+}
+
+#!markdown
+
+## ... and some more collections
+
+I won't show you every single collection, but here's a list of the remaining ones, excluding dictionaries. They should be self-descriptive:
+
+- `LinkedList<T>`
+- `Queue<T>`
+- `SortedList<T>`
+- `Stack<T>`
+
+There's also `PriorityQueue<TElement, TPriority>` in the `System.Collections.Generic` namespace,
+but it doesn't implement even `IEnumerable`.
+
+#!markdown
+
+## `Dictionary<TKey, TValue>`
+
+And finally, the hashmap. I'll shut up and let code tell the story.
+
+#!csharp
+
+struct Point
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+
+    public override string ToString() => $"({X}, {Y})";
+}
+
+var dictionary = new Dictionary<string, Point>
+{
+    { "A", new() { X = 1.0, Y = 1.0} },
+    { "B", new() { X = 2.0, Y = 1.0} },
+    { "C", new() { X = 2.0, Y = 2.0} },
+    { "D", new() { X = 1.0, Y = 2.0} },
+};
+
+Console.WriteLine("KeyValuePairs:");
+foreach (var keyValuePair in dictionary)
+{
+    Console.WriteLine(keyValuePair);
+}
+
+#!csharp
+
+Console.WriteLine("Keys:");
+foreach (var key in dictionary.Keys)
+{
+    Console.WriteLine(key);
+}
+
+#!csharp
+
+Console.WriteLine("Values:");
+foreach (var value in dictionary.Values)
+{
+    Console.WriteLine(value);
+}
+
+#!csharp
+
+Console.WriteLine($"dictionary[\"A\"]: {dictionary["A"]}");
+
+#!csharp
+
+Console.WriteLine($"dictionary[\"E\"]: {dictionary["E"]}");
+
+#!csharp
+
+dictionary.Add("E", new());
+dictionary["F"] = new() { X = 3.0, Y = 3.0 };
+
+foreach (var keyValuePair in dictionary)
+{
+    Console.WriteLine(keyValuePair);
+}
+
+#!csharp
+
+dictionary.Add("E", new() { X = -1.0 });
+
+#!csharp
+
+dictionary["F"] = new() { X = -1.0 };
+
+foreach (var keyValuePair in dictionary)
+{
+    Console.WriteLine(keyValuePair);
+}
+
+#!csharp
+
+if (dictionary.TryGetValue("A", out var a))
+{
+    Console.WriteLine(a);
+}
+
+if (dictionary.TryGetValue("G", out var g))
+{
+    Console.WriteLine(g);
+}
+
+#!markdown
+
+## `SortedDictionary<TKey, TValue>`
+
+It exists and does what you expect, also based on red-black trees.
+
+#!markdown
+
+## Immutable collections
+
+There are also functional-programming-style immutable collections available in
+[`System.Collections.Immutable`](https://docs.microsoft.com/en-us/dotnet/api/system.collections.immutable?view=net-6.0).
+We won't be talking about them in detail, but their Builder-based approach is pretty interesting.
+
+An immutable collection is, well, immutable. For example, `ImmutableList<T>` is a persistent AVL tree,
+and every potentially mutating method returns a new `ImmutableList<T>`.
+
+This means that many subsequent operations on the list would cause many allocations.
+Therefore, `ImmutableList<T>` (as well as all other immutable collections) has a special
+`Builder` type and a `ToBuilder()` method.
+
+The `Builder` type works basically as a normal `List<T>` and is mutable.
+We can perform any number of modifications on it, before calling `ToImmutable()`
+to get an `ImmutableList<T>` back.
+
+#!csharp
+
+using System.Collections.Immutable;
+
+ImmutableList<int> emptyList = ImmutableList.Create<int>();
+
+var list1 = emptyList.Add(1);
+var builder = list1.ToBuilder();
+
+builder.Add(42);
+builder.Add(17);
+builder.Add(21);
+
+var list2 = builder.ToImmutable();
+
+Print(emptyList);
+Print(list1);
+Print(list2);
+
+void Print<T>(ImmutableList<T> list) => Console.WriteLine($"List: {string.Join(", ", list)}");
+
+#!markdown
+
+## Summary
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [3.3. Tuples](https://gienieczko.com/teaching/csharp/3-generics/3-tuples),
+or straight to the next notebook, `03-tuples.dib`.

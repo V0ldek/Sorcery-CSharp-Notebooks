@@ -1,0 +1,293 @@
+#!markdown
+
+# 3.2. Ordering
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+
+It covers topics for section [3.2. Ordering](https://gienieczko.com/teaching/csharp/3-advanced-types/2-ordering).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## `IComparable<T>`
+
+Comparison is way more specialised than equality.
+There is no default comparison for all objects, we need to do it explicitly.
+The `IComparable<T>` interface defines a single method:
+
+#!csharp
+
+#nullable enable
+
+interface IComparable<in T>
+{
+    int CompareTo(T? other);
+}
+
+#!markdown
+
+It follows C-like semantics for comparison: the return value of `x.CompareTo(y)` is
+
+- $> 0$, if $x \succ y$
+- $< 0$, if $x \prec y$
+- $= 0$ otherwise
+
+#!markdown
+
+So for our `Rational` we have:
+
+#!csharp
+
+#nullable enable
+
+public struct Rational : IComparable<Rational>, IEquatable<Rational>
+{
+    private int _denominator;
+
+    public int Numerator { get; init; }
+
+    public int Denominator 
+    { 
+        // The only way the _denominator can be zero is if this == default.
+        // Then we normalize to the canonical zero representation of 0/1.
+        get => _denominator == 0 ? 1 : _denominator; 
+        init => _denominator = value == 0 
+            ? throw new DivideByZeroException("Cannot create a Rational with a zero denominator.") 
+            : value;
+    }
+
+    public Rational Normalized
+    {
+        get
+        {
+            var gcd = GreatestCommonDivisor(Numerator, Denominator);
+            return new Rational(Numerator / gcd, Denominator / gcd);
+        }
+    }
+    
+    public static Rational Zero => new(0, 1);
+
+    public Rational(int integral)
+    {
+        Numerator = integral;
+        _denominator = 1;
+    }
+
+    public Rational(int numerator, int denominator)
+    {
+        if (denominator == 0)
+        {
+            throw new DivideByZeroException("Cannot create a Rational with a zero denominator.");
+        }
+
+        Numerator = numerator;
+        _denominator = denominator;
+    }
+
+    public static bool operator ==(Rational a, Rational b) => a.Equals(b);
+
+    public static bool operator !=(Rational a, Rational b) => !(a == b);
+
+    public int CompareTo(Rational other) =>
+        ((long) Numerator * (long) other.Denominator).CompareTo((long) other.Numerator * (long) Denominator);
+
+    public bool Equals(Rational other) =>
+        Numerator == other.Numerator && Denominator == other.Denominator;
+
+    public override bool Equals(object? other) =>
+        other is Rational rational && Equals(rational);
+
+    public override int GetHashCode()
+    {
+        var normalized = Normalized;
+        return HashCode.Combine(normalized.Numerator, normalized.Denominator);
+    }
+
+    public override string ToString() => $"{Numerator}/{Denominator}";
+
+    private static bool StructuralEquals(Rational a, Rational b) =>
+        a.Numerator == b.Numerator && a.Denominator == b.Denominator;
+
+    private static int GreatestCommonDivisor(int a, int b) => b == 0 ? a : GreatestCommonDivisor(b, a % b);
+}
+
+#!markdown
+
+We can use that, for example, in array sorting:
+
+#!csharp
+
+var array = new Rational[]
+{
+    new(1, 2),
+    new(-1, 2),
+    new(3, 4),
+    new(7, 5),
+    new(-20, 19),
+};
+
+Array.Sort(array);
+
+Console.WriteLine(string.Join(", ", array));
+
+#!markdown
+
+## `<`, `>`, `<=`, and `>=` operators
+
+Unlike equality and `==`, we only ever overload `<` and `>` if the type has
+a very strong notion of intrinsic ordering. So, for example, `Rational` is a great
+candidate for `<` and `>`, as there's an obvious ordering on rationals.
+But if we have a type describing a person:
+
+#!csharp
+
+class Person : IComparable<Person>
+{
+    public string FirstName { get; }
+
+    public string LastName { get; }
+
+    public int CompareTo(Person other)
+    {
+        var x = LastName.CompareTo(other.LastName);
+
+        if (x == 0)
+        {
+            return FirstName.CompareTo(other.FirstName);
+        }
+
+        return x;
+    }
+}
+
+#!markdown
+
+This makes sense when we are ordering records in a list,
+but that doesn't really mean a person is `<` a different one.
+
+Also note that `Person` doesn't implement `IEquatable<Person>`, nor does it override `Equals`.
+This makes sense for the same reason. We allow comparison to be much more fuzzy that equality,
+because the main usage of `IComparable` is ordering collections, which doesn't necessarily
+relate to equality between elements.
+
+The only rule is that if `x.Equals(y)`, then `x.CompareTo(y) == 0`.
+
+#!csharp
+
+#nullable enable
+
+public struct Rational : IComparable<Rational>, IEquatable<Rational>
+{
+    private int _denominator;
+
+    public int Numerator { get; init; }
+
+    public int Denominator 
+    { 
+        // The only way the _denominator can be zero is if this == default.
+        // Then we normalize to the canonical zero representation of 0/1.
+        get => _denominator == 0 ? 1 : _denominator; 
+        init => _denominator = value == 0 
+            ? throw new DivideByZeroException("Cannot create a Rational with a zero denominator.") 
+            : value;
+    }
+
+    public Rational Normalized
+    {
+        get
+        {
+            var gcd = GreatestCommonDivisor(Numerator, Denominator);
+            return new Rational(Numerator / gcd, Denominator / gcd);
+        }
+    }
+    
+    public static Rational Zero => new(0, 1);
+
+    public Rational(int integral)
+    {
+        Numerator = integral;
+        _denominator = 1;
+    }
+
+    public Rational(int numerator, int denominator)
+    {
+        if (denominator == 0)
+        {
+            throw new DivideByZeroException("Cannot create a Rational with a zero denominator.");
+        }
+
+        Numerator = numerator;
+        _denominator = denominator;
+    }
+
+    public static bool operator ==(Rational a, Rational b) => a.Equals(b);
+
+    public static bool operator !=(Rational a, Rational b) => !(a == b);
+
+    public static bool operator <(Rational a, Rational b) => a.CompareTo(b) < 0;
+
+    public static bool operator >(Rational a, Rational b) => a.CompareTo(b) > 0;
+
+    public static bool operator <=(Rational a, Rational b) => a.CompareTo(b) < 0;
+
+    public static bool operator >=(Rational a, Rational b) => a.CompareTo(b) > 0;
+
+    public int CompareTo(Rational other) =>
+        ((long) Numerator * (long) other.Denominator).CompareTo((long) other.Numerator * (long) Denominator);
+
+    public bool Equals(Rational other) =>
+        Numerator == other.Numerator && Denominator == other.Denominator;
+
+    public override bool Equals(object? other) =>
+        other is Rational rational && Equals(rational);
+
+    public override int GetHashCode()
+    {
+        var normalized = Normalized;
+        return HashCode.Combine(normalized.Numerator, normalized.Denominator);
+    }
+
+    public override string ToString() => $"{Numerator}/{Denominator}";
+
+    private static bool StructuralEquals(Rational a, Rational b) =>
+        a.Numerator == b.Numerator && a.Denominator == b.Denominator;
+
+    private static int GreatestCommonDivisor(int a, int b) => b == 0 ? a : GreatestCommonDivisor(b, a % b);
+}
+
+var x = new Rational(1, 2);
+var y = new Rational(3, 4);
+
+Console.WriteLine(x <= y);
+
+#!markdown
+
+## Summary
+
+We've learnt that reference types have referential equality by default, while value types use structural equality.
+We know how to override `Equals` and overload `==`, and we've consider a myriad of aspects of `GetHashCode`.
+We now know that we _always_ have to override it if we implement custom equality.
+We've met `IEquality<T>` that helps us avoid boxing.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [3.3. Tuples](https://gienieczko.com/teaching/csharp/2-references-and-values/3-tuples),
+or straight to the next notebook, `03-tuples.dib`.

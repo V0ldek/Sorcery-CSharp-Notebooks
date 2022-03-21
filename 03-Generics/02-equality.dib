@@ -1,0 +1,977 @@
+#!markdown
+
+# 3.2. Equality
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+
+It covers topics for section [3.2. Equality](https://gienieczko.com/teaching/csharp/3-advanced-types/2-equality).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Default equality
+
+Since the `bool Equals(object)` method is defined on `object`, every pair of objects can be compared for equality.
+Default equality semantics differ for reference and value types.
+Reference types, by default, have **referential equality** – two objects are equal iff they point to the exact
+same object on the heap. The `Equals` method and `==` operator are exactly the same in this case.
+
+#!csharp
+
+class C
+{
+    public int Value { get; init; }
+}
+
+var c1 = new C { Value = 42 };
+var c2 = new C { Value = 42 };
+
+Console.WriteLine(c1.Equals(c2));
+Console.WriteLine(c1.Equals(c1));
+Console.WriteLine(c1 == c2);
+Console.WriteLine(c1 == c1);
+
+#!markdown
+
+Value types on the other hand define **structural equality** by default.
+They are equal if and only if all of their fields are equal.
+
+_(This makes it a recursive definition, but that's fine since we cannot define a struct that contains itself in the first place)_
+
+#!csharp
+
+readonly struct Point
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+}
+
+readonly struct Triangle
+{
+    public Point A { get; init; }
+    
+    public Point B { get; init; }
+    
+    public Point C { get; init; }
+}
+
+var triangle = new Triangle
+{
+    A = new() { X = 17, Y = 42 },
+    B = new() { X = -3, Y = 17 },
+    C = new() { X = 2 },
+};
+
+var otherTriangle = new Triangle
+{
+    A = new() { X = 17, Y = 42 },
+    B = new() { X = -3, Y = 17 },
+    C = new() { X = 2 },
+};
+
+Console.WriteLine(triangle.Equals(otherTriangle));
+
+#!markdown
+
+The `==` operator is _not_ defined on structs by default:
+
+#!csharp
+
+// Intentionally does not compile.
+triangle == otherTriangle
+
+#!markdown
+
+We came across a dichotomy here: `Equals` is not necessarily the same as `==`, and `==` doesn't even have to be defined.
+There's no compiler rule that would enforce any relationship between the two, but the guideline is:
+
+1. For _value types_ the calls to `Equals` and `==` should be exactly equivalent.
+
+    All structs defined in the language or the BCL follow this.
+
+#!csharp
+
+int five = 5;
+int alsoFive = 5;
+
+Console.WriteLine(5 == 5);
+Console.WriteLine(5.Equals(5));
+
+var today = new DateTime(2022, 03, 19);
+var alsoToday = new DateTime(2022, 03, 19);
+
+Console.WriteLine(today == alsoToday);
+Console.WriteLine(today.Equals(alsoToday));
+
+var oneHour = new TimeSpan(1, 0, 0);
+var alsoOneHour = new TimeSpan(1, 0, 0);
+
+Console.WriteLine(oneHour == alsoOneHour);
+Console.WriteLine(oneHour.Equals(alsoOneHour));
+
+#!markdown
+
+2. For most _reference types_ it's usually expected `==` performs standard referential equality,
+while `Equals` performs custom equality, if it makes sense.
+
+    `StringBuilder` does this:
+
+#!csharp
+
+using System.Text;
+
+var builder1 = new StringBuilder();
+var builder2 = new StringBuilder();
+
+Console.WriteLine($"'' == '': {builder1 == builder2}");
+Console.WriteLine($"'' Equals '': {builder1.Equals(builder2)}");
+
+builder1.Append("A quick brown fox");
+
+Console.WriteLine($"'A quick brown fox' == '': {builder1 == builder2}");
+Console.WriteLine($"'A quick brown fox' Equals '' : {builder1.Equals(builder2)}");
+
+builder2.Append("A quick").Append(" brown fox");
+
+Console.WriteLine($"'A quick brown fox' == 'A quick brown fox': {builder1 == builder2}");
+Console.WriteLine($"'A quick brown fox' Equals 'A quick brown fox' : {builder1.Equals(builder2)}");
+
+#!markdown
+
+3. for some strictly _immutable reference types_ that are expected to have value equality,
+`Equals` and `==` are equivalent.
+
+    These we already know, `string` does it. Another example is the `System.Uri` class which represents, well, an URI.
+    It's a wrapper over a `string` and it behaves as one, but with additional functionality:
+
+#!csharp
+
+var uri1 = new Uri("https://gienieczko.com");
+var uri2 = new Uri("https://gienieczko.com");
+
+Console.WriteLine($"uri1 == uri2: {uri1 == uri2}");
+Console.WriteLine($"uri1 Equals uri2: {uri1.Equals(uri2)}");
+Console.WriteLine($"uri1 ReferenceEquals uri2: {object.ReferenceEquals(uri1, uri2)}");
+
+#!markdown
+
+In the end we should also take care for `Equals` to be implemented reasonably.
+Excluding occasional outliers, we expect that:
+
+1. Equality is an equivalence relation, so reflexive, commutative, and transitive.
+2. `Equals` is a pure function.
+3. No object equals `null`.
+
+There are a few exceptions, for example `Nullable<T>` obviously equals `null`
+if it represents a `null` value, and equality on floating point numbers is
+complete madness:
+
+#!csharp
+
+Console.WriteLine(float.NaN == float.NaN);
+
+#!markdown
+
+## Case study -- rationals
+
+To show how we can override equality for our types we will design a custom value type: `Rational`.
+It will model, well, rational numbers.
+
+#!csharp
+
+public struct Rational
+{
+    private int _denominator;
+
+    public int Numerator { get; init; }
+
+    public int Denominator 
+    { 
+        // The only way the _denominator can be zero is if this == default.
+        // Then we normalize to the canonical zero representation of 0/1.
+        get => _denominator == 0 ? 1 : _denominator; 
+        init => _denominator = value == 0 
+            ? throw new DivideByZeroException("Cannot create a Rational with a zero denominator.") 
+            : value;
+    }
+
+    public static Rational Zero => new(0, 1);
+
+    public Rational(int integral)
+    {
+        Numerator = integral;
+        _denominator = 1;
+    }
+
+    public Rational(int numerator, int denominator)
+    {
+        if (denominator == 0)
+        {
+            throw new DivideByZeroException("Cannot create a Rational with a zero denominator.");
+        }
+
+        Numerator = numerator;
+        _denominator = denominator;
+    }
+
+    public override string ToString() => $"{Numerator}/{Denominator}";
+}
+
+#!markdown
+
+The issue is that two rationals might be equal even if their data is different:
+
+#!csharp
+
+var half = new Rational(1, 2);
+var alsoHalf = new Rational(2, 4);
+
+Console.WriteLine($"{half} Equals {alsoHalf}: {half.Equals(alsoHalf)}");
+
+#!markdown
+
+This can be fixed with normalisation:
+
+#!csharp
+
+public struct Rational
+{
+    private int _denominator;
+
+    public int Numerator { get; init; }
+
+    public int Denominator 
+    { 
+        // The only way the _denominator can be zero is if this == default.
+        // Then we normalize to the canonical zero representation of 0/1.
+        get => _denominator == 0 ? 1 : _denominator; 
+        init => _denominator = value == 0 
+            ? throw new DivideByZeroException("Cannot create a Rational with a zero denominator.") 
+            : value;
+    }
+
+    public Rational Normalized
+    {
+        get
+        {
+            var gcd = GreatestCommonDivisor(Numerator, Denominator);
+            return new Rational(Numerator / gcd, Denominator / gcd);
+        }
+    }
+
+    public static Rational Zero => new(0, 1);
+
+    public Rational(int integral)
+    {
+        Numerator = integral;
+        _denominator = 1;
+    }
+
+    public Rational(int numerator, int denominator)
+    {
+        if (denominator == 0)
+        {
+            throw new DivideByZeroException("Cannot create a Rational with a zero denominator.");
+        }
+
+        Numerator = numerator;
+        _denominator = denominator;
+    }
+
+    public override string ToString() => $"{Numerator}/{Denominator}";
+
+    private static int GreatestCommonDivisor(int a, int b) => b == 0 ? a : GreatestCommonDivisor(b, a % b);
+}
+
+var half = new Rational(1, 2);
+var alsoHalf = new Rational(2, 4);
+
+Console.WriteLine($"{half} Equals {alsoHalf}: {half.Equals(alsoHalf)}");
+Console.WriteLine($"{half.Normalized} Equals {alsoHalf.Normalized}: {half.Normalized.Equals(alsoHalf.Normalized)}");
+
+#!markdown
+
+We could just normalize all rationals by default, but let's say we don't want to do that,
+for example because of performance considerations (it might be cheaper to do a few operations without normalization and then normalize,
+or for example the user might know that values are coprime and will never need normalization, etc.).
+But we still want $\frac{1}{2}$ to be equal to $\frac{2}{4}$.
+
+The first steps are to **override Equals** and **overload == and !=**.
+
+#!csharp
+
+#nullable enable
+
+public struct Rational
+{
+    private int _denominator;
+
+    public int Numerator { get; init; }
+
+    public int Denominator 
+    { 
+        // The only way the _denominator can be zero is if this == default.
+        // Then we normalize to the canonical zero representation of 0/1.
+        get => _denominator == 0 ? 1 : _denominator; 
+        init => _denominator = value == 0 
+            ? throw new DivideByZeroException("Cannot create a Rational with a zero denominator.") 
+            : value;
+    }
+
+    public Rational Normalized
+    {
+        get
+        {
+            var gcd = GreatestCommonDivisor(Numerator, Denominator);
+            return new Rational(Numerator / gcd, Denominator / gcd);
+        }
+    }
+    
+    public static Rational Zero => new(0, 1);
+
+    public Rational(int integral)
+    {
+        Numerator = integral;
+        _denominator = 1;
+    }
+
+    public Rational(int numerator, int denominator)
+    {
+        if (denominator == 0)
+        {
+            throw new DivideByZeroException("Cannot create a Rational with a zero denominator.");
+        }
+
+        Numerator = numerator;
+        _denominator = denominator;
+    }
+
+    public static bool operator ==(Rational a, Rational b) => a.Equals(b);
+
+    public static bool operator !=(Rational a, Rational b) => !(a == b);
+
+    public override bool Equals(object? other)
+    {
+        if (other is not Rational rational)
+        {
+            return false;
+        }
+
+        return StructuralEquals(Normalized, rational.Normalized);
+    }
+
+    public override string ToString() => $"{Numerator}/{Denominator}";
+
+    private static bool StructuralEquals(Rational a, Rational b) =>
+        a.Numerator == b.Numerator && a.Denominator == b.Denominator;
+
+    private static int GreatestCommonDivisor(int a, int b) => b == 0 ? a : GreatestCommonDivisor(b, a % b);
+}
+
+var half = new Rational(1, 2);
+var alsoHalf = new Rational(2, 4);
+
+Console.WriteLine($"{half} Equals {alsoHalf}: {half.Equals(alsoHalf)}");
+Console.WriteLine($"{half.Normalized} Equals {alsoHalf.Normalized}: {half.Normalized.Equals(alsoHalf.Normalized)}");
+
+#!markdown
+
+Now it works, but we are hit with a warning!
+
+> 'Rational' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+
+It's time we face the other member of `Object` related to equality -- `int GetHashCode()`.
+
+#!markdown
+
+## `GetHashCode`
+
+The main reason we're talking about equality is putting stuff in collections.
+As we'll see every collection has a `Contains` method that can tell us whether a given object is inside the collection.
+Obviously, to do that there needs to be some notion of equality between objects.
+
+It gets even more apparent when we consider more complex data structures, like sets or key-value maps.
+Then there's a strict semantic meaning for operations on _equal_ keys performed on them.
+
+Now, operating on collections is a fundamental problem that occurs in most non-trivial applications.
+The most ubiquitous data structure for sets and maps that operate on keys is the **hash table**.
+There's tons of research into them, but they operate on the same core idea of **hashing**.
+
+The idea is that we can efficiently compute a small value that acts as a sieve for equality,
+separating objects that are definitely _not_ equal. Code like this:
+
+```csharp
+if (x.Equals(y))
+{
+    DoStuff();
+}
+```
+
+should be replaceable with
+
+```csharp
+if (x.GetHashCode() == y.GetHashCode() && x.Equals(y))
+{
+    DoStuff();
+}
+```
+
+and a) still produce the same results b) be potentially faster, as the initial hash comparison saves the work done in `Equals` for many
+non-equal objects.
+
+This means there are three characteristics expected of `GetHashCode`, one correctness guarantee and two performance guarantees:
+
+1. **Correctness** -- if two objects are equals, then necessarily their hash codes are equal.
+2. **Stability** -- subsequent calls to `GetHashCode` always return the same value for the same object.
+3. **Uniformity** -- if we sample objects uniformly at random and get their hash codes, the hash codes should also be
+close to uniformly distributed.
+4. **Performance** -- computing the hash code on two objects is not slower than comparing them for equality (at least for larger objects).
+
+As we'll see, in .NET every object can be put into a `Dictionary` or a `HashSet`.
+Therefore every time we implement custom equality we need to redefine `GetHashCode`.
+
+Let me stress this: **if we change our type's equality semantics we absolutely have to override `GetHashCode`**.
+Right now, our `Rational` breaks the most important guarantee, the correctness guarantee:
+
+#!csharp
+
+var half = new Rational(1, 2);
+var otherHalf = new Rational(2, 4);
+
+Console.WriteLine($"1/2 Equals 2/4: {half.Equals(otherHalf)}");
+Console.WriteLine($"1/2.GetHashCode(): {half.GetHashCode()}");
+Console.WriteLine($"2/4.GetHashCode(): {otherHalf.GetHashCode()}");
+
+#!markdown
+
+😱 it's borked!
+
+What are the implications of this? Well, now if we put $\frac{2}{4}$ into a collection
+and look for $\frac{1}{2}$ we won't find it, even though they're equal!
+
+#!csharp
+
+var array = new Rational[100];
+
+array[42] = new Rational(2, 4);
+
+Console.WriteLine($"Naive: {ContainsNaive(new Rational(1, 2))}");
+Console.WriteLine($"Optimized: {ContainsOptimized(new Rational(1, 2))}");
+
+bool ContainsNaive(Rational x)
+{
+    foreach (var element in array)
+    {
+        if (element.Equals(x))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool ContainsOptimized(Rational x)
+{
+    foreach (var element in array)
+    {
+        if (element.GetHashCode() == x.GetHashCode() && element.Equals(x))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+#!markdown
+
+This is Bad™️. We need to make a sensible hash code for our `Rational`.
+How to do it? Here's a bad idea:
+
+```csharp
+public override int GetHashCode() => Normalized.Numerator;
+```
+
+This would definitely work for the correctness guarantee, it's also fast to compute, but it fails the hardest, third guarantee.
+It might seem weird that we fixate on this so much, but it's _crucial_ for hash tables to have good hashes available,
+or else their performance might deteriorate from constant-time lookups to linear-time.
+
+$99 \%$ of the time we don't want to come up with our own clever hashing, because
+there exist functions that can hash basically arbitrary data structurally -- we give it
+the fields we want to include in the hash, their hashes are computed and then _mixed_ together
+into a single hash. Coming up with such a hash is pretty hard and there are many
+papers that delve into this. We don't want to do that, but fortunately `HashCode` exists.
+
+`System.HashCode` is a special type that provides two facilities for creating mixed hashes
+from many objects. Number one is very easy to use: the static `Combine` method can take up to eight
+objects of any type, get their hash codes and mix them into one. We can easily use it to get a
+hash code for `Rational`:
+
+#!csharp
+
+#nullable enable
+
+public struct Rational
+{
+    private int _denominator;
+
+    public int Numerator { get; init; }
+
+    public int Denominator 
+    { 
+        // The only way the _denominator can be zero is if this == default.
+        // Then we normalize to the canonical zero representation of 0/1.
+        get => _denominator == 0 ? 1 : _denominator; 
+        init => _denominator = value == 0 
+            ? throw new DivideByZeroException("Cannot create a Rational with a zero denominator.") 
+            : value;
+    }
+
+    public Rational Normalized
+    {
+        get
+        {
+            var gcd = GreatestCommonDivisor(Numerator, Denominator);
+            return new Rational(Numerator / gcd, Denominator / gcd);
+        }
+    }
+    
+    public static Rational Zero => new(0, 1);
+
+    public Rational(int integral)
+    {
+        Numerator = integral;
+        _denominator = 1;
+    }
+
+    public Rational(int numerator, int denominator)
+    {
+        if (denominator == 0)
+        {
+            throw new DivideByZeroException("Cannot create a Rational with a zero denominator.");
+        }
+
+        Numerator = numerator;
+        _denominator = denominator;
+    }
+
+    public static bool operator ==(Rational a, Rational b) => a.Equals(b);
+
+    public static bool operator !=(Rational a, Rational b) => !(a == b);
+
+    public override bool Equals(object? other)
+    {
+        if (other is not Rational rational)
+        {
+            return false;
+        }
+
+        return StructuralEquals(Normalized, rational.Normalized);
+    }
+
+    // NEW!
+    public override int GetHashCode()
+    {
+        var normalized = Normalized;
+        return HashCode.Combine(normalized.Numerator, normalized.Denominator);
+    }
+
+    public override string ToString() => $"{Numerator}/{Denominator}";
+
+    private static bool StructuralEquals(Rational a, Rational b) =>
+        a.Numerator == b.Numerator && a.Denominator == b.Denominator;
+
+    private static int GreatestCommonDivisor(int a, int b) => b == 0 ? a : GreatestCommonDivisor(b, a % b);
+}
+
+var half = new Rational(1, 2);
+var alsoHalf = new Rational(2, 4);
+
+Console.WriteLine($"{half} Equals {alsoHalf}: {half.Equals(alsoHalf)}");
+Console.WriteLine($"{half}.GetHashCode(): {half.GetHashCode()}");
+Console.WriteLine($"{alsoHalf}.GetHashCode(): {half.GetHashCode()}");
+
+#!markdown
+
+Yay, it works!
+
+### `HashCode` as a mutable struct
+
+`HashCode` is undoubtedly useful, but it's also interesting because of the other API it provides.
+`HashCode` is itself a value type that can be used to construct a `HashCode` from many values
+using its `Add` method. For example, say we have a structure that models a directed path through a 2D space.
+Two paths are equal iff they contain exactly the same points in the same order:
+
+#!csharp
+
+#nullable enable
+
+struct Point
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+}
+
+struct Path
+{
+    public Point[]? Points { get; init; }
+
+    public override bool Equals(object? other)
+    {
+        if (other is not Path path || Points?.Length != path.Points?.Length)
+        {
+            return false;
+        }
+
+        if (Points == null && path.Points == null)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < Points!.Length; i += 1)
+        {
+            if (!Points[i].Equals(path.Points![i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+#!markdown
+
+Now to correctly implement `GetHashCode` we need to iterate over all points and gather them into a single `int`.
+The `HashCode` structure does exactly that with its instance `void Add<T>(T value)` method.
+Yes, `void`!
+
+#!csharp
+
+#nullable enable
+
+struct Point
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+}
+
+struct Path
+{
+    public Point[]? Points { get; init; }
+
+    public override bool Equals(object? other)
+    {
+        if (other is not Path path || Points?.Length != path.Points?.Length)
+        {
+            return false;
+        }
+
+        if (Points == null && path.Points == null)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < Points!.Length; i += 1)
+        {
+            if (!Points[i].Equals(path.Points![i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public override int GetHashCode()
+    {
+        var hashCode = new HashCode();
+
+        if (Points != null)
+        {
+            foreach (var point in Points)
+            {
+                hashCode.Add(point);
+            }
+        }
+
+        return hashCode.ToHashCode();
+    }
+}
+
+var emptyPath = new Path();
+var otherEmptyPath = new Path { Points = new Point[] {} };
+var path = new Path { Points = new Point[] 
+{
+    new() { X = 1, Y = 2 },
+    new() { X = 4, Y = 2 },
+    new() { X = 5, Y = 5 },
+}};
+var equalPath = new Path { Points = new Point[] 
+{
+    new() { X = 1, Y = 2 },
+    new() { X = 4, Y = 2 },
+    new() { X = 5, Y = 5 },
+}};
+var reversePath = new Path { Points = new Point[] 
+{
+    new() { X = 5, Y = 5 },
+    new() { X = 4, Y = 2 },
+    new() { X = 1, Y = 2 },
+}};
+
+Console.WriteLine($"emptyPath.Equals(otherEmptyPath): {emptyPath.Equals(otherEmptyPath)}");
+Console.WriteLine($"path.Equals(equalPath): {path.Equals(equalPath)}");
+Console.WriteLine($"path.Equals(reversePath): {path.Equals(reversePath)}");
+Console.WriteLine($"emptyPath.GetHashCode(): {emptyPath.GetHashCode()}");
+Console.WriteLine($"otherEmptyPath.GetHashCode(): {otherEmptyPath.GetHashCode()}");
+Console.WriteLine($"path.GetHashCode(): {path.GetHashCode()}");
+Console.WriteLine($"equalPath.GetHashCode(): {equalPath.GetHashCode()}");
+Console.WriteLine($"reversePath.GetHashCode(): {reversePath.GetHashCode()}");
+
+#!markdown
+
+So `HashCode` is a mutable struct!
+It _has_ to be a mutable struct, because otherwise every `Add` would incur a copy
+of the entire structure, and it's quite large, totalling $32$ bytes.
+Since the whole point of `GetHashCode` is to be used for performance, it'd be an unacceptable cost.
+
+This is pretty much the only reasonable usage for mutable value types: bags of data that are used inline
+in a very specific scope, so that all mutations actually occur on a local variable
+or a field that is directly accessed.
+
+Doing a copy automatically breaks our code:
+
+#!csharp
+
+#nullable enable
+
+struct Point
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+}
+
+struct Path
+{
+    public Point[]? Points { get; init; }
+
+    public override int GetHashCode()
+    {
+        var hashCode = new HashCode();
+
+        if (Points != null)
+        {
+            AddAllPoints(hashCode);
+        }
+
+        return hashCode.ToHashCode();
+    }
+
+    private void AddAllPoints(HashCode hashCode)
+    {
+        foreach (var point in Points!)
+        {
+            hashCode.Add(point);
+        }
+    }
+}
+
+var emptyPath = new Path();
+var otherEmptyPath = new Path { Points = new Point[] {} };
+var path = new Path { Points = new Point[] 
+{
+    new() { X = 1, Y = 2 },
+    new() { X = 4, Y = 2 },
+    new() { X = 5, Y = 5 },
+}};
+var equalPath = new Path { Points = new Point[] 
+{
+    new() { X = 1, Y = 2 },
+    new() { X = 4, Y = 2 },
+    new() { X = 5, Y = 5 },
+}};
+var reversePath = new Path { Points = new Point[] 
+{
+    new() { X = 5, Y = 5 },
+    new() { X = 4, Y = 2 },
+    new() { X = 1, Y = 2 },
+}};
+
+Console.WriteLine($"emptyPath.GetHashCode(): {emptyPath.GetHashCode()}");
+Console.WriteLine($"otherEmptyPath.GetHashCode(): {otherEmptyPath.GetHashCode()}");
+Console.WriteLine($"path.GetHashCode(): {path.GetHashCode()}");
+Console.WriteLine($"equalPath.GetHashCode(): {equalPath.GetHashCode()}");
+Console.WriteLine($"reversePath.GetHashCode(): {reversePath.GetHashCode()}");
+
+#!markdown
+
+## `IEquatable<T>`
+
+There's a certain inefficiency going on here, dire enough to make high performance collections
+near impossible: the dreaded boxing.
+
+Calling `Equals` or `GetHashCode` is not bad and doesn't cause boxing in itself.
+In general, CLR is smart enough to call methods defined on a value type directly,
+even if they are just overrides of methods in `object` or implementations of an interface.
+However, the type of the parameter to `Equals` is `object?`, which means that the other side of the comparison
+is _always_ boxed.
+
+This doesn't happen with `==`, as it is bound statically and can accept parameters of the concrete type right away.
+However, a generic collection cannot use `==` exactly because of that -- it's statically bound.
+
+Overall, calling the `object.Equals` incurs a runtime type-check at best (when we're passing a reference type),
+or a boxing at worst (when we're passing a value type). To alleviate that, we have the `IEquatable<T>` interface.
+It defines a single method, `public bool Equals (T? other)`.
+
+_(Recall that `T?` here means a nullable reference type if `T` is a reference type, or the type `T` if it is a value type.)_
+
+This is very useful, since now when we constrain the generic type to `IEquatable<T>` and avoid boxing.
+There's no real way of showing that in action, since boxing is generally undetectable by user code, but this:
+
+```csharp
+void Foo<T>(T a, T b)
+{
+    a.Equals(b);
+}
+```
+
+compiles to, more or less:
+
+1. Load a and b.
+2. Box b.
+3. If `a` overrides `Equals`, call it, passing boxed `b` as the argument.
+4. Otherwise box `a` and call `Object.Equals()` on `a`, passing boxed `b` as argument.
+
+whereas this:
+
+```csharp
+void Foo<T>(T a, T b) where T: IEquatable<T>
+{
+    a.Equals(b);
+}  
+```
+
+gives us:
+
+1. Load a and b.
+2. Call `a`'s implementation of `Equals` passing `b` as the argument directly.
+
+So, to finish, our implementation of `Rational` ends up as:
+
+#!csharp
+
+#nullable enable
+
+public struct Rational : IEquatable<Rational>
+{
+    private int _denominator;
+
+    public int Numerator { get; init; }
+
+    public int Denominator 
+    { 
+        // The only way the _denominator can be zero is if this == default.
+        // Then we normalize to the canonical zero representation of 0/1.
+        get => _denominator == 0 ? 1 : _denominator; 
+        init => _denominator = value == 0 
+            ? throw new DivideByZeroException("Cannot create a Rational with a zero denominator.") 
+            : value;
+    }
+
+    public Rational Normalized
+    {
+        get
+        {
+            var gcd = GreatestCommonDivisor(Numerator, Denominator);
+            return new Rational(Numerator / gcd, Denominator / gcd);
+        }
+    }
+    
+    public static Rational Zero => new(0, 1);
+
+    public Rational(int integral)
+    {
+        Numerator = integral;
+        _denominator = 1;
+    }
+
+    public Rational(int numerator, int denominator)
+    {
+        if (denominator == 0)
+        {
+            throw new DivideByZeroException("Cannot create a Rational with a zero denominator.");
+        }
+
+        Numerator = numerator;
+        _denominator = denominator;
+    }
+
+    public static bool operator ==(Rational a, Rational b) => a.Equals(b);
+
+    public static bool operator !=(Rational a, Rational b) => !(a == b);
+
+    // UPDATED!
+    public bool Equals(Rational other) =>
+        Numerator == other.Numerator && Denominator == other.Denominator;
+
+    public override bool Equals(object? other) =>
+        other is Rational rational && Equals(rational);
+
+    public override int GetHashCode()
+    {
+        var normalized = Normalized;
+        return HashCode.Combine(normalized.Numerator, normalized.Denominator);
+    }
+
+    public override string ToString() => $"{Numerator}/{Denominator}";
+
+    private static bool StructuralEquals(Rational a, Rational b) =>
+        a.Numerator == b.Numerator && a.Denominator == b.Denominator;
+
+    private static int GreatestCommonDivisor(int a, int b) => b == 0 ? a : GreatestCommonDivisor(b, a % b);
+}
+
+#!markdown
+
+In general, you should always implement `IEquatable<T>` if you change equality semantics of your type.
+
+You can treat the above example as a canonical implementation of equality for custom types.
+The logic happens in the `IEquatable<T>.Equals` and `GetHashCode`, rest is basically boilerplate.
+
+#!markdown
+
+## Summary
+
+We've learnt that reference types have referential equality by default, while value types use structural equality.
+We know how to override `Equals` and overload `==`, and we've consider a myriad of aspects of `GetHashCode`.
+We now know that we _always_ have to override it if we implement custom equality.
+We've met `IEquality<T>` that helps us avoid boxing.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [3.3. Tuples](https://gienieczko.com/teaching/csharp/2-references-and-values/3-tuples),
+or straight to the next notebook, `03-tuples.dib`.
