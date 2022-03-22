@@ -1,6 +1,6 @@
 #!markdown
 
-# 3.2. Ordering
+# 3.3. Ordering
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
 
-It covers topics for section [3.2. Ordering](https://gienieczko.com/teaching/csharp/3-advanced-types/2-ordering).
+It covers topics for section [3.3. Ordering](https://gienieczko.com/teaching/csharp/3-advanced-types/3-ordering).
 
 ### Notebook flow
 
@@ -280,14 +280,15 @@ Console.WriteLine(x <= y);
 
 ## Summary
 
-We've learnt that reference types have referential equality by default, while value types use structural equality.
-We know how to override `Equals` and overload `==`, and we've consider a myriad of aspects of `GetHashCode`.
-We now know that we _always_ have to override it if we implement custom equality.
-We've met `IEquality<T>` that helps us avoid boxing.
+We've met `IComparable<T>` and know how to implement it.
+We know how and when to overload `<`, `>`, `<=`, and `>=`.
+We also know that the implementations for equality and ordering need not be exactly matching,
+as the equivalence relation induced by equality can be more fine-grained than the one induced
+by comparisons returning `0`.
 
 #!markdown
 
 ## Next up:
 
 Continue with the next section, [3.3. Tuples](https://gienieczko.com/teaching/csharp/2-references-and-values/3-tuples),
-or straight to the next notebook, `03-tuples.dib`.
+or straight to the next notebook, [`04-explicit-interface-implementations.dib`](/03-Generics/04-explicit-interface-implementations.dib).

@@ -1,6 +1,6 @@
 #!markdown
 
-# 3.0. Generics
+# 3.1. Generics
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
 
-It covers topics for section [3.0. Generics](https://gienieczko.com/teaching/csharp/3-advanced-types/0-generics).
+It covers topics for section [3.1. Generics](https://gienieczko.com/teaching/csharp/3-advanced-types/1-generics).
 
 ### Notebook flow
 
@@ -427,6 +427,10 @@ PrintDistance(point);
 
 #!markdown
 
+When asking for an instance of an interface it is generally better to make the method generic and add a generic constraint.
+This way any structs passed to our method will not be boxed, making its performance footprint lower.
+
+
 We can add many different constraints for a parameter, effectively getting
 something that wouldn't even be expressible without generics:
 
@@ -518,7 +522,7 @@ class IntStack : Stack<int>
 When we're using generic types directly we need to specify all type arguments,
 as we've seen when accessing static members or invoking the constructors.
 
-For methods, the parameters are ususally inferred, but not always:
+For methods, the parameters are usually inferred, but not always:
 
 #!csharp
 
@@ -668,10 +672,11 @@ Console.WriteLine($"GenericNotNull<int>.Foo(): {m.Foo()}");
 
 We added a powerful tool to our toolbox which allows us to create generic code that works with a variety of types.
 We know how to restrict those types to conform to certain expectations and use these constraints for more specific code.
+We also examined how generics play with nullability features.
 
 #!markdown
 
 ## Next up:
 
-Continue with the next section, [3.1. Nullability 2](https://gienieczko.com/teaching/csharp/3-generics/1-nullability-2),
-or straight to the next notebook, `01-nullability-2.dib`.
+Continue with the next section, [3.2. Equality](https://gienieczko.com/teaching/csharp/3-generics/2-equality),
+or straight to the next notebook, [`02-equality.dib`](/03-Generics/02-equality.dib).

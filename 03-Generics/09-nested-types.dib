@@ -1,0 +1,307 @@
+#!markdown
+
+# 3.9. Nested Types
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+
+It covers topics for section [3.9. Nested Types](https://gienieczko.com/teaching/csharp/3-advanced-types/9-nested-types).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Nested types -- the how
+
+We can declare types nested within types.
+This is the only time a type can have `private` accessibility, meaning that it is only visible
+to its nested types and the enclosing type.
+
+#!csharp
+
+// Intentionally does not compile.
+public class A
+{
+    public static char Value => 'A';
+
+    void Foo()
+    {
+        Console.WriteLine(A.Value);
+        Console.WriteLine(A.B.Value);
+        Console.WriteLine(A.B.D.Value);
+        Console.WriteLine(A.C.Value);
+    }
+
+    private class B
+    {
+        public static char Value => 'B';
+
+        void Foo()
+        {
+            Console.WriteLine(A.Value);
+            Console.WriteLine(A.B.Value);
+            Console.WriteLine(A.B.D.Value);
+            Console.WriteLine(A.C.Value);
+        }
+
+        private class D
+        {
+            public static char Value => 'D';
+
+            void Foo()
+            {
+                Console.WriteLine(A.Value);
+                Console.WriteLine(A.B.Value);
+                Console.WriteLine(A.B.D.Value);
+                Console.WriteLine(A.C.Value);
+            }
+        }
+    }
+
+    private class C
+    {
+        public static char Value => 'C';        
+        
+        void Foo()
+        {
+            Console.WriteLine(A.Value);
+            Console.WriteLine(A.B.Value);
+            Console.WriteLine(A.B.D.Value);
+            Console.WriteLine(A.C.Value);
+        }
+    }
+}
+
+Console.WriteLine(A.Value);
+Console.WriteLine(A.B.Value);
+Console.WriteLine(A.B.D.Value);
+Console.WriteLine(A.C.Value);
+
+#!markdown
+
+Two takeaways here:
+
+- `private` nested types are hidden from the outside world
+- nested types can see `private` members of all the enclosing types
+
+The types can be anything, classes, static classes, structs, enums...
+
+#!markdown
+
+## Nested types -- the when
+
+There are two strong cases for nested types.
+
+### Types that are tightly coupled to the enclosing type
+
+An example of this is a lightweight custom `Enumerator` type that enumerates over our custom collection.
+This is used heavily in `System.Collections.Generic` and `System.Collections.Immutable`,
+where basically every collection defines its own dedicated Enumerator that is a `struct`.
+That means enumerating over collections avoids any allocations, but requires calling code to see
+the Enumerator type, so it's publicly accessible. However, it's completely meaningless outside
+of the particular collection type, so it's a nested type.
+
+A similar coupling exists for Immutable `Builder` types, which are returned by the `ToBuilder`
+method on Immutable collections. They are publicly visible, because they have their own API that needs to be visible
+to the users, but they're also tightly coupled to the enclosing type. In particular, their instantiation requires
+access to the internals of their collection, which might be private.
+
+If you think about it, Builders are actually a great example. Consider a collection that is supposed to be immutable
+to the outside observer, but we still want it to be easily constructible.
+
+#!csharp
+
+#nullable enable
+
+class MyImmutableDictionary : IReadOnlyDictionary<string, int>
+{
+    private readonly Dictionary<string, int> _dictionary = new();
+
+    public int this[string key] => _dictionary[key];
+
+    public int Count => _dictionary.Count;
+
+    public IEnumerable<string> Keys => _dictionary.Keys;
+
+    public IEnumerable<int> Values => _dictionary.Values;
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    IEnumerator<KeyValuePair<string, int>> IEnumerable<KeyValuePair<string, int>>.GetEnumerator() => GetEnumerator();
+
+    public Dictionary<string, int>.Enumerator GetEnumerator() => _dictionary.GetEnumerator();
+
+    public bool ContainsKey(string key) => _dictionary.ContainsKey(key);
+
+    public bool TryGetValue(string key, out int value) => _dictionary.TryGetValue(key, out value);
+
+    public static Builder CreateBuilder() => new Builder();
+
+    public sealed class Builder
+    {
+        private MyImmutableDictionary? _instance = new();
+
+        private MyImmutableDictionary Instance => 
+            _instance ?? throw new InvalidOperationException("ToMyImmutableDictionary already called on this builder.");
+
+        internal Builder()
+        {
+        }
+
+        public int this[string key]
+        {
+            get => Instance._dictionary[key];
+            set => Instance._dictionary[key] = value;
+        }
+
+        public void Add(string key, int value) => Instance._dictionary.Add(key, value);
+
+        public MyImmutableDictionary ToMyImmutableDictionary()
+        {
+            var instance = Instance;
+            _instance = null;
+
+            return instance;
+        }
+    }
+}
+
+var builder = MyImmutableDictionary.CreateBuilder();
+
+builder["One"] = 1;
+builder["Two"] = 2;
+builder.Add("Fourteen", 14);
+
+var dictionary = builder.ToMyImmutableDictionary();
+
+foreach (var (key, value) in dictionary)
+{
+    Console.WriteLine($"{key}: {value}");
+}
+
+#!markdown
+
+### Private implementation details
+
+The other reason is for types that are so tied to the implementation details of its enclosing types
+that they are extremely brittle outside of its context. For example, we've created a mutable value type
+to make some part of our logic extra performant, but it's used only in this particular place
+and the outside world would probably cut themselves on all the rough edges.
+
+Fun fact, a Builder can also actually fit here. If the type needs some internal complex logic to construct itself,
+but it doesn't want it to be visible from the outside, then it can create a private nested type.
+
+As an example, I have a helper project for these notebooks that calculates the estimated sizes of the modules and sections,
+to keep them roughly equal in length and presentable in one-and-a-half-hour blocks. It has a `SectionReport` type,
+publicly exposing three properties:
+
+```csharp
+public string SectionName { get; }
+public int MarkdownWords { get; }
+public int CodeLines { get; }
+```
+
+There's a public static method that can construct such a report given a path to a `.dib` notebook file.
+It reads the file's lines and processes them into the statistics. This logic is fairly complex, so `SectionReport`
+only defines this method:
+
+```csharp
+private static SectionReport BuildFromLines(string sectionName, IEnumerable<string> lines)
+{
+    var builder = new Builder(sectionName);
+
+    foreach (var line in lines)
+    {
+        builder.AddLine(line);
+    }
+
+    return builder.Build();
+}
+```
+
+And, as you might guess, `Builder` is just a `private sealed class` that contains the actual logic
+that parses lines and adds up word and line counts.
+
+#!markdown
+
+Another example is a truly beautiful pattern where we expose an abstraction to the public,
+but leave all the implementations as private details. I'm just going to yoink this example
+from the excellent [Eric Lippert's blog](https://ericlippert.com/2014/10/16/producing-combinations-part-two/),
+where he makes an immutable stack structure:
+
+#!csharp
+
+abstract class ImmutableStack<T>
+{
+  public static readonly ImmutableStack<T> Empty = new EmptyStack();
+  
+  public abstract T Top { get; }
+  
+  public abstract bool IsEmpty { get; }
+  
+  private ImmutableStack() {}
+
+  public abstract ImmutableStack<T> Pop();
+
+  public ImmutableStack<T> Push(T value) => new NonEmptyStack(value, this);
+
+  private class EmptyStack : ImmutableStack<T>
+  {
+    public override T Top  => throw new InvalidOperationException("Cannot access Top of an empty stack.");
+
+    public override bool IsEmpty => true;
+
+    public override ImmutableStack<T> Pop() => throw new InvalidOperationException("Cannot Pop an empty stack.");
+  } 
+
+  private class NonEmptyStack : ImmutableStack<T>
+  {
+    private readonly T _head;
+    private readonly ImmutableStack<T> _tail;
+
+    public override bool IsEmpty => false;
+
+    public override T Top => _head;
+
+    public NonEmptyStack(T head, ImmutableStack<T> tail) => (_head, _tail) = (head, tail);
+
+    public override ImmutableStack<T> Pop() => _tail;
+  }
+}
+
+#!markdown
+
+_Note: I made a few stylistic changes and also omitted `IEnumerable<T>` implementation, since it's irrelevant._
+
+Note that `ImmutableStack` has a `private` constructor.
+
+This is basically a union type, but with the variants hidden as implementation details.
+A true pearl.
+
+#!markdown
+
+## Summary
+
+We know how to declare nested types and what accessibility semantics that carries.
+We've learnt of two general categories of nested types and a few examples of idiomatic usage.
+
+#!markdown
+
+## Next up:
+
+This is the end of the module, next up is the Assignment!
+Click here to go there: [Assignment 3. - Superior Strategies](https://gienieczko.com/teaching/csharp/3-advanced-types/assignment/3-superior-strategies).

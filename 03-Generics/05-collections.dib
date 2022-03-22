@@ -1,6 +1,6 @@
 #!markdown
 
-# 3.3. Collections
+# 3.5. Collections
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
 
-It covers topics for section [3.3. Collections](https://gienieczko.com/teaching/csharp/3-advanced-types/3-collections).
+It covers topics for section [3.5. Collections](https://gienieczko.com/teaching/csharp/3-advanced-types/5-collections).
 
 ### Notebook flow
 
@@ -42,25 +42,38 @@ First of all, meet the foundational interface that we will be working with in-de
 
 #!csharp
 
-interface IEnumerable<T>
+interface IEnumerable
 {
-    IEnumerator<T> GetEnumerator();
+    IEnumerator GetEnumerator();
 }
 
-interface IEnumerator<T>
+interface IEnumerable<T> : IEnumerable
 {
-    T Current { get; }
+    new IEnumerator<T> GetEnumerator();
+}
+
+interface IEnumerator
+{
+    object Current { get; }
 
     bool MoveNext();
 
     void Reset();
 }
 
+interface IEnumerator<T> : IEnumerator
+{
+    new T Current { get; }
+}
+
 #!markdown
 
-_Note: I'm lying here, skipping over variance of `T`, the fact that these inherit from 
-non-generic `IEnumerable` and `IEnumerator`, respectively, and that enumerator also extends `IDisposable`.
+_Note: I'm lying here, skipping over variance of `T`, and the fact that enumerator also extends `IDisposable`.
 We'll cover variance and disposing later._
+
+We can see the biggest wrinkle with the collection hierarchy: it was initially designed before C# 2 and generics.
+Therefore we also need to implement the "dumb", non-generic interface as well. This is usually done using
+[Explicit Interface Implementations]() mentioned earlier.
 
 These interfaces implement the 'collection' pattern. We know that `foreach` can enumerate over an array,
 but it can actually enumerate over anything that satisfies the following shape:
@@ -95,22 +108,26 @@ Clearly, anything that implements `IEnumerable<T>` can be enumerated over with a
 
 #!csharp
 
-class MyCollection
+class MyCollection : IEnumerable<int>
 {
     private readonly int[] _array;
 
     public MyCollection(int[] array) => _array = array;
 
-    public MyEnumerator GetEnumerator() => new MyEnumerator(_array);
+    public IEnumerator<int> GetEnumerator() => new MyEnumerator(_array);
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
-class MyEnumerator
+class MyEnumerator : IEnumerator<int>
 {
     private readonly int[] _array;
 
     private int _currentIndex = -1;
 
     public int Current => _array[_currentIndex];
+
+    object IEnumerator.Current => Current;
 
     public MyEnumerator(int[] array) => _array = array;
 
@@ -124,6 +141,11 @@ class MyEnumerator
         _currentIndex += 1;
         return true;
     }
+
+    public void Reset() => _currentIndex = -1;
+
+    // Ignore this for now ;)
+    public void Dispose() { }
 }
 
 var collection = new MyCollection(new [] { 17, -3, 42, 37, 21 });
@@ -135,7 +157,7 @@ foreach (int element in collection)
 
 #!markdown
 
-It's better to always implement `IEnumerable<T>`, however we don't have the tools for that yet.
+It's better to always implement `IEnumerable<T>`.
 
 #!markdown
 
@@ -462,17 +484,114 @@ foreach (var x in sortedSet)
 
 #!markdown
 
-## ... and some more collections
+## `Queue<T>`
 
-I won't show you every single collection, but here's a list of the remaining ones, excluding dictionaries. They should be self-descriptive:
+A FIFO queue with `Enqueue`, `Dequeue`, `Peek` methods, and their `TryX` companions:
 
-- `LinkedList<T>`
-- `Queue<T>`
-- `SortedList<T>`
-- `Stack<T>`
+#!csharp
 
-There's also `PriorityQueue<TElement, TPriority>` in the `System.Collections.Generic` namespace,
-but it doesn't implement even `IEnumerable`.
+var queue = new Queue<int>();
+
+queue.Enqueue(1);
+queue.Enqueue(3);
+queue.Enqueue(42);
+
+while (queue.Count > 0)
+{
+    Console.WriteLine(queue.Dequeue());
+}
+
+#!markdown
+
+## `Stack<T>`
+
+A LIFO stack with `Push`, `Pop`, `Peek` methods, and their `TryX` companions:
+
+#!csharp
+
+var stack = new Stack<int>();
+
+stack.Push(1);
+stack.Push(3);
+stack.Push(42);
+
+while (stack.Count > 0)
+{
+    Console.WriteLine(stack.Pop());
+}
+
+#!markdown
+
+## `SortedList<TKey, TValue>`
+
+A list that keeps in elements in order of their keys. Fast to create from a predefined collection
+and fast lookup, since it can just binary search. Inserting to it is very slow, however.
+
+#!csharp
+
+var sortedList = new SortedList<string, int>
+{
+    { "A", 3 },
+    { "D", 1 },
+    { "B", 4 },
+    { "C", 2 }
+};
+
+foreach (var element in sortedList)
+{
+    Console.WriteLine(element);
+}
+
+#!markdown
+
+This structure is very specialised. It's best when it is populated once from already sorted data
+and then used for queries. In that case it's faster than the `SortedDictionary<TKey, TValue>` counterpart
+(described down below) and takes up less memory.
+
+#!markdown
+
+## `LinkedList<T>`
+
+El classico, a linked list containing `LinkedListNode<T>` nodes. Insertion and removal are constant time,
+but there is no random access.
+
+#!csharp
+
+var list = new LinkedList<int>();
+
+LinkedListNode<int> oneNode = list.AddLast(1);
+LinkedListNode<int> twoNode = list.AddLast(2);
+LinkedListNode<int> threeNode = list.AddLast(3);
+LinkedListNode<int> fourNode = list.AddLast(4);
+LinkedListNode<int> fiveNode = list.AddLast(5);
+
+list.Remove(threeNode);
+list.Remove(fourNode);
+list.AddAfter(twoNode, 7);
+
+Console.WriteLine($"[ {string.Join(", ", list)} ]");
+
+#!markdown
+
+## `PriorityQueue<TElement, TPriority>`
+
+A rather special collection type, it resides in `System.Collections.Generic`,
+but it doesn't even implement `IEnumerable`. It's a highly optimised, specialised min-heap.
+
+#!csharp
+
+var queue = new PriorityQueue<string, int>();
+
+queue.Enqueue("Normal", 5);
+queue.Enqueue("Priority", 3);
+queue.Enqueue("Urgent", 1);
+queue.Enqueue("Not urgent", 7);
+
+while (queue.Count > 0)
+{
+    var value = queue.Dequeue();
+    Console.WriteLine(value);
+}
 
 #!markdown
 
@@ -618,5 +737,5 @@ void Print<T>(ImmutableList<T> list) => Console.WriteLine($"List: {string.Join("
 
 ## Next up:
 
-Continue with the next section, [3.3. Tuples](https://gienieczko.com/teaching/csharp/3-generics/3-tuples),
-or straight to the next notebook, `03-tuples.dib`.
+Continue with the next section, [3.6. Comparers](https://gienieczko.com/teaching/csharp/3-generics/6-comparers),
+or straight to the next notebook, [`06-comparers.dib`](/03-Generics/06-comparers.dib).

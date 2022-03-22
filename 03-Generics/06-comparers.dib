@@ -1,6 +1,6 @@
 #!markdown
 
-# 3.3. Comparers
+# 3.4. Comparers
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
 
-It covers topics for section [3.3. Tuples](https://gienieczko.com/teaching/csharp/3-advanced-types/3-tuples).
+It covers topics for section [3.4. Comparers](https://gienieczko.com/teaching/csharp/3-advanced-types/4-comparers).
 
 ### Notebook flow
 
@@ -113,7 +113,7 @@ void Print(string name, IDictionary<Person, int> dictionary) =>
 
 #!markdown
 
-## IComparer<T>
+## `IComparer<T>`
 
 And if we want funny sorting, we also have funny sorting.
 For example, we can extend the above `Person` with our custom comparison:
@@ -153,9 +153,13 @@ foreach (var person in people)
 
 ## Summary
 
+We know that we can plug in equality and comparison implementations into our collections
+to support more advanced scenarios than those defined on the types themselves using
+`IEqualityComparer<T>` and `IComparer<T>`.
+
 #!markdown
 
 ## Next up:
 
-Continue with the next section, [3.3. Tuples](https://gienieczko.com/teaching/csharp/3-generics/3-tuples),
-or straight to the next notebook, `03-tuples.dib`.
+Continue with the next section, [3.7. Tuples](https://gienieczko.com/teaching/csharp/3-generics/7-tuples),
+or straight to the next notebook, [`07-tuples.dib`](/03-Generics/07-tuples.dib).

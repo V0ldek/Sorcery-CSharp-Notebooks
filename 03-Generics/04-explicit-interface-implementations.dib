@@ -1,0 +1,298 @@
+#!markdown
+
+# 3.4. Explicit Interface Implementations
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+
+It covers topics for section [3.4. Explicit Interface Implementations](https://gienieczko.com/teaching/csharp/3-advanced-types/4-explicit-interface-implementations).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Problem 1 -- conflicts
+
+We will see today a case where we want to implement two interfaces that define a method with the same name,
+but different signatures.
+
+Consider our `Path` type:
+
+#!csharp
+
+#nullable enable
+
+struct Point
+{
+    public double X { get; init; }
+    public double Y { get; init; }
+
+    public double EuclideanDistanceTo(Point other)
+    {
+        var x = X - other.X;
+        var y = Y - other.Y;
+        return Math.Sqrt(x * x + y * y);
+    }
+
+    public double ManhattanDistanceTo(Point other)
+    {
+        var x = X - other.X;
+        var y = Y - other.Y;
+        return Math.Abs(x) + Math.Abs(y);
+    }
+
+    public override string ToString() => $"({X}, {Y})";
+}
+
+struct Path
+{
+    private readonly Point[]? _points;
+
+    private Point[] Points => _points ?? Array.Empty<Point>();
+
+    public int Length => Points.Length;
+
+    public Path(Point[] points) => _points = points;
+
+    public override string ToString() => $"[ {string.Join(", ", Points)} ]";
+}
+
+#!markdown
+
+We now want to implement two interfaces:
+
+#!csharp
+
+interface IManhattanLength
+{
+    double Length { get; }
+}
+
+interface IEuclideanLength
+{
+    double Length { get; }
+}
+
+#!markdown
+
+These are clearly different semantically, but we can only define one such property on the type.
+Moreover, our `Path` already has a `Length` property, but it describes its length in points
+and is an `int`!
+
+We really want to implement these interfaces. We use **explicit interface implementations** for this,
+declaring that this property maps to the interface's requirement, but isn't accessible in any other way:
+
+#!csharp
+
+#nullable enable
+
+struct Path : IEuclideanLength, IManhattanLength
+{
+    private readonly Point[]? _points;
+
+    private Point[] Points => _points ?? Array.Empty<Point>();
+
+    public int Length => Points.Length;
+
+    double IEuclideanLength.Length
+    {
+        get
+        {
+            var length = 0.0;
+            Point? previous = null;
+            
+            foreach (var point in Points)
+            {
+                length += previous?.EuclideanDistanceTo(point) ?? 0.0;
+                previous = point;
+            }
+
+            return length;
+        }
+    }
+
+    double IManhattanLength.Length
+    {
+        get
+        {
+            var length = 0.0;
+            Point? previous = null;
+            
+            foreach (var point in Points)
+            {
+                length += previous?.ManhattanDistanceTo(point) ?? 0.0;
+                previous = point;
+            }
+
+            return length;
+        }
+    }
+
+    public Point this[int index]
+    {
+        get => Points[index];
+    }
+
+    public Path(Point[] points) => _points = points;
+}
+
+#!markdown
+
+We can now call it on the path if it is explicitly of the interface type,
+but calling `Length` directly on `Path` gives us the length in points:
+
+#!csharp
+
+var path = new Path(new Point[]
+{
+    new() { X = 1.0, Y = 1.0 },
+    new() { X = 2.0, Y = 2.0 },
+    new() { X = 3.0, Y = 1.0 },
+});
+
+Console.WriteLine($"Direct: {path.Length}");
+PrintEuclidean(path);
+PrintManhattan(path);
+
+void PrintEuclidean(IEuclideanLength x) => Console.WriteLine($"Euclidean: {x.Length}");
+
+void PrintManhattan(IManhattanLength x) => Console.WriteLine($"Manhattan: {x.Length}");
+
+#!markdown
+
+We can also directly cast the path to the interface we want to force the `Length` implementation:
+
+#!csharp
+
+Console.WriteLine(((IEuclideanLength) path).Length);
+
+#!markdown
+
+Note that currently to get to these implementations we need to box.
+To allow users of our struct to call the methods we can just give them more friendly names:
+
+#!csharp
+
+#nullable enable
+
+struct Path : IEuclideanLength, IManhattanLength
+{
+    private readonly Point[]? _points;
+
+    private Point[] Points => _points ?? Array.Empty<Point>();
+
+    public int Length => Points.Length;
+
+    double IEuclideanLength.Length => EuclideanLength;
+
+    double IManhattanLength.Length => ManhattanLength;
+
+    public double EuclideanLength
+    {
+        get
+        {
+            var length = 0.0;
+            Point? previous = null;
+            
+            foreach (var point in Points)
+            {
+                length += previous?.EuclideanDistanceTo(point) ?? 0.0;
+                previous = point;
+            }
+
+            return length;
+        }
+    }
+
+    public double ManhattanLength
+    {
+        get
+        {
+            var length = 0.0;
+            Point? previous = null;
+            
+            foreach (var point in Points)
+            {
+                length += previous?.ManhattanDistanceTo(point) ?? 0.0;
+                previous = point;
+            }
+
+            return length;
+        }
+    }
+
+    public Point this[int index]
+    {
+        get => Points[index];
+    }
+
+    public Path(Point[] points) => _points = points;
+}
+
+#!markdown
+
+This is standard practice if we want the methods to be visible.
+Create public members implementing our logic and then just treat the explicit implementations
+as wiring, connecting the interface to our code under a different name.
+
+#!markdown
+
+## Problem 2 -- hiding irrelevant methods
+
+We might want to implement an interface,
+but only for compatibility with code that will use us via that interface, because we
+can provide a better API on the concrete type.
+
+We will see exactly this example later on: there is the generic `ICollection<T>`
+interface that provides an `Add(T)` method. But a `LinkedList<T>` implements it explicitly:
+
+#!csharp
+
+interface ICollection<T>
+{
+    void Add(T item);
+}
+
+class LinkedList<T> : ICollection<T>
+{
+    public void AddFirst(T item) => throw new NotImplementedException();
+
+    public void AddLast(T item) => throw new NotImplementedException();
+
+    void ICollection<T>.Add(T item) => AddFirst(item);
+}
+
+#!markdown
+
+This is because an API that explicitly distinguishes adding at front and at end
+of a linked list is more ergonomic than one exposing `Add` and `AddLast`, or maybe all three of these methods.
+However, people using it through the `ICollection<T>` interface will most likely want to append to the list,
+as it's the more natural operation on a sequence of elements.
+
+#!markdown
+
+## Summary
+
+We've learnt what problems multiple interfaces bring and how to solve them using explicit implementations.
+We've also touched on the fact that, in general, generics are better for interfaces than explicitly asking for the interface type.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [3.5. Collections](https://gienieczko.com/teaching/csharp/3-generics/5-collections),
+or straight to the next notebook, [`05-collections.dib`](/03-Generics/05-collections.dib).

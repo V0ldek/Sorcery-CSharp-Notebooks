@@ -1,0 +1,235 @@
+#!markdown
+
+# 3.7. Tuples
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+
+It covers topics for section [3.7. Tuples](https://gienieczko.com/teaching/csharp/3-advanced-types/7-tuples).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Creating tuples
+
+C# uses a familiar syntax for creating tuples used by many other languages.
+Tuple types and tuple values use the same "parenthesised, comma separated" syntax.
+
+#!csharp
+
+(int, int) Foo() => (4, 2);
+
+(int, int) value = Foo();
+
+Console.WriteLine(value);
+
+#!markdown
+
+As seen above, tuples override `ToString` in the obvious way.
+
+#!markdown
+
+## Names
+
+They are value types, but they are mutable.
+This makes sense, since we usually think about tuples as just pairs (triples, quadruples...)
+of variables. You can refer to subsequent members of the tuple with `ItemN` properties:
+
+#!csharp
+
+(int, string, char) value = (7, "str", 'X');
+
+Console.WriteLine(value.Item1);
+Console.WriteLine(value.Item2);
+Console.WriteLine(value.Item3);
+
+value.Item2 = "some other string";
+
+Console.WriteLine(value);
+
+#!markdown
+
+Tuples support names for their fields.
+
+#!csharp
+
+(int number, string text, char character) value = (7, "str", 'X');
+
+Console.WriteLine(value.number);
+Console.WriteLine(value.text);
+Console.WriteLine(value.character);
+
+value.text = "some other string";
+
+Console.WriteLine(value);
+
+#!markdown
+
+This syntax is rather rare. Most people use `var` with tuples ubiquitously, as it makes everything shorter:
+
+#!csharp
+
+var value = (number: 7, text: "str", character: 'X');
+
+Console.WriteLine(value.number);
+Console.WriteLine(value.text);
+Console.WriteLine(value.character);
+
+value.text = "some other string";
+
+Console.WriteLine(value);
+
+#!markdown
+
+You can hover over the `value` variable to see its type in the notebook.
+
+Names in tuples are smoke and mirrors. They only exist in the compiler's context, not at runtime.
+A tuple is actually syntactic sugar for a special `System.ValueTuple` generic type. Well, family of types,
+there's a few of them:
+
+- `System.ValueType<T1, T2>`,
+- `System.ValueType<T1, T2, T3>`,
+- `System.ValueType<T1, T2, T3, T4>`,
+- `System.ValueType<T1, T2, T3, T4, T5>`
+...
+
+They define the `Item1`, `Item2`, ... properties, but the names are just gravy the compiler
+spills over to make accessing them better. In the generated code, names don't exist, this:
+
+#!csharp
+
+(int first, int second) x = (0, 0);
+
+x.first = 4;
+x.second = 2;
+
+#!markdown
+
+is exactly equivalent to:
+
+#!csharp
+
+ValueTuple<int, int> x = new ValueTuple<int, int>(0, 0);
+
+x.Item1 = 4;
+x.Item2 = 2;
+
+#!markdown
+
+So there's nothing stopping us from doing this:
+
+#!csharp
+
+(string firstName, string lastName) alice = ("Alice", "Alisson");
+
+Foo(alice);
+
+void Foo((string lastName, string firstName) x) => Console.WriteLine($"SN: {x.lastName}, FN: {x.firstName}");
+
+#!markdown
+
+Therefore tuples are very unsuited to be used at actual API boundaries and to represent important objects.
+They're bags for a few values, most useful as return types/parameter types in small helpers, or as local variables.
+
+The compiler helps us with names by automatically inferring them if we use named stuff as the values:
+
+#!csharp
+
+class Person
+{
+    public string FirstName { get; }
+    public string LastName { get; }
+
+    public Person(string firstName, string lastName)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+    }
+}
+
+var person = new Person("Alice", "Alisson");
+
+var tuple = (person.FirstName, person.LastName);
+
+Console.WriteLine(tuple.FirstName);
+Console.WriteLine(tuple.LastName);
+
+#!markdown
+
+## Equality and comparison
+
+`ValueTuple<...>` implement `IEquatable<ValueTuple<...>>` and `IComparable<ValueTuple<...>>`.
+They also overload `==` and `!=`. It works piecewise, in an obvious way.
+
+#!csharp
+
+var tuple = (4, 2);
+var other = (4, 2);
+
+Console.WriteLine(tuple == other);
+
+#!csharp
+
+var tuples = new (int, int)[]
+{
+    (1, 1),
+    (2, 2),
+    (1, 2),
+    (2, 1)
+};
+
+Array.Sort(tuples);
+
+foreach (var tup in tuples)
+{
+    Console.WriteLine(tup);
+}
+
+#!markdown
+
+Of course it only makes sense if the underlying types also implement
+relevant things.
+
+#!csharp
+
+// Intentionally does not compile.
+struct Point
+{
+    public double X { get; init; }
+    public double Y { get; init; }
+}
+
+var tuple = (new Point(), new Point() { X = 1, Y = 2 });
+var other = (new Point(), new Point() { X = 2, Y = 1 });
+
+Console.WriteLine(tuple == other);
+
+#!markdown
+
+## Summary
+
+We know how to declare tuple types and how to create them.
+We know they support structural equality and comparison out of the box.
+We can use names to convey meaning of tuple elements.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [3.8. Deconstruction](https://gienieczko.com/teaching/csharp/3-generics/8-deconstruction),
+or straight to the next notebook, [`08-deconstruction.dib`](/03-Generics/08-deconstruction.dib).

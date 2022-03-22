@@ -1,7 +1,9 @@
 {
     "cSpell.words": [
         "Azathoth",
+        "classico",
         "cleanup",
+        "desugar",
         "downcasting",
         "Gienieczko",
         "Hoare",
@@ -25,7 +27,8 @@
         "subtyping",
         "timey",
         "ulong",
-        "ushort"
+        "ushort",
+        "yoink"
     ],
     "errorLens.enableOnDiffView": true
 }

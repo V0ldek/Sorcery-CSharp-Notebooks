@@ -1,0 +1,253 @@
+#!markdown
+
+# 3.8. Deconstruction
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+
+It covers topics for section [3.8. Deconstruction](https://gienieczko.com/teaching/csharp/3-advanced-types/8-deconstruction).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Deconstructing tuples
+
+A tuple can be deconstructed into its fields without creating a variable of the tuple type.
+This snippet demonstrates the difference:
+
+#!csharp
+
+// Assignment to tuple variable.
+(int x1, int y1) t = (4, 2);
+
+// Deconstruction.
+(int x2, int y2) = (4, 2);
+
+Console.WriteLine($"[{t.x1}, {t.y1}]");
+Console.WriteLine(t);
+Console.WriteLine($"[{x2}, {y2}]");
+
+#!markdown
+
+The latter can be done shorter with `var`:
+
+#!csharp
+
+var (x, y) = (4, 2);
+
+Console.WriteLine($"[{x}, {y}]");
+
+#!markdown
+
+## Deconstruction on `KeyValuePair<TKey, TValue>`
+
+The `KeyValuePair` type from dictionaries also allows deconstruction.
+We can easily take a value of `KeyValuePair` and turn it into its constituents, key and value:
+
+#!csharp
+
+var kvp = new KeyValuePair<string, int>("A", 2);
+
+(string key, int value) = kvp;
+
+Console.WriteLine($"{key}, {value}");
+
+#!markdown
+
+Or shorter:
+
+#!csharp
+
+var kvp = new KeyValuePair<string, int>("A", 2);
+
+var (key, value) = kvp;
+
+Console.WriteLine($"{key}, {value}");
+
+#!markdown
+
+It can also be used in a `foreach` loop assignment:
+
+#!csharp
+
+var dictionary = new Dictionary<string, int>
+{
+    { "A", 1 },
+    { "B", 36 },
+    { "D", -7 }
+};
+
+foreach (var (key, value) in dictionary)
+{
+    Console.WriteLine($"{key}, {value}");
+}
+
+#!markdown
+
+## Code shortening patterns with deconstruction
+
+Now the deconstruction assignment has very interesting semantics.
+The left-hand side doesn't have to be fresh variables, it can be other locals:
+
+#!csharp
+
+var array = new int[] { 17, 42, -3, 3, -7 };
+
+Console.WriteLine(MinMax(array));
+
+(int min, int max) MinMax(IEnumerable<int> sequence)
+{
+    int min = int.MaxValue;
+    int max = int.MinValue;
+
+    foreach (var item in sequence)
+    {
+        (min, max) = (Math.Min(min, item), Math.Max(max, item));
+    }
+
+    return (min, max);
+}
+
+#!markdown
+
+It can also be fields, which gives rise to the **tuple initialization** pattern:
+
+#!csharp
+
+class Person
+{
+    public string FirstName { get; }
+
+    public string LastName { get; }
+
+    public Person(string firstName, string lastName) =>
+        (FirstName, LastName) = (firstName, lastName);
+}
+
+#!markdown
+
+It can even be the same assignable expressions as on the right side, giving us this
+slick swap pattern:
+
+#!csharp
+
+var x = 4;
+var y = 2;
+
+Console.WriteLine($"({x}, {y})");
+
+(x, y) = (y, x);
+
+Console.WriteLine($"({x}, {y})");
+
+#!markdown
+
+Overall, there's many shortcuts code can take using deconstruction patterns
+and tuples. The one-line constructor initialisation is the most commonly used.
+
+However, as always with such sugar, it's important to not overdose.
+If the constructor is doing non-trivial work, then probably writing
+
+```csharp
+public Ctor(int x, int y, int? z) =>
+    (_field1, _field2) = (x + y * (z ?? 0), y == 0 ? throw new ArgumentOutOfRangeException(nameof(y)) : y);
+```
+
+might not really make things slicker, but instead confuse and obfuscate.
+
+Don't confuse people who will read your code later.
+
+You might be one of those people.
+
+#!markdown
+
+## Allowing deconstruction
+
+Deconstruction is, like many things in C#, a pattern.
+You can allow your custom types to be deconstructed by providing a special method.
+It has to be a `void Deconstruct` method whose every parameter is an `out` parameter.
+Then, any value of that type can be deconstructed to elements of types of those parameters.
+
+#!csharp
+
+struct Point
+{
+    public double X { get; init; }
+
+    public double Y { get; init; }
+
+    public void Deconstruct(out double x, out double y) => (x, y) = (X, Y);
+}
+
+var point = new Point { X = 1.0, Y = 2.5 };
+
+var (x, y) = point;
+
+Console.WriteLine($"({x}, {y})");
+
+#!markdown
+
+There can be more than one such overload:
+
+#!csharp
+
+class Person
+{
+    public string Id { get; }
+
+    public string FirstName { get; }
+
+    public string LastName { get; }
+
+    public Person(string id, string firstName, string lastName) =>
+        (Id, FirstName, LastName) = (id, firstName, lastName);
+
+    public void Deconstruct(out string firstName, out string lastName) => 
+        (firstName, lastName) = (FirstName, LastName);
+
+    public void Deconstruct(out string id, out string firstName, out string lastName) => 
+        (id, firstName, lastName) = (Id, FirstName, LastName);
+}
+
+var alice = new Person("92102003123", "Alice", "Alisson");
+
+var (first, last) = alice;
+
+Console.WriteLine($"{last}, {first}");
+
+var (id, first2, last2) = alice;
+
+Console.WriteLine($"[{id}] {last2}, {first2}");
+
+#!markdown
+
+... but they have to have different numbers of parameters, or else the deconstruction pattern would become ambiguous.
+
+#!markdown
+
+## Summary
+
+We've met deconstruction and two patterns stemming from deconstructing assignment -- tuple initialization and swap.
+We know how to equip our custom types with deconstruction.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [3.9. Nested Types](https://gienieczko.com/teaching/csharp/3-generics/9-nested-types),
+or straight to the next notebook, `09-nested-types.dib`.
