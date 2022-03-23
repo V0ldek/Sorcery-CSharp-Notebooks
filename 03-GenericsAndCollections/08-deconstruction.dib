@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
 
-It covers topics for section [3.8. Deconstruction](https://gienieczko.com/teaching/csharp/3-advanced-types/8-deconstruction).
+It covers topics for section [3.8. Deconstruction](https://gienieczko.com/teaching/csharp/3-generics-and-collections/8-deconstruction).
 
 ### Notebook flow
 
@@ -240,6 +240,18 @@ Console.WriteLine($"[{id}] {last2}, {first2}");
 
 #!markdown
 
+## Discards
+
+If we don't care about some of the values we can discard them:
+
+#!csharp
+
+var (_, first, last) = alice;
+
+Console.WriteLine($"{last}, {first}");
+
+#!markdown
+
 ## Summary
 
 We've met deconstruction and two patterns stemming from deconstructing assignment -- tuple initialization and swap.
@@ -249,5 +261,5 @@ We know how to equip our custom types with deconstruction.
 
 ## Next up:
 
-Continue with the next section, [3.9. Nested Types](https://gienieczko.com/teaching/csharp/3-generics/9-nested-types),
-or straight to the next notebook, `09-nested-types.dib`.
+Continue with the next section, [3.9. Nested Types](https://gienieczko.com/teaching/csharp/3-generics-and-collections/9-nested-types),
+or straight to the next notebook, [`09-nested-types.dib`](/03-GenericsAndCollections/09-nested-types.dib).

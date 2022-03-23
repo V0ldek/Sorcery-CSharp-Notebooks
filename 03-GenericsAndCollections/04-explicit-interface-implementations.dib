@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
 
-It covers topics for section [3.4. Explicit Interface Implementations](https://gienieczko.com/teaching/csharp/3-advanced-types/4-explicit-interface-implementations).
+It covers topics for section [3.4. Explicit Interface Implementations](https://gienieczko.com/teaching/csharp/3-generics-and-collections/4-explicit-interface-implementations).
 
 ### Notebook flow
 
@@ -295,4 +295,4 @@ We've also touched on the fact that, in general, generics are better for interfa
 ## Next up:
 
 Continue with the next section, [3.5. Collections](https://gienieczko.com/teaching/csharp/3-generics/5-collections),
-or straight to the next notebook, [`05-collections.dib`](/03-Generics/05-collections.dib).
+or straight to the next notebook, [`05-collections.dib`](/03-GenericsAndCollections/05-collections.dib).

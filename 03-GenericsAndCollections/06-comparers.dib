@@ -1,6 +1,6 @@
 #!markdown
 
-# 3.4. Comparers
+# 3.6. Comparers
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
 
-It covers topics for section [3.4. Comparers](https://gienieczko.com/teaching/csharp/3-advanced-types/4-comparers).
+It covers topics for section [3.6. Comparers](https://gienieczko.com/teaching/csharp/3-generics-and-collections/6-comparers).
 
 ### Notebook flow
 
@@ -161,5 +161,5 @@ to support more advanced scenarios than those defined on the types themselves us
 
 ## Next up:
 
-Continue with the next section, [3.7. Tuples](https://gienieczko.com/teaching/csharp/3-generics/7-tuples),
-or straight to the next notebook, [`07-tuples.dib`](/03-Generics/07-tuples.dib).
+Continue with the next section, [3.7. Tuples](https://gienieczko.com/teaching/csharp/3-generics-and-collections/7-tuples),
+or straight to the next notebook, [`07-tuples.dib`](/03-GenericsAndCollections/07-tuples.dib).

@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
 
-It covers topics for section [3.7. Tuples](https://gienieczko.com/teaching/csharp/3-advanced-types/7-tuples).
+It covers topics for section [3.7. Tuples](https://gienieczko.com/teaching/csharp/3-generics-and-collections/7-tuples).
 
 ### Notebook flow
 
@@ -231,5 +231,5 @@ We can use names to convey meaning of tuple elements.
 
 ## Next up:
 
-Continue with the next section, [3.8. Deconstruction](https://gienieczko.com/teaching/csharp/3-generics/8-deconstruction),
-or straight to the next notebook, [`08-deconstruction.dib`](/03-Generics/08-deconstruction.dib).
+Continue with the next section, [3.8. Deconstruction](https://gienieczko.com/teaching/csharp/3-generics-and-collections/8-deconstruction),
+or straight to the next notebook, [`08-deconstruction.dib`](/03-GenericsAndCollections/08-deconstruction.dib).

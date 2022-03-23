@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
 
-It covers topics for section [3.1. Generics](https://gienieczko.com/teaching/csharp/3-advanced-types/1-generics).
+It covers topics for section [3.1. Generics](https://gienieczko.com/teaching/csharp/3-generics-and-collections/1-generics).
 
 ### Notebook flow
 
@@ -679,4 +679,4 @@ We also examined how generics play with nullability features.
 ## Next up:
 
 Continue with the next section, [3.2. Equality](https://gienieczko.com/teaching/csharp/3-generics/2-equality),
-or straight to the next notebook, [`02-equality.dib`](/03-Generics/02-equality.dib).
+or straight to the next notebook, [`02-equality.dib`](/03-GenericsAndCollections/02-equality.dib).

@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
 
-It covers topics for section [3.3. Ordering](https://gienieczko.com/teaching/csharp/3-advanced-types/3-ordering).
+It covers topics for section [3.3. Ordering](https://gienieczko.com/teaching/csharp/3-generics-and-collections/3-ordering).
 
 ### Notebook flow
 
@@ -290,5 +290,5 @@ by comparisons returning `0`.
 
 ## Next up:
 
-Continue with the next section, [3.3. Tuples](https://gienieczko.com/teaching/csharp/2-references-and-values/3-tuples),
-or straight to the next notebook, [`04-explicit-interface-implementations.dib`](/03-Generics/04-explicit-interface-implementations.dib).
+Continue with the next section, [3.4. Explicit Interface Implementations](https://gienieczko.com/teaching/csharp/3-generics-and-collections/4-explicit-interface-implementations),
+or straight to the next notebook, [`04-explicit-interface-implementations.dib`](/03-GenericsAndCollections/04-explicit-interface-implementations.dib).

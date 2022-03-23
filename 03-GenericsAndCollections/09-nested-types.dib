@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
 
-It covers topics for section [3.9. Nested Types](https://gienieczko.com/teaching/csharp/3-advanced-types/9-nested-types).
+It covers topics for section [3.9. Nested Types](https://gienieczko.com/teaching/csharp/3-generics-and-collections/9-nested-types).
 
 ### Notebook flow
 
@@ -304,4 +304,4 @@ We've learnt of two general categories of nested types and a few examples of idi
 ## Next up:
 
 This is the end of the module, next up is the Assignment!
-Click here to go there: [Assignment 3. - Superior Strategies](https://gienieczko.com/teaching/csharp/3-advanced-types/assignment/3-superior-strategies).
+Click here to go there: [Assignment 3. - Diverging Dungeons](https://gienieczko.com/teaching/csharp/3-generics-and-collections/assignment/3-diverging-dungeons).

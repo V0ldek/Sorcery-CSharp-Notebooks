@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
 
-It covers topics for section [3.2. Equality](https://gienieczko.com/teaching/csharp/3-advanced-types/2-equality).
+It covers topics for section [3.2. Equality](https://gienieczko.com/teaching/csharp/3-generics-and-collections/2-equality).
 
 ### Notebook flow
 
@@ -761,5 +761,5 @@ We've met `IEquatable<T>` that helps us avoid boxing.
 
 ## Next up:
 
-Continue with the next section, [3.3. Tuples](https://gienieczko.com/teaching/csharp/2-references-and-values/3-tuples),
-or straight to the next notebook, `03-tuples.dib`.
+Continue with the next section, [3.3. Ordering](https://gienieczko.com/teaching/csharp/3-generics-and-collections/3-ordering),
+or straight to the next notebook, [`03-ordering.dib`](/03-GenericsAndCollections/03-ordering.dib).

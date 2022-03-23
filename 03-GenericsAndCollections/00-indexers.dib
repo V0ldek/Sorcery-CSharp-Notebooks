@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-advanced-types.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
 
-It covers topics for section [3.0. Indexers](https://gienieczko.com/teaching/csharp/3-advanced-types/0-indexers).
+It covers topics for section [3.0. Indexers](https://gienieczko.com/teaching/csharp/3-generics-and-collections/0-indexers).
 
 ### Notebook flow
 
@@ -233,4 +233,4 @@ We've learnt how to declare an indexer and how to support indexing and slicing w
 ## Next up:
 
 Continue with the next section, [3.1. Generics](https://gienieczko.com/teaching/csharp/3-generics/1-generics),
-or straight to the next notebook, [`01-generics.dib`](/03-Generics/01-generics.dib).
+or straight to the next notebook, [`01-generics.dib`](/03-GenericsAndCollections/01-generics.dib).
