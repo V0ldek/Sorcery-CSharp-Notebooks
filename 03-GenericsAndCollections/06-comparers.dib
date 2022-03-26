@@ -151,11 +151,84 @@ foreach (var person in people)
 
 #!markdown
 
+## Default comparers
+
+Every type has some default equality comparer that can be retrieved with
+`EqualityComparer<T>.Default`. 
+
+#!csharp
+
+#nullable enable
+
+class Person
+{
+    public string FirstName { get; }
+    public string LastName { get; }
+
+    public Person(string firstName, string lastName) =>
+        (FirstName, LastName) = (firstName, lastName);
+}
+
+class PersonWithCustomEquality : IEquatable<PersonWithCustomEquality>
+{
+    public string FirstName { get; }
+    public string LastName { get; }
+
+    public PersonWithCustomEquality(string firstName, string lastName) =>
+        (FirstName, LastName) = (firstName, lastName);
+
+    public bool Equals(PersonWithCustomEquality? other) => (FirstName, LastName) == (other?.FirstName, other?.LastName);
+
+    public override bool Equals(object? obj) => obj is PersonWithCustomEquality other && Equals(other);
+
+    public override int GetHashCode() => HashCode.Combine(FirstName, LastName);
+}
+
+var personComparer = EqualityComparer<Person>.Default;
+var customPersonComparer = EqualityComparer<PersonWithCustomEquality>.Default;
+
+var person1 = new Person("Alice", "Alisson");
+var person2 = new Person("Alice", "Alisson");
+
+var customPerson1 = new PersonWithCustomEquality("Alice", "Alisson");
+var customPerson2 = new PersonWithCustomEquality("Alice", "Alisson");
+
+Console.WriteLine($"Person default: {personComparer.Equals(person1, person2)}");
+Console.WriteLine($"Person custom: {customPersonComparer.Equals(customPerson1, customPerson2)}");
+
+#!markdown
+
+There is also a default `Comparer`, but it's a bit brittle:
+
+#!csharp
+
+var stringComparer = Comparer<string>.Default;
+
+Console.WriteLine($"strings: {stringComparer.Compare("abc", "def")}");
+
+#!csharp
+
+class Person
+{
+    public string FirstName { get; }
+    public string LastName { get; }
+
+    public Person(string firstName, string lastName) =>
+        (FirstName, LastName) = (firstName, lastName);
+}
+
+var stringComparer = Comparer<Person>.Default;
+
+Console.WriteLine($"people: {stringComparer.Compare(new("Alice", "Alisson"), new("Bob", "Bobinsky") )}");
+
+#!markdown
+
 ## Summary
 
 We know that we can plug in equality and comparison implementations into our collections
 to support more advanced scenarios than those defined on the types themselves using
-`IEqualityComparer<T>` and `IComparer<T>`.
+`IEqualityComparer<T>` and `IComparer<T>`. We've also learnt how to access the default
+comparers of a type.
 
 #!markdown
 
