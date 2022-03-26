@@ -127,19 +127,13 @@ public struct Rational : IComparable<Rational>, IEquatable<Rational>
     private static int GreatestCommonDivisor(int a, int b) => b == 0 ? a : GreatestCommonDivisor(b, a % b);
 }
 
-#!markdown
-
-We can use that, for example, in array sorting:
-
-#!csharp
-
 var array = new Rational[]
 {
     new(1, 2),
     new(-1, 2),
     new(3, 4),
     new(7, 5),
-    new(-20, 19),
+    new(-20, 19)
 };
 
 Array.Sort(array);
@@ -244,9 +238,9 @@ public struct Rational : IComparable<Rational>, IEquatable<Rational>
 
     public static bool operator >(Rational a, Rational b) => a.CompareTo(b) > 0;
 
-    public static bool operator <=(Rational a, Rational b) => a.CompareTo(b) < 0;
+    public static bool operator <=(Rational a, Rational b) => a.CompareTo(b) <= 0;
 
-    public static bool operator >=(Rational a, Rational b) => a.CompareTo(b) > 0;
+    public static bool operator >=(Rational a, Rational b) => a.CompareTo(b) >= 0;
 
     public int CompareTo(Rational other) =>
         ((long) Numerator * (long) other.Denominator).CompareTo((long) other.Numerator * (long) Denominator);

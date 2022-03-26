@@ -722,8 +722,8 @@ public struct Rational : IEquatable<Rational>
 
     // UPDATED!
     public bool Equals(Rational other) =>
-        Numerator == other.Numerator && Denominator == other.Denominator;
-
+        StructuralEquals(Normalized, other.Normalized);
+        
     public override bool Equals(object? other) =>
         other is Rational rational && Equals(rational);
 

@@ -273,8 +273,12 @@ class LinkedList<T> : ICollection<T>
 
     public void AddLast(T item) => throw new NotImplementedException();
 
-    void ICollection<T>.Add(T item) => AddFirst(item);
+    void ICollection<T>.Add(T item) => AddLast(item);
 }
+
+ICollection<int> x = new LinkedList<int>();
+
+x.Add(2);
 
 #!markdown
 
