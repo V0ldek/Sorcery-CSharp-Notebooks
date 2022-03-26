@@ -25,7 +25,7 @@ That's kind of the point of doing all this in notebooks.
 
 #!markdown
 
-## Nested types -- the how
+## Nested types – the how
 
 We can declare types nested within types.
 This is the only time a type can have `private` accessibility, meaning that it is only visible
@@ -102,7 +102,7 @@ The types can be anything, classes, static classes, structs, enums...
 
 #!markdown
 
-## Nested types -- the when
+## Nested types – the when
 
 There are two strong cases for nested types.
 

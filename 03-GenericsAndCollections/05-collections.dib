@@ -484,7 +484,7 @@ foreach (var x in sortedSet)
 
 #!markdown
 
-Note that `SortedSet<T>` conflates ordering and equality -- if `IComparer<T>` given to
+Note that `SortedSet<T>` conflates ordering and equality – if `IComparer<T>` given to
 the set returns `0`, the elements are treated as equal for the purposes of determining duplicates.
 
 #!markdown
@@ -743,7 +743,7 @@ the magical ability to layout data in a sequential, contiguous area of memory
 is key for fast performance algorithms. Since they are so fundamental they
 get a lot of special treatment from the runtime and they've existed since _forever_.
 
-They implement `ICollection`. Think about that for a second -- this is legal code:
+They implement `ICollection`. Think about that for a second – this is legal code:
 
 #!csharp
 

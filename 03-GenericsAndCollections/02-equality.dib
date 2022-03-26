@@ -189,7 +189,7 @@ Console.WriteLine(float.NaN == float.NaN);
 
 #!markdown
 
-## Case study -- rationals
+## Case study – rationals
 
 To show how we can override equality for our types we will design a custom value type: `Rational`.
 It will model, well, rational numbers.
@@ -397,7 +397,7 @@ Now it works, but we are hit with a warning!
 
 > 'Rational' overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
-It's time we face the other member of `Object` related to equality -- `int GetHashCode()`.
+It's time we face the other member of `Object` related to equality – `int GetHashCode()`.
 
 #!markdown
 
@@ -438,11 +438,11 @@ non-equal objects.
 
 This means there are three characteristics expected of `GetHashCode`, one correctness guarantee and two performance guarantees:
 
-1. **Correctness** -- if two objects are equals, then necessarily their hash codes are equal.
-2. **Stability** -- subsequent calls to `GetHashCode` always return the same value for the same object.
-3. **Uniformity** -- if we sample objects uniformly at random and get their hash codes, the hash codes should also be
+1. **Correctness** – if two objects are equals, then necessarily their hash codes are equal.
+2. **Stability** – subsequent calls to `GetHashCode` always return the same value for the same object.
+3. **Uniformity** – if we sample objects uniformly at random and get their hash codes, the hash codes should also be
 close to uniformly distributed.
-4. **Performance** -- computing the hash code on two objects is not slower than comparing them for equality (at least for larger objects).
+4. **Performance** – computing the hash code on two objects is not slower than comparing them for equality (at least for larger objects).
 
 As we'll see, in .NET every object can be put into a `Dictionary` or a `HashSet`.
 Therefore every time we implement custom equality we need to redefine `GetHashCode`.
@@ -515,7 +515,7 @@ It might seem weird that we fixate on this so much, but it's _crucial_ for hash 
 or else their performance might deteriorate from constant-time lookups to linear-time.
 
 $99 \%$ of the time we don't want to come up with our own clever hashing, because
-there exist functions that can hash basically arbitrary data structurally -- we give it
+there exist functions that can hash basically arbitrary data structurally – we give it
 the fields we want to include in the hash, their hashes are computed and then _mixed_ together
 into a single hash. Coming up with such a hash is pretty hard and there are many
 papers that delve into this. We don't want to do that, but fortunately `HashCode` exists.
@@ -627,7 +627,7 @@ However, the type of the parameter to `Equals` is `object?`, which means that th
 is _always_ boxed.
 
 This doesn't happen with `==`, as it is bound statically and can accept parameters of the concrete type right away.
-However, a generic collection cannot use `==` exactly because of that -- it's statically bound.
+However, a generic collection cannot use `==` exactly because of that – it's statically bound.
 
 Overall, calling the `object.Equals` incurs a runtime type-check at best (when we're passing a reference type),
 or a boxing at worst (when we're passing a value type). To alleviate that, we have the `IEquatable<T>` interface.
