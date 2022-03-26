@@ -1,0 +1,186 @@
+#!markdown
+
+# 4.0 Generic Variance
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/4-linq.
+
+It covers topics for section [4.0. Generic Variance](https://gienieczko.com/teaching/csharp/4-linq/0-generic-variance).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## The motivation
+
+This feature is not really that related to LINQ, but it'd be weird to use `IEnumerable<T>` without it.
+
+The issue arises naturally when using collections. I will use the familiar `IRoom` type and its implementers
+from our Dungeon Walker. Say we want to have a method that returns a sequence of combat rooms with different enemies,
+for example because we want to make a node in our Dungeon graph that has edges to combats of comparable difficulty.
+We also want to have a general `IGenerator` type that defines an object that can generate such a set of edge targets
+on demand. 
+Omitting irrelevant details:
+
+#!csharp
+
+interface IRoom { }
+class CombatRoom : IRoom
+{
+    public string Enemy { get; }
+
+    public CombatRoom(string enemy) => Enemy = enemy;
+    
+    public static IEnumerable<CombatRoom> EasyCombats() => new[]
+    {
+        new CombatRoom("Orc"),
+        new CombatRoom("Skeleton Warrior"),
+        new CombatRoom("Skeleton Archer"),
+    };
+}
+
+interface IGenerator
+{
+    IEnumerable<IRoom> Generate();
+}
+
+class EasyCombatGenerator : IGenerator
+{
+    public IEnumerable<IRoom> Generate() => CombatRoom.EasyCombats();
+}
+
+#!markdown
+
+This works. It's unsurprising that it works. But there's a nuance here. This doesn't work:
+
+#!csharp
+
+interface IRoom { }
+class CombatRoom : IRoom
+{
+    public string Enemy { get; }
+
+    public CombatRoom(string enemy) => Enemy = enemy;
+    
+    public static List<CombatRoom> EasyCombats() => new()
+    {
+        new CombatRoom("Orc"),
+        new CombatRoom("Skeleton Warrior"),
+        new CombatRoom("Skeleton Archer"),
+    };
+}
+
+interface IGenerator
+{
+    List<IRoom> Generate();
+}
+
+class EasyCombatGenerator : IGenerator
+{
+    public List<IRoom> Generate() => CombatRoom.EasyCombats();
+}
+
+#!markdown
+
+Nor does this:
+
+#!csharp
+
+interface IRoom { }
+class CombatRoom : IRoom
+{
+    public string Enemy { get; }
+
+    public CombatRoom(string enemy) => Enemy = enemy;
+    
+    public static ICollection<CombatRoom> EasyCombats() => new List<CombatRoom>()
+    {
+        new CombatRoom("Orc"),
+        new CombatRoom("Skeleton Warrior"),
+        new CombatRoom("Skeleton Archer"),
+    };
+}
+
+interface IGenerator
+{
+    ICollection<IRoom> Generate();
+}
+
+class EasyCombatGenerator : IGenerator
+{
+    public ICollection<IRoom> Generate() => CombatRoom.EasyCombats();
+}
+
+#!markdown
+
+Moreover, if we just define `IEnumerable<T>` ourselves naively it won't work either:
+
+#!csharp
+
+interface IEnumerable<T> { /* ... */ }
+class List<T> : IEnumerable<T>
+{
+    void Add(T item) { /* ... */ }
+    /* ... */
+}
+
+interface IRoom { }
+class CombatRoom : IRoom
+{
+    public string Enemy { get; }
+
+    public CombatRoom(string enemy) => Enemy = enemy;
+    
+    public static IEnumerable<CombatRoom> EasyCombats() => new List<CombatRoom>();
+}
+
+interface IGenerator
+{
+    IEnumerable<IRoom> Generate();
+}
+
+class EasyCombatGenerator : IGenerator
+{
+    public IEnumerable<IRoom> Generate() => CombatRoom.EasyCombats();
+}
+
+#!markdown
+
+What the heck? We didn't even specify any methods on our `IEnumerable<T>` and even that empty
+interface refuses to work.
+
+But it works with the BCL `IEnumerable<T>` and it _should_ work. An enumerable of `CombatRoom`s is, in particular, an enumerable of
+`IRoom` -- it just so happens that all the `IRoom`s are `CombatRoom`s.
+
+#!markdown
+
+## Invariance
+
+Let's first consider types where this conversion _cannot_ possibly work.
+
+#!markdown
+
+## Summary
+
+We've learnt how to declare an indexer and how to support indexing and slicing with `Index` and `Range`.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [3.1. Generics](https://gienieczko.com/teaching/csharp/3-generics/1-generics),
+or straight to the next notebook, [`01-generics.dib`](/03-GenericsAndCollections/01-generics.dib).
