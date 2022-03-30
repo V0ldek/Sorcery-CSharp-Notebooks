@@ -1,0 +1,456 @@
+#!markdown
+
+# 4.0 Generic Variance
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/4-linq.
+
+It covers topics for section [4.0. Generic Variance](https://gienieczko.com/teaching/csharp/4-linq/0-generic-variance).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## The motivation
+
+This feature is not really that related to LINQ, but it'd be weird to use `IEnumerable<T>` without it.
+
+The issue arises naturally when using collections. I will use the familiar `IRoom` type and its implementers
+from our Dungeon Walker. Say we want to have a method that returns a sequence of combat rooms with different enemies,
+for example because we want to make a node in our Dungeon graph that has edges to combats of comparable difficulty.
+We also want to have a general `IGenerator` type that defines an object that can generate such a set of edge targets
+on demand. 
+Omitting irrelevant details:
+
+#!csharp
+
+interface IRoom { }
+class CombatRoom : IRoom
+{
+    public string Enemy { get; }
+
+    public CombatRoom(string enemy) => Enemy = enemy;
+    
+    public static IEnumerable<CombatRoom> EasyCombats() => new[]
+    {
+        new CombatRoom("Orc"),
+        new CombatRoom("Skeleton Warrior"),
+        new CombatRoom("Skeleton Archer"),
+    };
+}
+
+interface IGenerator
+{
+    IEnumerable<IRoom> Generate();
+}
+
+class EasyCombatGenerator : IGenerator
+{
+    public IEnumerable<IRoom> Generate() => CombatRoom.EasyCombats();
+}
+
+#!markdown
+
+This works. It's unsurprising that it works. But there's a nuance here. This doesn't work:
+
+#!csharp
+
+interface IRoom { }
+class CombatRoom : IRoom
+{
+    public string Enemy { get; }
+
+    public CombatRoom(string enemy) => Enemy = enemy;
+    
+    public static List<CombatRoom> EasyCombats() => new()
+    {
+        new CombatRoom("Orc"),
+        new CombatRoom("Skeleton Warrior"),
+        new CombatRoom("Skeleton Archer"),
+    };
+}
+
+interface IGenerator
+{
+    List<IRoom> Generate();
+}
+
+class EasyCombatGenerator : IGenerator
+{
+    public List<IRoom> Generate() => CombatRoom.EasyCombats();
+}
+
+#!markdown
+
+Nor does this:
+
+#!csharp
+
+interface IRoom { }
+class CombatRoom : IRoom
+{
+    public string Enemy { get; }
+
+    public CombatRoom(string enemy) => Enemy = enemy;
+    
+    public static ICollection<CombatRoom> EasyCombats() => new List<CombatRoom>()
+    {
+        new CombatRoom("Orc"),
+        new CombatRoom("Skeleton Warrior"),
+        new CombatRoom("Skeleton Archer"),
+    };
+}
+
+interface IGenerator
+{
+    ICollection<IRoom> Generate();
+}
+
+class EasyCombatGenerator : IGenerator
+{
+    public ICollection<IRoom> Generate() => CombatRoom.EasyCombats();
+}
+
+#!markdown
+
+Moreover, if we just define `IEnumerable<T>` ourselves naively it won't work either:
+
+#!csharp
+
+interface IEnumerable<T> { /* ... */ }
+class List<T> : IEnumerable<T>
+{
+    void Add(T item) { /* ... */ }
+    /* ... */
+}
+
+interface IRoom { }
+class CombatRoom : IRoom
+{
+    public string Enemy { get; }
+
+    public CombatRoom(string enemy) => Enemy = enemy;
+    
+    public static IEnumerable<CombatRoom> EasyCombats() => new List<CombatRoom>();
+}
+
+interface IGenerator
+{
+    IEnumerable<IRoom> Generate();
+}
+
+class EasyCombatGenerator : IGenerator
+{
+    public IEnumerable<IRoom> Generate() => CombatRoom.EasyCombats();
+}
+
+#!markdown
+
+What the heck? We didn't even specify any methods on our `IEnumerable<T>` and even that empty
+interface refuses to work.
+
+But it works with the BCL `IEnumerable<T>` and it _should_ work. An enumerable of `CombatRoom`s is, in particular, an enumerable of
+`IRoom` -- it just so happens that all the `IRoom`s are `CombatRoom`s.
+
+#!markdown
+
+## Invariance
+
+**Generic variance** means, simplifying, that if `T` and `U` are related in the inheritance
+hierarchy in some way, then for some generic type `I<X>` `I<T>` is assignable to `I<U>`.
+
+Let's first consider types where this conversion _cannot_ possibly work.
+It cannot work for any types that actually hold `T` as data.
+
+#!csharp
+
+// Intentionally does not compile.
+class C<T>
+{
+    private T _field;
+
+    public C(T item) => _field = item;
+}
+
+C<string> x = new C<string>("abc");
+C<object> y = x;
+
+#!markdown
+
+This cannot work, because `C` has full access to `_field` and can use it in any way
+that a variable of type `T` can be used. But obviously not everything that you can do
+with an `object x` can be done with a `string x`, for example you cannot do `x = new object()` if `x` is actually a `string`.
+
+In other words, any _write_ operations on `object x` are unsafe if in reality it's a `string x`.
+
+The conversion between `C<string>` and `C<object>` could be allowed if and only if
+`C` never actually modified `_field` in any way. This is hard to guarantee and therefore
+CLR circumvents this issue entirely declaring simply that **all classes and structs are invariant**.
+
+To illustrate this more we can consider the classic variance issue, i.e.
+"why can't I assign `List<Duck>` where a `List<Animal>` is expected.
+
+#!csharp
+
+// Intentionally does not compile.
+class Animal
+{
+    public void Eat() { }
+}
+
+class Duck : Animal { }
+
+void Feast(List<Animal> animals)
+{
+    foreach (var animal in animals)
+    {
+        animal.Eat();
+    }
+}
+
+var ducks = new List<Duck> { new(), new(), new() };
+
+Feast(ducks);
+
+#!markdown
+
+In this case this is all fun and games, but if this conversion was legal
+then _this_ conversion would also be legal:
+
+#!csharp
+
+class Animal { }
+class Duck : Animal { }
+class Human : Animal { }
+
+void AddHuman(List<Animal> animals) => animals.Add(new Human());
+
+var ducks = new List<Duck> { new(), new(), new() };
+
+AddHuman(ducks);
+
+#!markdown
+
+... and that would be a disaster, since we would be able to add a stinky Human to a list of Ducks!
+Again, same issue -- since `List<T>` writes values of type `T` to itself this conversion would be type-unsafe.
+
+Okay, so if we cannot do classes we are left with interfaces (and delegates, as we'll see later in the module).
+But by the same argument `IList<Duck>` also cannot be assigned to `IList<Animal>`, since we can `Add` to that list.
+
+#!markdown
+
+## Covariance
+
+However, this is legal:
+
+#!csharp
+
+class Animal
+{
+    public void Eat() { }
+}
+
+class Duck : Animal { }
+
+void Feast(IReadOnlyList<Animal> animals)
+{
+    foreach (var animal in animals)
+    {
+        animal.Eat();
+    }
+}
+
+var ducks = new List<Duck> { new(), new(), new() };
+
+Feast(ducks);
+
+#!markdown
+
+So is converting to `IReadOnlyCollection<Animal>` and `IEnumerable<Animal>`.
+
+The intuition should be forming by now: writing is unsafe, so we can only have this conversion
+if we make sure that `T` can only go **out** of our type, and not be written into it.
+All of these interfaces are read-only, and `T` exists only in output positions.
+
+That's the requirement, more or less, and that's also our keyword. The actual definition
+of `IEnumerable<T>` that we want is:
+
+#!csharp
+
+interface IEnumerable<out T> { /* ... */ }
+
+#!markdown
+
+and now the example from the start works:
+
+#!csharp
+
+interface IEnumerable<out T> { /* ... */ }
+class List<T> : IEnumerable<T> { /* ... */ }
+
+interface IRoom { }
+class CombatRoom : IRoom
+{
+    public string Enemy { get; }
+
+    public CombatRoom(string enemy) => Enemy = enemy;
+    
+    public static IEnumerable<CombatRoom> EasyCombats() => new List<CombatRoom>();
+}
+
+interface IGenerator
+{
+    IEnumerable<IRoom> Generate();
+}
+
+class EasyCombatGenerator : IGenerator
+{
+    public IEnumerable<IRoom> Generate() => CombatRoom.EasyCombats();
+}
+
+#!markdown
+
+This declaration means that `IEnumerable<T>` is **covariant** in `T`.
+When we have an interface `I<X1, ..., Xi, ... XN>` that's covariant in `Xi`,
+if `T : U` then `I<A1, ..., T, ..., AN>` is assignable to `I<A1, ..., U, ..., AN>`.
+The compiler forces us to keep `T` strictly in output positions:
+
+#!csharp
+
+// Intentionally does not compile.
+interface I<out T>
+{
+    // Ok.
+    T this[int x] { get; }
+
+    // Not ok.
+    void Add(T item);
+}
+
+#!markdown
+
+## Contravariance
+
+Contravariance is the other side of this coin. A natural example is
+the familiar `IEqualityComparer<T>`. Clearly, if we can compare any `Animal`
+then we can also compare any `Duck`, so this assignment should, and is, legal:
+
+#!csharp
+
+#nullable enable
+class Animal { }
+class Duck : Animal { }
+void Foo(IEqualityComparer<Duck> comparer)
+{
+    /* ... */
+}
+
+Foo(new AnimalComparer());
+
+class AnimalComparer : IEqualityComparer<Animal>
+{
+    public bool Equals(Animal? a, Animal? b) => object.Equals(a, b);
+
+    public int GetHashCode(Animal a) => a.GetHashCode();
+}
+
+#!markdown
+
+The situation is reverse here -- we can only have `T` on _input_ positions
+for this to be valid. The declaration uses the `in` keyword, and the compiler
+verifies that we don't break this guarantee:
+
+#!csharp
+
+#nullable enable
+interface IEqualityComparer<in T>
+{
+    bool Equals(T? a, T? b);
+
+    int GetHashCode(T a);
+}
+
+#!markdown
+
+This would be illegal:
+
+#!csharp
+
+// Intentionally does not compile.
+interface I<in T>
+{
+    // Not ok.
+    T this[int x] { get; }
+
+    // Ok.
+    void Add(T item);
+}
+
+#!markdown
+
+## Return type covariance.
+
+#!csharp
+
+class Animal { }
+class Duck : Animal { }
+
+interface I
+{
+    void TakeForAWalk(Duck duck);
+
+    Animal CreateAnimal();
+}
+
+class C : I
+{
+    public void TakeForAWalk(Animal duck) { }
+
+    public Animal CreateAnimal() => new Duck();
+}
+
+#!markdown
+
+## How and when to use
+
+Most of the time you will be consuming variant types created by others, and then
+usage is seemless -- the conversions that logically should work just work.
+
+When you're creating an interface you can make others lives easier by declaring
+it covariant or contravariant in some parameters, if applicable.
+
+If you're building a public API you need to remember that making a type variant
+and then deciding to extend the interface with a method that breaks this variance
+is a breaking change. Conversions that worked in user code will no longer work
+once you do this. Therefore it's best to use intuition: does it make
+logical sense that I can assign `I<Duck>` to `I<Animal>` (or the other way around)?
+If yes, make it variant. If not, do not.
+
+#!markdown
+
+## Summary
+
+We've learnt the motivation behind generic variance. We know why it doesn't apply to classes or structs,
+how to declare variant type parameters, and when to do that in custom types. We've also learnt
+a natural kind of variance for regular virtual method implementations and overrides.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [4.1. Iterators](https://gienieczko.com/teaching/csharp/4-linq/1-iterators),
+or straight to the next notebook, [`01-iterators.dib`](/04-LINQ/01-iterators.dib).

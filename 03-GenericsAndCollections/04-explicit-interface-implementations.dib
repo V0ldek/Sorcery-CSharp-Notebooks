@@ -25,7 +25,7 @@ That's kind of the point of doing all this in notebooks.
 
 #!markdown
 
-## Problem 1 -- conflicts
+## Problem 1 – conflicts
 
 We will see today a case where we want to implement two interfaces that define a method with the same name,
 but different signatures.
@@ -251,7 +251,7 @@ as wiring, connecting the interface to our code under a different name.
 
 #!markdown
 
-## Problem 2 -- hiding irrelevant methods
+## Problem 2 – hiding irrelevant methods
 
 We might want to implement an interface,
 but only for compatibility with code that will use us via that interface, because we

@@ -254,7 +254,7 @@ Console.WriteLine($"{last}, {first}");
 
 ## Summary
 
-We've met deconstruction and two patterns stemming from deconstructing assignment -- tuple initialization and swap.
+We've met deconstruction and two patterns stemming from deconstructing assignment – tuple initialization and swap.
 We know how to equip our custom types with deconstruction.
 
 #!markdown
