@@ -1,0 +1,542 @@
+#!markdown
+
+# 4.1 Iterators
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/4-linq.
+
+It covers topics for section [4.1. Iterators](https://gienieczko.com/teaching/csharp/4-linq/1-iterators).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Motivation
+
+Methods that return sequences of elements are very common, and writing them correctly is hard
+and takes a lot of boilerplate. For example, consider a very simple problem of returning
+all numbers from a range.
+
+#!csharp
+
+void PrintSequence<T>(IEnumerable<T> sequence)
+{
+    Console.WriteLine(string.Join(", ", sequence));
+}
+
+#!csharp
+
+public IEnumerable<int> Range(int start, int end)
+{
+    if (start > end)
+    {
+        throw new ArgumentOutOfRangeException(nameof(start), "Cannot be greater than 'end'.");
+    }
+
+    return new RangeEnumerable(start, end);
+}
+
+class RangeEnumerable : IEnumerable<int>
+{
+    private readonly int _start;
+    private readonly int _end;
+
+    public RangeEnumerable(int start, int end) => (_start, _end) = (start, end);
+
+    public IEnumerator<int> GetEnumerator() => new RangeEnumerator(_start, _end);
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+class RangeEnumerator : IEnumerator<int>
+{
+    private readonly int _start;
+    private readonly int _end;
+
+    public int Current { get; private set; }
+
+    object IEnumerator.Current => Current;
+
+    public RangeEnumerator(int start, int end)
+    {
+        (_start, _end) = (start, end);
+        Current = start;
+    }
+
+    public void Reset() => Current = _start;
+
+    public bool MoveNext()
+    {
+        if (Current == _end)
+        {
+            return false;
+        }
+
+        Current += 1;
+        return true;
+    }
+
+    public void Dispose() { }
+}
+
+#!markdown
+
+Ye, that's a lot of code. At least it works:
+
+#!csharp
+
+PrintSequence(Range(42, 47));
+
+#!markdown
+
+Oh, wait, it doesn't, we're missing `42`. Let me fix the enumerator:
+
+#!csharp
+
+class RangeEnumerator : IEnumerator<int>
+{
+    private readonly int _start;
+    private readonly int _end;
+
+    public int Current { get; private set; }
+
+    object IEnumerator.Current => Current;
+
+    public RangeEnumerator(int start, int end)
+    {
+        _start = start - 1;
+        _end = end;
+        Current = _start;
+    }
+
+    public void Reset() => Current = _start - 1;
+
+    public bool MoveNext()
+    {
+        if (Current == _end)
+        {
+            return false;
+        }
+
+        Current += 1;
+        return true;
+    }
+
+    public void Dispose() { }
+}
+
+class RangeEnumerable : IEnumerable<int>
+{
+    private readonly int _start;
+    private readonly int _end;
+
+    public RangeEnumerable(int start, int end) => (_start, _end) = (start, end);
+
+    public IEnumerator<int> GetEnumerator() => new RangeEnumerator(_start, _end);
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+public IEnumerable<int> Range(int start, int end)
+{
+    if (start > end)
+    {
+        throw new ArgumentOutOfRangeException(nameof(start), "Cannot be greater than 'end'.");
+    }
+
+    return new RangeEnumerable(start, end);
+}
+
+#!markdown
+
+Now it works:
+
+#!csharp
+
+PrintSequence(Range(42, 47));
+
+#!markdown
+
+There must be a better way!
+
+#!markdown
+
+## Iterator methods
+
+There is:
+
+#!csharp
+
+IEnumerable<int> Range(int start, int end)
+{
+    if (start > end)
+    {
+        throw new ArgumentOutOfRangeException(nameof(start), "Cannot be greater than 'end'.");
+    }
+
+    for (var i = start; i <= end; i += 1)
+    {
+        yield return i;
+    }
+}
+
+PrintSequence(Range(42, 47));
+
+#!markdown
+
+The idea behind iterators is simple -- we write a method that generates a sequence of
+some type in a non-trivial manner, and it returns the values one by one using `yield return x`.
+Once it finishes it returns with a `yield break`, which in this case happens implicitly at
+the end of the method.
+
+But we can put more complicated logic in:
+
+#!csharp
+
+IEnumerable<int> IterateUntilFirstDivisor(int start, int divider)
+{
+    if (divider == 0)
+    {
+        throw new DivideByZeroException(nameof(divider));
+    }
+    
+    int i = start;
+
+    while (true)
+    {
+        yield return i;
+     
+        if (i % divider == 0 || i == int.MaxValue)
+        {
+            yield break;    
+        }
+
+        i += 1;
+    }
+}
+
+PrintSequence(IterateUntilFirstDivisor(23, 7));
+
+#!markdown
+
+## Under the hood -- lazy execution
+
+The compiler does quite a lot of heavy lifting for us in those methods.
+First of all, this is an example of a **coroutine**, a method that can
+pause its own execution and yield control to some other code, in this case, the caller.
+
+The control flow can be witnessed if we start printing stuff during iteration:
+
+#!csharp
+
+IEnumerable<int> OneTwoThree()
+{
+    Console.WriteLine("OneTwoThree entry.");
+
+    Console.WriteLine("OneTwoThree yielding 1.");
+    yield return 1;
+    Console.WriteLine("OneTwoThree yielding 2.");
+    yield return 2;
+    Console.WriteLine("OneTwoThree yielding 3.");
+    yield return 3;
+
+    Console.WriteLine("OneTwoThree exit.");
+}
+
+Console.WriteLine("Start.");
+
+Console.WriteLine("Calling OneTwoThree.");
+IEnumerable<int> enumerable = OneTwoThree();
+Console.WriteLine("Calling GetEnumerator.");
+IEnumerator<int> enumerator = enumerable.GetEnumerator();
+Console.WriteLine("Enumerating.");
+
+while (enumerator.MoveNext())
+{
+    int n = enumerator.Current;
+    Console.WriteLine($"Received {n}");
+}
+
+Console.WriteLine("End.");
+
+#!markdown
+
+### Guards in iterators.
+
+Lazy execution has one important consequence when it comes to defensive
+programming and guards. Consider an enumerator that simply reverses a list:
+
+#!csharp
+
+IEnumerable<T> Reverse<T>(IReadOnlyList<T> list)
+{
+    if (list is null)
+    {
+        throw new ArgumentNullException(nameof(list));
+    }
+
+    for (var i = 1; i <= list.Count; i += 1)
+    {
+        yield return list[^i];
+    }
+}
+
+PrintSequence(Reverse(new [] { 1, 2, 3 }));
+
+#!markdown
+
+Since the method is executed lazily, the guard statement is evaluated
+when we first call `MoveNext`, not when the method is called.
+
+So this is completely fine:
+
+#!csharp
+
+void Foo(IEnumerable<int> sequence)
+{
+    /* ... */
+}
+
+var enumerable = Reverse<int>(null!);
+Foo(enumerable);
+
+#!markdown
+
+Now if `Foo` can perform any complex logic on the `sequence`.
+It can pass it around deeper and deeper into a program, and it will only explode when it finally
+enumerates:
+
+#!csharp
+
+void Foo(IEnumerable<int> sequence)
+{
+    /* ... */
+
+    PrintSequence(sequence);
+}
+
+var enumerable = Reverse<int>(null!);
+Foo(enumerable);
+
+#!markdown
+
+The stack-trace is awful. It says that something broke in `string.JoinCore` called from `Join`,
+called from `PrintSequence`, called from `Foo`...
+
+How is anyone supposed to debug this? An idiomatic way is to create an entry
+method that validates parameters and then invokes the private iterator method:
+
+#!csharp
+
+IEnumerable<T> Reverse<T>(IReadOnlyList<T> list)
+{
+    if (list is null)
+    {
+        throw new ArgumentNullException(nameof(list));
+    }
+
+    return ReverseIterator(list);
+}
+
+private IEnumerable<T> ReverseIterator<T>(IReadOnlyList<T> list)
+{
+    for (var i = 1; i <= list.Count; i += 1)
+    {
+        yield return list[^i];
+    }
+}
+
+PrintSequence(Reverse(new [] { 1, 2, 3 }));
+
+#!markdown
+
+Now it blows up immediately:
+
+#!csharp
+
+void Foo(IEnumerable<int> sequence)
+{
+    /* ... */
+
+    PrintSequence(sequence);
+}
+
+var enumerable = Reverse<int>(null!);
+Foo(enumerable);
+
+#!markdown
+
+This can be done in a cleaner way with local methods, which we will cover later in the module.
+
+#!markdown
+
+## Under the hood -- the state machine
+
+To find out how the compiler actually synthesises this magic we can use
+the ultimate magic dispeller, [sharplab.io](https://sharplab.io).
+You can find this example at [this url](https://sharplab.io/#gist:0708c6852f1a5c0b17ef628d63f47644).
+
+We'll go through it step-by-step, I'll simplify a few names along the way.
+First, the entrypoint:
+
+```csharp
+private static void Main()
+{
+    Console.WriteLine("Start.");
+    Console.WriteLine("Calling OneTwoThree.");
+    IEnumerable<int> enumerable = OneTwoThree();
+    Console.WriteLine("Calling GetEnumerator.");
+    IEnumerator<int> enumerator = enumerable.GetEnumerator();
+    Console.WriteLine("Enumerating.");
+    while (enumerator.MoveNext())
+    {
+        int current = enumerator.Current;
+        Console.WriteLine(string.Format("Received {0}", current));
+    }
+    Console.WriteLine("End.");
+}
+```
+
+Nothing here -- it's the same Main we've written!.
+Let's see what happens in the actual method:
+
+```csharp
+[IteratorStateMachine(typeof(<OneTwoThree>d__0))]
+private static IEnumerable<int> OneTwoThree() => new <OneTwoThree>d__0(-2);
+```
+
+So yeah, this is magic. Let's ignore the attribute, it's just some metadata.
+The method is a oneliner and creates an instance of some magical type
+`<OneTwoThree>d__0`, whose name is _unspeakable_, passing `-2` as the argument
+to its constructor.
+
+That type is generated by the compiler as a `private sealed class`, nested in the
+class that we defined the iterator method in. It's both an `IEnumerable<T>` and
+the `IEnumerator<T>`, which is a bad practice, but what you gonna do, fire the compiler?
+
+```csharp
+[CompilerGenerated]
+private sealed class <OneTwoThree>d__0 : IEnumerable<int>, IEnumerable, IEnumerator<int>, IDisposable, IEnumerator
+{
+    private int _state;
+
+    private int _current;
+
+    private int _initialThreadId;
+
+    [DebuggerHidden]        
+    int IEnumerator<int>.Current => _current;
+    
+    [DebuggerHidden]    
+    object IEnumerator.Current => _current;
+    
+    [DebuggerHidden]
+    public <OneTwoThree>d__0(int state)
+    {
+        _state = state;
+        _initialThreadId = Environment.CurrentManagedThreadId;
+    }
+
+    [DebuggerHidden]
+    void IDisposable.Dispose() { }
+
+    private bool MoveNext()
+    {
+        switch (_state)
+        {
+            default:
+                return false;
+            case 0:
+                _state = -1;
+                Console.WriteLine("OneTwoThree entry.");
+                Console.WriteLine("OneTwoThree yielding 1.");
+                _current = 1;
+                _state = 1;
+                return true;
+            case 1:
+                _state = -1;
+                Console.WriteLine("OneTwoThree yielding 2.");
+                _current = 2;
+                _state = 2;
+                return true;
+            case 2:
+                _state = -1;
+                Console.WriteLine("OneTwoThree yielding 3.");
+                _current = 3;
+                _state = 3;
+                return true;
+            case 3:
+                _state = -1;
+                Console.WriteLine("OneTwoThree exit.");
+                return false;
+        }
+    }
+
+    [DebuggerHidden]
+    void IEnumerator.Reset() => throw new NotSupportedException();
+
+    [DebuggerHidden]
+    IEnumerator<int> IEnumerable<int>.GetEnumerator()
+    {
+        if (_state == -2 && _initialThreadId == Environment.CurrentManagedThreadId)
+        {
+            _state = 0;
+            return this;
+        }
+        return new <OneTwoThree>d__0(0);
+    }
+
+    [DebuggerHidden]
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return ((IEnumerable<int>)this).GetEnumerator();
+    }
+}
+```
+
+The compiler creates an automaton, each state representing where between yields it is.
+Not going into too much detail, you can use Sharplab to play around with iterators.
+It's interesting to see how it handles loops, exceptions, etc.
+
+#!markdown
+
+## Usage
+
+Using iterators from the outside is seemless: we get an `IEnumerable<T>` that we can use
+and we don't know or care whether it's an enumeration through a list or through a magical
+iterator method.
+
+On the other side, whenever you need an enumerable with some logic in it where
+you'd have to write your own enumerable or enumerator it's better, easier, and less
+error-prone to just use an iterator method.
+
+#!markdown
+
+## Summary
+
+We've learnt how we can use iterator methods to produce sequences in a much more
+ergonomic way than by defining enumerators ourselves.
+We know that defensive programming requires us to separate validation from the
+actual iterator. We also had a taste of what the compiler does for our iterators under
+the hood.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [4.2. Extension Methods](https://gienieczko.com/teaching/csharp/4-linq/2-extension-methods),
+or straight to the next notebook, [`02-extension-methods.dib`](/04-LINQ/02-extension-methods.dib).

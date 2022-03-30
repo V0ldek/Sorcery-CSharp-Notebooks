@@ -1,0 +1,148 @@
+#!markdown
+
+# 4.3. Anonymous Types
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/4-linq.
+
+It covers topics for section [4.3. Anonymous Types](https://gienieczko.com/teaching/csharp/4-linq/3-anonymous-types).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Creating anonymous types
+
+Sometimes we don't really care enough to create a type for some
+transformation that we want to perform. Declaring all the properties,
+constructors, coming up with names, that's exhausting.
+
+Consider a method that takes in two sequences, one of names of products,
+the other of prices. It's supposed to return the name of the cheapest product.
+We can do it like this:
+
+#!csharp
+
+#nullable enable
+
+string? FindLowestPriceProduct(IReadOnlyList<string> names, IReadOnlyList<decimal> prices)
+{
+    if (names is null)
+    {
+        throw new ArgumentNullException(nameof(names));
+    }
+    
+    if (prices is null)
+    {
+        throw new ArgumentNullException(nameof(prices));
+    }
+
+    if (names.Count != prices.Count)
+    {
+        throw new ArgumentException("'names' must have the same number of elements as 'prices'");
+    }
+
+    if (names.Count == 0)
+    {
+        return null;
+    }
+
+    var best = new { Price = prices[0], Name = names[0] };
+
+    for (var i = 1; i < prices.Count; i += 1)
+    {
+        if (prices[i] < best.Price)
+        {
+            best = new { Price = prices[i], Name = names[i] };
+        }
+    }
+
+    return best.Name;
+}
+
+var names = new string[] { "Rubber Duck", "Metal Duck", "Paper Duck" };
+var prices = new decimal[] { 10.0M, 53.99M, 3.19M };
+var result = FindLowestPriceProduct(names, prices);
+Console.WriteLine(result);
+
+#!markdown
+
+The magical `{ Price, Name }` type is anonymous.
+We cannot return it from a method and we can only assign it to a
+type-inferred variable with `var`.
+
+#!markdown
+
+## Properties of anonymous types
+
+As you might expect, the type is simply generated as a private nested class
+of the type in which we use the anonymous type.
+
+The types are **immutable**, they automatically override `Equals` (and `GetHashCode`)
+to have value equality, and provide a sensible `ToString` representation.
+
+#!csharp
+
+var x = new { Name = "Rubber Duck", Price = 10.0M };
+var y = new { Name = "Rubber Duck", Price = 10.0M };
+
+Console.WriteLine($"x == y? {x == y}");
+Console.WriteLine($"x.Equals(y)? {x.Equals(y)}");
+Console.WriteLine($"x: {x}");
+
+#!markdown
+
+A nested type is created for each ordered set of properties given to an anonymous type.
+A simpler characterization -- anonymous objects with the same properties in the same order
+within the same assembly have the same type.
+
+This is natural -- when we create many objects with the exact same shape we want
+them to be equatable and compatible, for example to collect them all in a collection.
+
+#!csharp
+
+List<T> SingletonList<T>(T item) => new List<T> { item };
+
+var list = SingletonList(new { X = 1, Y = 2 });
+list.Add(new { X = 2, Y = 1 });
+
+#!csharp
+
+// Intentionally does not compile.
+list.Add(new { X = 2 });
+list.Add(new { X = 2, Y = 1, Z = 3 });
+list.Add(new { Y = 1, X = 2 });
+
+#!markdown
+
+## With syntax
+
+You can use `with` syntax for non-destructive mutation of 
+
+#!markdown
+
+## Summary
+
+We've met extension methods that allow us to use static helpers with a much nicer,
+fluent syntax.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [4.3. Anonymous Types](https://gienieczko.com/teaching/csharp/4-linq/3-anonymous-types),
+or straight to the next notebook, [`03-anonymous-types.dib`](/04-LINQ/03-anonymous-types.dib).

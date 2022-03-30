@@ -1,0 +1,425 @@
+#!markdown
+
+# 4.2. Extension Methods
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/4-linq.
+
+It covers topics for section [4.2. Extension Methods](https://gienieczko.com/teaching/csharp/4-linq/2-extension-methods).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Extensions
+
+Extension methods are the most important useless feature you will ever see.
+
+The entire idea is really simple. We have some type that we don't want to
+or cannot modify for one reason or another, but there's a method that we would
+really like it to have. For example, someone defined a vector for us:
+
+#!csharp
+
+public struct Vector
+{
+    public double X { get; init; }
+    public double Y { get; init; }
+
+    public override string ToString() => $"[{X}, {Y}]";
+}
+
+#!markdown
+
+But it's just data, and we would really want to have a helper method
+that adds another vector to it. We also want to be able to flip its
+coordinates. We can define static methods:
+
+#!csharp
+
+public static class VectorExtensions
+{
+    public static Vector Add(Vector vector, Vector other) => new() 
+    { 
+        X = vector.X + other.X,
+        Y = vector.Y + other.Y 
+    };
+
+    public static Vector Flip(Vector vector) => new() 
+    { 
+        X = -vector.X,
+        Y = -vector.Y 
+    };
+}
+
+#!markdown
+
+We can use it, but it's a bit clumsy. Say we want to
+move the vector along some other vector, then flip it, and
+move it along another vector.
+
+#!csharp
+
+public Vector Foo(Vector vector, Vector first, Vector second)
+{
+    return VectorExtensions.Add(
+        VectorExtensions.Flip(
+            VectorExtensions.Add(vector, first)),
+        second);
+}
+
+Console.WriteLine(Foo(
+    new Vector() { X = 1, Y = 2 },
+    new Vector() { X = 3, Y = 1 },
+    new Vector() { X = -1, Y = 3 }));
+
+#!markdown
+
+This syntax is terrible. There is a trick that I haven't shown you before,
+`using static`. It brings into scoped all `static` methods and nested types
+of another type. So we can write this:
+
+#!csharp
+
+using static VectorExtensions;
+
+public Vector Foo(Vector vector, Vector first, Vector second)
+{
+    return Add(Flip(Add(vector, first)), second);
+}
+
+Console.WriteLine(Foo(
+    new Vector() { X = 1, Y = 2 },
+    new Vector() { X = 3, Y = 1 },
+    new Vector() { X = -1, Y = 3 }));
+
+#!markdown
+
+This also works for enum variants btw, so you can get rid of all the qualifying:
+
+#!csharp
+
+public enum VeryLongEnumType
+{
+    A,
+    B
+}
+
+#!csharp
+
+int Foo(VeryLongEnumType t) => t switch
+{
+    VeryLongEnumType.A => 1,
+    VeryLongEnumType.B => 7,
+    _ => throw new ArgumentOutOfRangeException(nameof(t))
+};
+
+#!markdown
+
+Compare to:
+
+#!csharp
+
+using static VeryLongEnumType;
+
+int Foo(VeryLongEnumType t) => t switch
+{
+    A => 1,
+    B => 7,
+    _ => throw new ArgumentOutOfRangeException(nameof(t))
+};
+
+#!markdown
+
+But still, this isn't really that readable:
+
+```csharp
+return Add(Flip(Add(vector, first)), second);
+```
+
+You have to look at it and read it kind-of backwards, which
+is not natural. What we really want to do is pretend that
+`Add` and `Flip` are instance methods. Here comes the feature:
+
+#!csharp
+
+public static Vector Add(this Vector vector, Vector other) => new() 
+{ 
+    X = vector.X + other.X,
+    Y = vector.Y + other.Y 
+};
+
+public static Vector Flip(this Vector vector) => new() 
+{ 
+    X = -vector.X,
+    Y = -vector.Y 
+};
+
+#!csharp
+
+public Vector Foo(Vector vector, Vector first, Vector second)
+{
+    return vector.Add(first).Flip().Add(second);
+}
+
+Console.WriteLine(Foo(
+    new Vector() { X = 1, Y = 2 },
+    new Vector() { X = 3, Y = 1 },
+    new Vector() { X = -1, Y = 3 }));
+
+#!markdown
+
+Isn't that nice? The translation here is purely syntactical.
+This still translates to calls to the original static methods,
+but we can pretend that they are instance methods.
+
+That's it. That's the entire feature.
+
+Such syntax, where we call multiple methods in a chain one after the other, giving
+the methods meaningful names that turn into a mini-DSL is sometimes called [**fluent syntax**](https://www.martinfowler.com/bliki/FluentInterface.html). We will see examples of this moving on.
+
+#!markdown
+
+## Extending abstract and constrained generic types
+
+We can also extend interfaces and generic types.
+Consider the `Reverse` method we had on lists a while back.
+Maybe we want it to be available on all lists as a member:
+
+#!csharp
+
+public static IEnumerable<T> Reversed<T>(this IReadOnlyList<T> list)
+{
+    for (var i = 1; i <= list.Count; i += 1)
+    {
+        yield return list[^i];
+    }
+}
+
+var list = new List<int> { 1, 2, 3 };
+Console.WriteLine(string.Join(", ", list.Reversed()));
+
+#!markdown
+
+While we're at it, we might want a `Print` method on all sequences:
+
+#!csharp
+
+public static void Print<T>(this IEnumerable<T> sequence)
+{
+    var @string = string.Join(", ", sequence);
+    Console.WriteLine(@string);
+}
+
+var list = new List<int> { 1, 2, 3 };
+list.Reversed().Print();
+
+#!markdown
+
+Remember our talk about boxing and interfaces? This would be better:
+
+#!csharp
+
+public static IEnumerable<TElem> Reversed<TList, TElem>(this TList list) where TList : IReadOnlyList<TElem>
+{
+    for (var i = 1; i <= list.Count; i += 1)
+    {
+        yield return list[^i];
+    }
+}
+
+public static void Print<TList, TElem>(this TList sequence) where TList : IReadOnlyList<TElem>
+{
+    var @string = string.Join(", ", sequence);
+    Console.WriteLine(@string);
+}
+
+var list = new List<int> { 1, 2, 3 };
+list.Reversed().Print();
+
+#!markdown
+
+This is useful in many ways. First, it allows us to extend interfaces without breaking
+them -- if we decide our interface should have a certain method and it has a sensible
+implementation using other parts of it, we can make it an extension instead of adding
+it as a member, which avoids forcing all the users to fix their code by implementing the new method.
+
+Second, it allows us to provide methods on members with constraints that otherwise wouldn't
+be possible. For example, we could give a method that turns a sequence into a `SortedDictionary`,
+but only if its keys are comparable, or make it take an additional argument without that constraint:
+
+#!csharp
+
+public static SortedDictionary<TKey, TValue> ToSortedDictionary<TKey, TValue>(
+    this IEnumerable<(TKey, TValue)> enumerable) where TKey : IComparable<TKey> =>
+        enumerable.ToSortedDictionary(Comparer<TKey>.Default);
+    
+public static SortedDictionary<TKey, TValue> ToSortedDictionary<TKey, TValue>(
+    this IEnumerable<(TKey, TValue)> enumerable, IComparer<TKey> comparer)
+{
+    var dictionary = new SortedDictionary<TKey, TValue>(comparer);
+
+    foreach (var (key, value) in enumerable)
+    {
+        dictionary.Add(key, value);
+    }
+
+    return dictionary;
+}
+
+#!csharp
+
+IEnumerable<(string, int)> stringKeys = new (string, int)[] { ("A", 1), ("B", 2) };
+SortedDictionary<string, int> x = stringKeys.ToSortedDictionary();
+
+#!csharp
+
+// Intentionally does not compile.
+IEnumerable<(object, int)> objectKeys = new (object, int)[] { ("A", 1), ("B", 2) };
+SortedDictionary<object, int> x = objectKeys.ToSortedDictionary();
+
+#!csharp
+
+IEnumerable<(object, int)> objectKeys = new (object, int)[] { ("A", 1), ("B", 2) };
+SortedDictionary<object, int> x = objectKeys.ToSortedDictionary(Comparer<object>.Default);
+
+#!markdown
+
+## Beware of `null`
+
+#!markdown
+
+Let me reiterate this again: the translation **is purely syntactical**.
+We are still calling a static method and passing the object as the first
+argument. This means that the extensions we've written thus far were unsafe,
+since this is allowed and compiles:
+
+#!csharp
+
+((IEnumerable<(string, int)>)null).ToSortedDictionary();
+
+#!markdown
+
+But this is much worse than an NRE from an instance method.
+In an instance method the NRE is thrown immediately in the call-site.
+Our extension method, on the other hand, can use the first parameter
+in any way it wants, pass it around deeper into the call stack,
+and get the exception there. This is doubly terrible if we wrote
+an extension iterator method.
+
+Also, our extensions can still be called as standard static methods:
+
+#!csharp
+
+ToSortedDictionary(new (string, int)[] { ("A", 1), ("B", 2) });
+
+#!markdown
+
+**Public extension methods are still public methods** and therefore standard
+defensive programming applies. We need to validate the first parameter as not null
+if it's a reference type, or allow `null` with a `?` annotation and handle it properly.
+
+#!csharp
+
+public static SortedDictionary<TKey, TValue> ToSortedDictionary<TKey, TValue>(
+    this IEnumerable<(TKey, TValue)> enumerable) where TKey : IComparable<TKey> =>
+        enumerable.ToSortedDictionary(Comparer<TKey>.Default);
+    
+public static SortedDictionary<TKey, TValue> ToSortedDictionary<TKey, TValue>(
+    this IEnumerable<(TKey, TValue)> enumerable, IComparer<TKey> comparer)
+{
+    if (enumerable is null)
+    {
+        throw new ArgumentNullException(nameof(enumerable));
+    }
+
+    if (comparer is null)
+    {
+        throw new ArgumentNullException(nameof(comparer));
+    }
+
+    var dictionary = new SortedDictionary<TKey, TValue>(comparer);
+
+    foreach (var (key, value) in enumerable)
+    {
+        dictionary.Add(key, value);
+    }
+
+    return dictionary;
+}
+
+#!markdown
+
+## Limitations
+
+1. Extensions have to be static methods declared in a non-nested
+static class.
+2. The static class has to be in scope for the extensions to be callable,
+meaning that you have to `using` the namespace of the class.
+3. Extension methods have the lowest binding preference, so if an instance
+method with matching name and parameter types exists on the type,
+the extension method will not be called.
+4. Currently only methods can be extensions, not properties, indexers,
+operators, etc. This is being actively worked on to allow "extension everything."
+
+#!markdown
+
+## Design guidelines
+
+1. Put extension methods in a dedicated namespace.
+The usual convention is to create a namespace that describes the intended
+use of the extensions (`VectorOperationExtensions`, for example), and a class
+that is named after the type being extended (`VectorExtensions`).
+2. Think twice before declaring an extension on a very commonly used type,
+for example an unbounded generic type or `IEnumerable<T>` for unbounded `T`.
+These need to be very useful to justify cluttering the scope. Remember that
+the IDE is going to show them basically all the time when you try to call an
+instance method and you have the extensions in scope.
+3. Don't declare extensions on `object`. They might be unusable from other .NET languages.
+
+#!markdown
+
+## When to use
+
+Extension methods are a matter of taste.
+They are very useful for types constrained with an interface to allow operations
+that look natural on a type, but are not defined.
+
+When designing an interface, methods that make sense on it but
+have a very obvious implementation that's unlikely to vary between
+implementing classes, consider creating extensions for them. This is
+extensively done in the BCL (as you'll see).
+
+They are also extremely useful when working with shitty APIs, that absolutely
+should've defined that method but haven't for some reason.
+
+Whenever you find yourself extensively calling a static helper, or performing
+the same transformation on an object over and over, consider creating an extension method for that.
+
+#!markdown
+
+## Summary
+
+We've met extension methods that allow us to use static helpers with a much nicer,
+fluent syntax.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [4.3. Anonymous Types](https://gienieczko.com/teaching/csharp/4-linq/3-anonymous-types),
+or straight to the next notebook, [`03-anonymous-types.dib`](/04-LINQ/03-anonymous-types.dib).
