@@ -743,11 +743,11 @@ the magical ability to layout data in a sequential, contiguous area of memory
 is key for fast performance algorithms. Since they are so fundamental they
 get a lot of special treatment from the runtime and they've existed since _forever_.
 
-They implement `ICollection`. Think about that for a second – this is legal code:
+They implement `IList`. Think about that for a second – this is legal code:
 
 #!csharp
 
-ICollection<int> array = new int[] { 1, 2, 3, 4, 5 };
+IReadOnlyList<int> array = new int[] { 1, 2, 3, 4, 5 };
 
 array.Add(6);
 

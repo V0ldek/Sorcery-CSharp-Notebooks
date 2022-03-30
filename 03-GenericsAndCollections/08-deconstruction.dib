@@ -41,6 +41,8 @@ This snippet demonstrates the difference:
 Console.WriteLine($"[{t.x1}, {t.y1}]");
 Console.WriteLine(t);
 Console.WriteLine($"[{x2}, {y2}]");
+Console.WriteLine(x2);
+Console.WriteLine(y2);
 
 #!markdown
 

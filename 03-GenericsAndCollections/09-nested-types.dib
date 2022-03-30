@@ -38,6 +38,8 @@ public class A
 {
     public static char Value => 'A';
 
+    private static int _field = 0;
+
     void Foo()
     {
         Console.WriteLine(A.Value);
@@ -245,7 +247,7 @@ where he makes an immutable stack structure:
 
 #!csharp
 
-abstract class ImmutableStack<T>
+public abstract class ImmutableStack<T>
 {
   public static readonly ImmutableStack<T> Empty = new EmptyStack();
   
