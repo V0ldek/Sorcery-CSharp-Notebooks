@@ -170,6 +170,7 @@ class MyImmutableDictionary : IReadOnlyDictionary<string, int>
             set => Instance._dictionary[key] = value;
         }
 
+        
         public void Add(string key, int value) => Instance._dictionary.Add(key, value);
 
         public MyImmutableDictionary ToMyImmutableDictionary()
@@ -305,5 +306,5 @@ We've learnt of two general categories of nested types and a few examples of idi
 
 ## Next up:
 
-This is the end of the module, next up is the Assignment!
-Click here to go there: [Assignment 3. - Diverging Dungeons](https://gienieczko.com/teaching/csharp/3-generics-and-collections/assignment/3-diverging-dungeons).
+Continue with the next section, [3.10. HashCode as a Mutable Struct](https://gienieczko.com/teaching/csharp/3-generics/10-hashcode-as-a-mutable-struct),
+or straight to the next notebook, `10-tuples.dib`.

@@ -107,10 +107,10 @@ Console.WriteLine($"x: {x}");
 #!markdown
 
 A nested type is created for each ordered set of properties given to an anonymous type.
-A simpler characterization -- anonymous objects with the same properties in the same order
+A simpler characterization – anonymous objects with the same properties in the same order
 within the same assembly have the same type.
 
-This is natural -- when we create many objects with the exact same shape we want
+This is natural – when we create many objects with the exact same shape we want
 them to be equatable and compatible, for example to collect them all in a collection.
 
 #!csharp
@@ -119,6 +119,10 @@ List<T> SingletonList<T>(T item) => new List<T> { item };
 
 var list = SingletonList(new { X = 1, Y = 2 });
 list.Add(new { X = 2, Y = 1 });
+
+#!markdown
+
+But that's it. All the other anonymous objects are of incompatible types.
 
 #!csharp
 
@@ -129,20 +133,138 @@ list.Add(new { Y = 1, X = 2 });
 
 #!markdown
 
-## With syntax
+## Under the hood
 
-You can use `with` syntax for non-destructive mutation of 
+Anonymous types have a rather straightforward implementation:
+
+#!csharp
+
+var x = new { FirstName = "Alice", LastName = "Alisson" };
+
+#!markdown
+
+Gets synthesized into:
+
+```csharp
+new AnonymousType0<string, string>("Alice", "Alisson");
+
+internal sealed class AnonymousType0<TFirstName, TLastName>
+{
+    private readonly TFirstName _firstName;
+
+    private readonly TLastName _lastName;
+
+    public TFirstName FirstName => _firstName;
+
+    public TLastName LastName => _lastName;
+
+    public AnonymousType0(TFirstName firstName, TLastName lastName) =>
+        (_firstName, _lastName) = (firstName, lastName);
+        
+    public override bool Equals(object value)
+    {
+        AnonymousType0<TFirstName, TLastName> anon = value as AnonymousType0<TFirstName, TLastName>;
+        if (this != anon)
+        {
+            if (anon != null && EqualityComparer<TFirstName>.Default.Equals(_firstName, anon._firstName))
+            {
+                return EqualityComparer<TLastName>.Default.Equals(_lastName, anon._lastName);
+            }
+            return false;
+        }
+        return true;
+    }
+
+    public override int GetHashCode()
+    {
+        return (-430384090 * -1521134295 + EqualityComparer<TFirstName>.Default.GetHashCode(_firstName)) * -1521134295 + EqualityComparer<TLastName>.Default.GetHashCode(_lastName);
+    }
+
+    public override string ToString()
+    {
+        object[] array = new object[2];
+        TFirstName val = _firstName;
+        array[0] = ((val != null) ? val.ToString() : null);
+        TLastName val2 = _lastName;
+        array[1] = ((val2 != null) ? val2.ToString() : null);
+        return string.Format(null, "{{ FirstName = {0}, LastName = {1} }}", array);
+    }
+}
+```
+
+#!markdown
+
+## Nondestructive mutation -- `with` syntax
+
+#!markdown
+
+Anonymous types support functional programming style mutation,
+meaning that they are immutable, but we can easily construct a slightly
+modified copy based on the original value:
+
+#!csharp
+
+var person = new { FirstName = "Alice", LastName = "Alisson", Age = 23 };
+
+var personNextYear = person with { Age = 24 };
+
+Console.WriteLine(person);
+Console.WriteLine(personNextYear);
+
+#!markdown
+
+The modified properties need an accessible `set` or `init` accessor.
+
+**This also works with `struct` types!**
+
+#!csharp
+
+struct Point
+{
+    public double X { get; init; }
+    public double Y { get; init; }
+
+    public override string ToString() => $"({X}, {Y})";
+}
+
+var unitX = new Point { X = 1.0 };
+var unit = unitX with { Y = 1.0 };
+
+Console.WriteLine(unitX);
+Console.WriteLine(unit);
+
+#!markdown
+
+By extension, it also works for tuples:
+
+#!csharp
+
+var tup = (first: 1, second: 2);
+var modified = tup with { first = 3 };
+
+Console.WriteLine(tup);
+Console.WriteLine(modified);
+
+#!markdown
+
+## Anonymous types or tuples?
+
+The choice usually boils down to mutability: tuples are mutable,
+anonymous types are immutable, _but_ they allow nondestructive mutation.
+
+Anonymous types are a natural choice for LINQ queries, but apart from their
+compatibility with expression trees there's no real selling points that I know of.
 
 #!markdown
 
 ## Summary
 
-We've met extension methods that allow us to use static helpers with a much nicer,
-fluent syntax.
+We know how to create lightweight anonymous types on-the-fly, which will be very useful
+for LINQ queries later.
 
 #!markdown
 
 ## Next up:
 
-Continue with the next section, [4.3. Anonymous Types](https://gienieczko.com/teaching/csharp/4-linq/3-anonymous-types),
-or straight to the next notebook, [`03-anonymous-types.dib`](/04-LINQ/03-anonymous-types.dib).
+Continue with the next section, [4.4. Nondestructive Mutation](https://gienieczko.com/teaching/csharp/4-linq/4-nondestructive-mutation),
+or straight to the next notebook, [`04-nondestructive-mutation.dib`](/04-LINQ/04-nondestructive-mutation.dib).

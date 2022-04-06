@@ -198,7 +198,7 @@ PrintSequence(Range(42, 47));
 
 #!markdown
 
-The idea behind iterators is simple -- we write a method that generates a sequence of
+The idea behind iterators is simple – we write a method that generates a sequence of
 some type in a non-trivial manner, and it returns the values one by one using `yield return x`.
 Once it finishes it returns with a `yield break`, which in this case happens implicitly at
 the end of the method.
@@ -231,9 +231,11 @@ IEnumerable<int> IterateUntilFirstDivisor(int start, int divider)
 
 PrintSequence(IterateUntilFirstDivisor(23, 7));
 
+int[] x = new int[] { };
+
 #!markdown
 
-## Under the hood -- lazy execution
+## Under the hood – lazy execution
 
 The compiler does quite a lot of heavy lifting for us in those methods.
 First of all, this is an example of a **coroutine**, a method that can
@@ -384,7 +386,7 @@ This can be done in a cleaner way with local methods, which we will cover later 
 
 #!markdown
 
-## Under the hood -- the state machine
+## Under the hood – the state machine
 
 To find out how the compiler actually synthesises this magic we can use
 the ultimate magic dispeller, [sharplab.io](https://sharplab.io).
@@ -411,7 +413,7 @@ private static void Main()
 }
 ```
 
-Nothing here -- it's the same Main we've written!.
+Nothing here – it's the same Main we've written!.
 Let's see what happens in the actual method:
 
 ```csharp

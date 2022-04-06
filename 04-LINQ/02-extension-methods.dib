@@ -254,7 +254,7 @@ list.Reversed().Print();
 #!markdown
 
 This is useful in many ways. First, it allows us to extend interfaces without breaking
-them -- if we decide our interface should have a certain method and it has a sensible
+them – if we decide our interface should have a certain method and it has a sensible
 implementation using other parts of it, we can make it an extension instead of adding
 it as a member, which avoids forcing all the users to fix their code by implementing the new method.
 

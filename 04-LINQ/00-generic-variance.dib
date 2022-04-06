@@ -164,7 +164,7 @@ What the heck? We didn't even specify any methods on our `IEnumerable<T>` and ev
 interface refuses to work.
 
 But it works with the BCL `IEnumerable<T>` and it _should_ work. An enumerable of `CombatRoom`s is, in particular, an enumerable of
-`IRoom` -- it just so happens that all the `IRoom`s are `CombatRoom`s.
+`IRoom` – it just so happens that all the `IRoom`s are `CombatRoom`s.
 
 #!markdown
 
@@ -246,7 +246,7 @@ AddHuman(ducks);
 #!markdown
 
 ... and that would be a disaster, since we would be able to add a stinky Human to a list of Ducks!
-Again, same issue -- since `List<T>` writes values of type `T` to itself this conversion would be type-unsafe.
+Again, same issue – since `List<T>` writes values of type `T` to itself this conversion would be type-unsafe.
 
 Okay, so if we cannot do classes we are left with interfaces (and delegates, as we'll see later in the module).
 But by the same argument `IList<Duck>` also cannot be assigned to `IList<Animal>`, since we can `Add` to that list.
@@ -370,7 +370,7 @@ class AnimalComparer : IEqualityComparer<Animal>
 
 #!markdown
 
-The situation is reverse here -- we can only have `T` on _input_ positions
+The situation is reverse here – we can only have `T` on _input_ positions
 for this to be valid. The declaration uses the `in` keyword, and the compiler
 verifies that we don't break this guarantee:
 
@@ -402,33 +402,10 @@ interface I<in T>
 
 #!markdown
 
-## Return type covariance.
-
-#!csharp
-
-class Animal { }
-class Duck : Animal { }
-
-interface I
-{
-    void TakeForAWalk(Duck duck);
-
-    Animal CreateAnimal();
-}
-
-class C : I
-{
-    public void TakeForAWalk(Animal duck) { }
-
-    public Animal CreateAnimal() => new Duck();
-}
-
-#!markdown
-
 ## How and when to use
 
 Most of the time you will be consuming variant types created by others, and then
-usage is seemless -- the conversions that logically should work just work.
+usage is seemless – the conversions that logically should work just work.
 
 When you're creating an interface you can make others lives easier by declaring
 it covariant or contravariant in some parameters, if applicable.

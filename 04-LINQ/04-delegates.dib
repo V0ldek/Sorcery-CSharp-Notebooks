@@ -1,0 +1,282 @@
+#!markdown
+
+# 4.4. Delegates
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/4-linq.
+
+It covers topics for section [4.4. Delegates](https://gienieczko.com/teaching/csharp/4-linq/4-delegates).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Declaring delegates
+
+#!markdown
+
+Delegate is a special kind of type in .NET. It represents a callable
+object, such as a method, in a type-safe manner.
+We declare a delegate type with the `delegate` keyword, specifying
+its return type and parameters:
+
+#!csharp
+
+public delegate int BinaryOperation(int a, int b);
+
+#!markdown
+
+This is a reference type, basically as any other.
+We can use it as a parameter, store it inside a field or a variable,
+etc.
+
+This gives us a basic tool for functional programming.
+For example, here's a class that turns any binary operation into a square of itself:
+
+#!csharp
+
+public sealed class Squarer
+{
+    private readonly BinaryOperation _operation;
+
+    public Squarer(BinaryOperation operation) => _operation = operation;
+
+    public int Compute(int a, int b)
+    {
+        var x = _operation(a, b);
+        return x * x;
+    }
+}
+
+#!markdown
+
+As we can see, calling a delegate is done simply with function invocation syntax,
+passing arguments in parentheses. Every delegate also exposes the `Invoke` method,
+that has exactly the same semantics as just calling it directly.
+
+What values are of the delegate type, though? Most commonly, a lambda expression is used,
+which we will learn in the next section. For now, we can use the **method group** expression,
+which specifies which method to use as the value of the delegate:
+
+#!csharp
+
+public static class Adder
+{
+    public static int Add(int a, int b) => a + b;
+}
+
+var squarer = new Squarer(Adder.Add);
+
+Console.WriteLine(squarer.Compute(4, 6));
+
+#!markdown
+
+We can also use delegates to compose functions, for example like this:
+
+#!csharp
+
+public sealed class Squarer
+{
+    private readonly BinaryOperation _operation;
+
+    public BinaryOperation Delegate => this.Compute;
+
+    public Squarer(BinaryOperation operation) => _operation = operation;
+
+    public int Compute(int a, int b)
+    {
+        var x = _operation(a, b);
+        return x * x;
+    }
+}
+
+var squarer = new Squarer(Adder.Add);
+
+Console.WriteLine(squarer.Delegate(4, 6));
+
+var squareSquarer = new Squarer(squarer.Delegate);
+
+Console.WriteLine(squareSquarer.Delegate(4, 6));
+
+#!markdown
+
+## Method group semantics
+
+How does the compiler resolve method group expressions?
+
+First of all, there might be more than a single method with a given name, so it must choose the
+correct overload. It does it based on the type of the place in which we want to put it. So for example
+this chooses the `Add(int, int)` method, since the `BinaryOperation` is defined for `int`:
+
+#!csharp
+
+public static class Adder
+{
+    public static int Add(int a, int b) => a + b;
+
+    public static double Add(double a, double b) => a + b;
+}
+
+var squarer = new Squarer(Adder.Add);
+
+Console.WriteLine(squarer.Delegate(4, 6));
+
+#!markdown
+
+You might've noticed that there's an important difference between using `static` and
+instance methods as delegates. Using an instance method implicitly captures the current `this`
+reference on which the method will be called. That's why when we passed the `squarer.Delegate` to `squareSquarer` here:
+
+```csharp
+var squarer = new Squarer(Adder.Add);
+var squareSquarer = new Squarer(squarer.Delegate);
+```
+
+with `Delegate` defined as:
+
+```csharp
+public BinaryOperation Delegate => this.Compute;
+```
+
+then the call to `squareSquarer.Delegate` actually works on the `Compute` method of the particular
+`squarer` instance. This is exactly as we should expect it to work, so it shouldn't be shocking.
+
+#!markdown
+
+## Generic delegates
+
+Delegates can be generic, because why not.
+
+#!csharp
+
+public delegate int Comparison<T>(T a, T b) where T : IComparable<T>;
+
+#!markdown
+
+We can use constraints as always. Moreover, generic delegates
+can be variant.
+
+#!csharp
+
+public delegate int Comparison<in T>(T a, T b) where T : IComparable<T>;
+
+#!markdown
+
+## Delegate compatibility
+
+A method group is assignable to a given delegate type if it matches the
+parameter and return type in the usual manner, taking implicit conversions into account.
+
+However, delegates are not compatible between each other even if they have identical
+parameter types and return types.
+
+#!csharp
+
+// Intentionally does not compile.
+public delegate bool EqualityComparison(int a, int b);
+
+public delegate bool SignComparison(int a, int b);
+
+SignComparison Foo(EqualityComparison x) => x;
+
+#!markdown
+
+## Thinking about delegates
+
+There are three useful frameworks for thinking about delegates,
+each giving a slightly different perspective:
+
+1. **Delegates are single-method interfaces** -- a value being of a delegate
+type simply gives us a guarantee that it has a specific `Invoke` method that
+takes parameters of some type and returns a value of some type. Delegate
+variance is therefore a special case of interface variance, simply for interfaces
+with a single method.
+2. **Delegate values are functor objects** -- an idiom popular in C++ is a functor
+object -- an object with the `()` operator overloaded. In C# we cannot overload
+`()`, but we can specify its signature as a delegate type and pass it around.
+3. **Delegates are functions** -- for programmers familiar with functional programming
+there's nothing interesting happening here. A delegate is simply a function type
+like any other, be it `int -> int -> int` or `(IComparable a) => a -> a -> int` for the generic
+comparison type. This breaks down at the strong typing boundary, however.
+
+#!markdown
+
+## The standard delegate types
+
+Since delegates are generic, we can define basically any delegate as one of two kinds:
+
+- an `Action`, which takes some parameters, does stuff, and has a `void` return type;
+- a `Func`, which takes some parameters and returns a value.
+
+These are represented with the families of delegates available in the BCL:
+
+- `Action`, `Action<in T>`, `Action<in T1, in T2>`, ...
+- `Func<out TResult>`, `Func<in TArg, out TResult>`, `Func<in TArg1, in TArg2, out TResult>`...
+
+Every method is of one of these types. They are usually used when writing things that work generically
+on any kind of function.
+
+#!csharp
+
+static class Operations
+{
+    public static int Plus(int a, int b) => a + b;
+
+    public static int Minus(int a, int b) => a - b;
+}
+
+public int Flipped(Func<int, int, int> f, int a, int b) => f(b, a);
+
+Console.WriteLine(Flipped(Operations.Plus, 4, 8));
+Console.WriteLine(Flipped(Operations.Minus, 4, 8));
+
+#!markdown
+
+## When to use delegates
+
+Declaring own delegate types is useful for two cases:
+
+1. As a newtype alias -- when a signature of a standard `Func` or `Action` delegate would be
+way too complicated, it's useful to define a short type to make the code more clear.
+
+```csharp
+class Foo<TFrob, TBlah, TBulbulator>
+{
+    public delegate TBulbulator Frober(IEnumerable<TFrob> frobs, IReadOnlyCollection<TBlah> blahs);
+
+    void Frob1(Frober f, IEnumerable<TFrob> frobs);
+
+    void Frob2(Func<IEnumerable<TFrob>, IReadOnlyCollection<TBlah>, TBulbulator> f, IEnumerable<TFrob> frobs);
+}
+```
+
+2. When we want to distinguish types with the same signature -- we might have a class
+that takes in two binary operations on `int`, but they are very different from each other
+semantically. In that case, we create a delegate type for each of these cases to not make a mistake down the line.
+
+In other cases it's probably best to just use `Action` or `Func`.
+
+#!markdown
+
+## Summary
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [4.5. Lambda Expressions](https://gienieczko.com/teaching/csharp/4-linq/5-lambda-expressions),
+or straight to the next notebook, [`05-lambda-expressions.dib`](/04-LINQ/05-lambda-expressions.dib).

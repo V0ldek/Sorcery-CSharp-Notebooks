@@ -1,6 +1,6 @@
 #!markdown
 
-# 3.11. HashCode as a Mutable Struct
+# 3.10. HashCode as a Mutable Struct
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
 
-It covers topics for section [3.11. HashCode as a Mutable Struct](https://gienieczko.com/teaching/csharp/3-generics-and-collections/11-hashcode-as-a-mutable-struct).
+It covers topics for section [3.10. HashCode as a Mutable Struct](https://gienieczko.com/teaching/csharp/3-generics-and-collections/10-hashcode-as-a-mutable-struct).
 
 ### Notebook flow
 
@@ -90,23 +90,24 @@ struct Point
 
 struct Path
 {
-    public Point[]? Points { get; init; }
+    private readonly Point[]? _points;
+
+    public Point[] Points 
+    { 
+        get => _points ?? Array.Empty<Point>(); 
+        init => _points = value;
+    }
 
     public override bool Equals(object? other)
     {
-        if (other is not Path path || Points?.Length != path.Points?.Length)
+        if (other is not Path path || Points.Length != path.Points.Length)
         {
             return false;
         }
 
-        if (Points == null && path.Points == null)
+        for (var i = 0; i < Points.Length; i += 1)
         {
-            return false;
-        }
-
-        for (var i = 0; i < Points!.Length; i += 1)
-        {
-            if (!Points[i].Equals(path.Points![i]))
+            if (!Points[i].Equals(path.Points[i]))
             {
                 return false;
             }
@@ -119,12 +120,9 @@ struct Path
     {
         var hashCode = new HashCode();
 
-        if (Points != null)
+        foreach (var point in Points)
         {
-            foreach (var point in Points)
-            {
-                hashCode.Add(point);
-            }
+            hashCode.Add(point);
         }
 
         return hashCode.ToHashCode();
@@ -241,9 +239,13 @@ Console.WriteLine($"reversePath.GetHashCode(): {reversePath.GetHashCode()}");
 
 ## Summary
 
+We've learnt that `HashCode` is a mutable struct, giving us a second (behind tuples)
+example of when that's actually useful. We also know how to compose more complex
+hashes using it.
+
 #!markdown
 
 ## Next up:
 
-Continue with the next section, [3.3. Tuples](https://gienieczko.com/teaching/csharp/3-generics/3-tuples),
-or straight to the next notebook, `03-tuples.dib`.
+This is the end of the module, next up is the Assignment!
+Click here to go there: [Assignment 3. - Diverging Dungeons](https://gienieczko.com/teaching/csharp/3-generics-and-collections/assignment/3-diverging-dungeons).
