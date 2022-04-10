@@ -114,6 +114,26 @@ Console.WriteLine(squareSquarer.Delegate(4, 6));
 
 #!markdown
 
+## Thinking about delegates
+
+There are three useful frameworks for thinking about delegates,
+each giving a slightly different perspective:
+
+1. **Delegates are single-method interfaces** -- a value being of a delegate
+type simply gives us a guarantee that it has a specific `Invoke` method that
+takes parameters of some type and returns a value of some type. Delegate
+variance is therefore a special case of interface variance, simply for interfaces
+with a single method.
+2. **Delegate values are functor objects** -- an idiom popular in C++ is a functor
+object -- an object with the `()` operator overloaded. In C# we cannot overload
+`()`, but we can specify its signature as a delegate type and pass it around.
+3. **Delegates are functions** -- for programmers familiar with functional programming
+there's nothing interesting happening here. A delegate is simply a function type
+like any other, be it `int -> int -> int` or `(IComparable a) => a -> a -> int` for the generic
+comparison type. This breaks down at the strong typing boundary, however.
+
+#!markdown
+
 ## Method group semantics
 
 How does the compiler resolve method group expressions?
@@ -157,25 +177,6 @@ then the call to `squareSquarer.Delegate` actually works on the `Compute` method
 
 #!markdown
 
-## Generic delegates
-
-Delegates can be generic, because why not.
-
-#!csharp
-
-public delegate int Comparison<T>(T a, T b) where T : IComparable<T>;
-
-#!markdown
-
-We can use constraints as always. Moreover, generic delegates
-can be variant.
-
-#!csharp
-
-public delegate int Comparison<in T>(T a, T b) where T : IComparable<T>;
-
-#!markdown
-
 ## Delegate compatibility
 
 A method group is assignable to a given delegate type if it matches the
@@ -195,23 +196,172 @@ SignComparison Foo(EqualityComparison x) => x;
 
 #!markdown
 
-## Thinking about delegates
+## Generic delegates
 
-There are three useful frameworks for thinking about delegates,
-each giving a slightly different perspective:
+Delegates can be generic, because why not.
 
-1. **Delegates are single-method interfaces** -- a value being of a delegate
-type simply gives us a guarantee that it has a specific `Invoke` method that
-takes parameters of some type and returns a value of some type. Delegate
-variance is therefore a special case of interface variance, simply for interfaces
-with a single method.
-2. **Delegate values are functor objects** -- an idiom popular in C++ is a functor
-object -- an object with the `()` operator overloaded. In C# we cannot overload
-`()`, but we can specify its signature as a delegate type and pass it around.
-3. **Delegates are functions** -- for programmers familiar with functional programming
-there's nothing interesting happening here. A delegate is simply a function type
-like any other, be it `int -> int -> int` or `(IComparable a) => a -> a -> int` for the generic
-comparison type. This breaks down at the strong typing boundary, however.
+#!csharp
+
+public delegate int Comparison<T>(T a, T b) where T : IComparable<T>;
+
+#!markdown
+
+We can use constraints as always. Moreover, generic delegates
+can be variant:
+
+#!csharp
+
+public delegate int Comparison<in T>(T a, T b) where T : IComparable<T>;
+
+#!markdown
+
+This is a rather natural consequence of "delegates are interfaces with one method" way of thinking.
+
+#!markdown
+
+### Variance rules are complicated
+
+I've been selling you the common lie about variance, saying that a type parameter
+can be co/contra-variant if it appears only in output/input positions.
+
+This is the case for the simplest (and most common) cases, but it gets
+complicated when we start nesting variances. Delegates give us a very
+simple demonstration of this. What is the variance of `T` here?
+
+#!csharp
+
+delegate T Return<T>();
+
+#!markdown
+
+It's obviously covariant.
+
+#!csharp
+
+delegate T Return<out T>();
+
+#!markdown
+
+What about here?
+
+#!csharp
+
+delegate Return<T> ReturnProxy<T>();
+
+#!markdown
+
+...
+
+Same difference, it's still technically an "output position", we just return a function
+that returns a `T`. Still covariant. Okay, so now we have:
+
+#!csharp
+
+delegate void Do<T>(T t);
+
+#!markdown
+
+...
+
+This is obviously contravariant.
+
+#!csharp
+
+delegate void Do<in T>(T t);
+
+#!markdown
+
+Now we can have some fun. What's the variance of this `T`?
+
+#!csharp
+
+delegate Do<T> Foo<T>(Return<T> t);
+
+#!markdown
+
+...
+
+Not as straightforward now, is it? `T` appears as an output in `Do<T>`, but there it's an input?
+And then as an input we take `Return<T>` which has `T` as output?
+
+The correct answer here is _contravariant_.
+
+#!csharp
+
+delegate Do<T> Foo<in T>(Return<T> t);
+
+#!markdown
+
+To grasp this intuitively, think of what a method with `Foo`'s signature could do.
+It could, for example, call the input `Return<T>` to get a value of `T`,
+and then the function it returns would take another `T` and use them both in some way,
+for example to check that both are equal. Here's a usage:
+
+#!csharp
+
+static class Assertions
+{
+    public static Do<T> Equality<T>(Return<T> t) => new EqualityAssertion<T>(t()).Assert;
+    
+    private class EqualityAssertion<T>
+    {
+        private readonly T _value;
+    
+        public EqualityAssertion(T value) => _value = value;
+
+        public void Assert(T other)
+        {
+            if (!object.Equals(other, _value))
+            {
+                throw new Exception($"'{other}' does not equal '{_value}'");
+            }
+        }
+    }
+}
+
+static class Producer
+{
+    public static string Value() => "Value";
+}
+
+var assertion = Assertions.Equality(Producer.Value);
+
+assertion("Value");
+assertion("Something else")
+
+#!markdown
+
+Okay, so imagine we have a method that can produce assertions for
+any `string`. Should it be assignable to something that excepts a producer
+of assertions for `object`? Obviously not. The other way around, however, makes
+sense -- if we know how to assert against any `object`, then in particular we know how
+to assert against any `string`.
+
+The general rules can be briefly summarized as follows: covariance
+is `+`, contravariance is `-`. So, if you put a type with contravariant
+`T` in an input position, then it becomes covariant: two minuses cancel out.
+
+#!csharp
+
+delegate void Foo<out T>(Do<T> f);
+
+#!markdown
+
+On the other hand, covariance has no effect on variance: if we put a contravariant type
+into a covariant position, it remains contravariant.
+
+#!csharp
+
+delegate Do<T> Foo<in T>();
+
+#!markdown
+
+This is where I will stop with the explanation. Here's an exercise: figure out the variance of all
+three types in this delegate:
+
+#!csharp
+
+delegate Do<Return<T2>> Foo<T1, T2, T3>(Return<Do<Return<T3>>> f, Do<Do<Do<T1>>> x);
 
 #!markdown
 
@@ -273,6 +423,12 @@ In other cases it's probably best to just use `Action` or `Func`.
 #!markdown
 
 ## Summary
+
+We've learnt how to define strongly typed function objects in C#.
+We know that they can be generic, and that most of them are in some way
+equivalent to `Action` and `Func`. We know that method group expressions
+give us values of delegate types, and in the next section we will learn how to
+produce delegate values more easily with lambda expressions.
 
 #!markdown
 
