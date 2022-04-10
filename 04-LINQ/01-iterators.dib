@@ -222,7 +222,7 @@ IEnumerable<int> IterateUntilFirstDivisor(int start, int divider)
      
         if (i % divider == 0 || i == int.MaxValue)
         {
-            yield break;    
+            yield break;
         }
 
         i += 1;
@@ -284,7 +284,7 @@ programming and guards. Consider an enumerator that simply reverses a list:
 
 #!csharp
 
-IEnumerable<T> Reverse<T>(IReadOnlyList<T> list)
+public IEnumerable<T> Reverse<T>(IReadOnlyList<T> list)
 {
     if (list is null)
     {
@@ -518,7 +518,7 @@ It's interesting to see how it handles loops, exceptions, etc.
 
 ## Usage
 
-Using iterators from the outside is seemless: we get an `IEnumerable<T>` that we can use
+Using iterators from the outside is seamless: we get an `IEnumerable<T>` that we can use
 and we don't know or care whether it's an enumeration through a list or through a magical
 iterator method.
 

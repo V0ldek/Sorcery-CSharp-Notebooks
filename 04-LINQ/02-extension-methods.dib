@@ -410,6 +410,52 @@ should've defined that method but haven't for some reason.
 Whenever you find yourself extensively calling a static helper, or performing
 the same transformation on an object over and over, consider creating an extension method for that.
 
+### Bonus usage: patterns
+
+Extension methods have first-class support for many C# features.
+For example, the `Vector` struct from before doesn't support deconstruction
+by default: 
+
+#!csharp
+
+public struct Vector
+{
+    public double X { get; init; }
+    public double Y { get; init; }
+
+    public override string ToString() => $"[{X}, {Y}]";
+}
+
+#!csharp
+
+// Intentionally does not compile.
+var vector = new Vector { X = 1.0, Y = 2.5 };
+
+(double x, double y) = vector;
+
+Console.WriteLine($"({x}, {y})");
+
+#!markdown
+
+We know that deconstruction is achieved with a special `void Deconstruct` method
+on the type. But in this case, as well as in many others, it can just be an extension!
+
+#!csharp
+
+public static void Deconstruct(this Vector vector, out double x, out double y) =>
+    (x, y) = (vector.X, vector.Y);
+
+var vector = new Vector { X = 1.0, Y = 2.5 };
+
+(double x, double y) = vector;
+
+Console.WriteLine($"({x}, {y})");
+
+#!markdown
+
+So, if you have a type that _really_ should be deconstructible, or,
+another example, enumerable, extension methods can save you headaches!
+
 #!markdown
 
 ## Summary
