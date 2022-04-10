@@ -1,0 +1,290 @@
+#!markdown
+
+# 4.5. Lambda Expressions
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/4-linq.
+
+It covers topics for section [4.5. Lambda Expressions](https://gienieczko.com/teaching/csharp/4-linq/5-lambda-expressions).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Okay, but That's Silly
+
+If the only way to construct delegate values was method groups, people would riot.
+Turns out we want simple functions very frequently, but declaring a class that
+we can slap a method to every time would be extremely silly.
+
+Lambda expressions are _the_ way of creating anonymous functions in C#:
+
+#!csharp
+
+Func<int, int> square = x => x * x;
+Func<int, int, int> add = (x, y) => x + y;
+
+Console.WriteLine(square(add(4, 6)));
+
+#!markdown
+
+Composition is very natural:
+
+#!csharp
+
+Func<int, int> squareSquare = x => square(square(x));
+
+Console.WriteLine(squareSquare(add(4, 6)));
+
+#!markdown
+
+In general lambda syntax is:
+
+```csharp
+ReturnType (ArgType1 arg1, ArgType2 arg2, ..., ArgTypeN argN) => body
+```
+
+Notes:
+1. Return type can usually be omitted, as it is inferred from the type of the body.
+2. Argument types can usually be omitted, as they are also inferred.
+3. If there is only one argument, the parentheses around the argument list can be omitted.
+
+The `body` can be both a block and an expression body.
+
+#!csharp
+
+Func<int, int, string> f = string (int a, int b) => {
+    var n1 = a + b;
+    var n2 = a * b;
+    return $"{n1}{n2}";
+};
+
+#!markdown
+
+This can also be written as:
+
+#!csharp
+
+Func<int, int, string> f = (a, b) => $"{a + b}{a * b}";
+
+#!markdown
+
+Or:
+
+#!csharp
+
+var f = (int a, int b) => $"{a + b}{a * b}";
+
+#!markdown
+
+As we can see, the type is automatically inferred.
+The natural type for a lambda is one of the basic delegates, so
+in the above example `f` is indeed `Func<int, int, string>`.
+
+The compiler still needs _some_ type information. This is too ambiguous:
+
+#!csharp
+
+// Intentionally does not compile.
+var f = (a, b) => $"{a + b}{a * b}";
+
+#!markdown
+
+This is usually not an issue, as lambdas are most commonly used for passing them around.
+Then the type is obvious based on the type of the receiver:
+
+#!csharp
+
+using System.Text;
+
+void PrintPairs<T1, T2>(Func<T1, T2, string> printer, IEnumerable<(T1, T2)> sequence)
+{
+    var builder = new StringBuilder("[ ");
+
+    foreach(var (x, y) in sequence)
+    {
+        builder.Append($"{printer(x, y)}, ");
+    }
+
+    builder.Append("]");
+
+    Console.WriteLine(builder);
+}
+
+var sequence = new [] { (1, 3), (17, 42), (-1, 4) };
+
+PrintPairs((a, b) => $"{a + b}{a * b}", sequence);
+
+#!markdown
+
+## Captures
+
+Lambda expressions have access not only to their parameters, but also
+to variables in scope during their creation. Such access is called
+a **capture** or **closure**. We say that a lambda _captures_ a value,
+or that it _closes over_ a value.
+
+#!csharp
+
+void Print(Func<object> f) => Console.WriteLine(f());
+
+void Foo(int param)
+{
+    Print(() => param);
+}
+
+Foo(5);
+Foo(7);
+
+#!markdown
+
+The lambda can perform the same operations on its capture as would be allowed
+in the outside context, including mutation:
+
+#!csharp
+
+var i = 0;
+var increment = () => i += 1;
+
+while (i < 3)
+{
+    Console.WriteLine(i);
+    increment();
+}
+
+#!markdown
+
+Naturally, the `this` reference is also available, so we can refer
+to fields of the current object or call instance methods:
+
+#!csharp
+
+static void ExecuteTwice(Action a)
+{
+    a();
+    a();
+}
+
+class ValueBox
+{
+    public int Value { get; private set; } = 2;
+
+    public void Foo()
+    {
+        ExecuteTwice(() =>
+        {
+            Console.WriteLine(Value);
+            Square();
+            Value += 1;
+            Console.WriteLine(Value);
+        });
+    }
+
+    private void Square() => Value *= Value;
+}
+
+var value = new ValueBox();
+value.Foo();
+
+#!markdown
+
+### Capturing loop variables
+
+There's a subtle distinction between how lambda captures interact
+with `for` and `foreach`. The behaviour is rather intuitive:
+
+#!csharp
+
+var forCaptures = new List<Func<int>>();
+var foreachCaptures = new List<Func<int>>();
+
+for (var i = 0; i < 3; i += 1)
+{
+    forCaptures.Add(() => i);
+}
+
+foreach (var i in new [] { 0, 1, 2 })
+{
+    foreachCaptures.Add(() => i);
+}
+
+Console.Write("For: ");
+
+foreach (var f in forCaptures)
+{
+    Console.Write($"{f()}, ");
+}
+
+Console.WriteLine();
+Console.Write("Foreach: ");
+
+foreach (var f in foreachCaptures)
+{
+    Console.Write($"{f()}, ");
+}
+
+Console.WriteLine();
+
+#!markdown
+
+## Under the hood
+
+I wouldn't be myself if I didn't show you how the compiler implements lambdas.
+
+TODO:
+
+#!markdown
+
+## Static lambdas
+
+A lambda expression can be declared `static`, preventing it from
+capturing any of the outside environment.
+
+#!csharp
+
+// Intentionally does not compile.
+void Print(Func<int> f) => Console.WriteLine(f());
+
+void Foo(int n)
+{
+    Print(static () => n);
+}
+
+#!markdown
+
+This is useful in two ways. First of all, it communicates intent that
+the operations we're defining does not depend on the outside context.
+Secondly, it allows the compiler to create a static class for the lambda,
+since it doesn't need to store any capture state, avoiding
+allocating a new object each time the lambda would be created.
+
+#!markdown
+
+## Summary
+
+We've learnt how to define strongly typed function objects in C#.
+We know that they can be generic, and that most of them are in some way
+equivalent to `Action` and `Func`. We know that method group expressions
+give us values of delegate types, and in the next section we will learn how to
+produce delegate values more easily with lambda expressions.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [4.6. LINQ Queries](https://gienieczko.com/teaching/csharp/4-linq/6-linq-queries),
+or straight to the next notebook, [`06-linq-queries.dib`](/04-LINQ/06-linq-queries.dib).
