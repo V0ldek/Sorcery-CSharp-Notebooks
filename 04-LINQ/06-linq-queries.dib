@@ -85,10 +85,61 @@ Another basic building block -- filtering by a boolean predicate:
 
 #!csharp
 
-var sequence = new [] { 1, 2, 3, 4, 5 };
-var odd = sequence.Where(x => x % 2 == 1);
+IEnumerable<int> sequence = new [] { 1, 2, 3, 4, 5 };
+IEnumerable<int> odd = sequence.Where(x => x % 2 == 1);
 
 PrintSequence(odd);
+
+#!markdown
+
+### Sorting with `OrderBy`
+
+```csharp
+IOrderedEnumerable<TSource> OrderBy<TSource,TKey>(this IEnumerable<TSource> source, Func<TSource,TKey> keySelector)
+```
+
+Ascending sorting:
+
+#!csharp
+
+public class Weapon
+{
+    public string Name { get; init; }
+    public int Damage { get; init; }
+
+    public override string ToString() => $"({Name}, {Damage})";
+}
+
+IEnumerable<Weapon> sequence = new Weapon[]
+{ 
+    new() { Name = "Magical Sword", Damage = 30 },
+    new() { Name = "Dagger", Damage = 10 },
+    new() { Name = "Sword", Damage = 20 },
+    new() { Name = "Mace", Damage = 20 },
+};
+IEnumerable<Weapon> sorted = sequence.OrderBy(w => w.Damage);
+
+PrintSequence(sorted);
+
+#!markdown
+
+There is a descending variant:
+
+#!csharp
+
+PrintSequence(sorted.OrderByDescending(w => w.Damage));
+
+#!markdown
+
+and continuations that allow you to specify additional sorting criteria, if items are equal according to the first one.
+
+#!csharp
+
+PrintSequence(sorted.OrderBy(w => w.Damage).ThenBy(w => w.Name));
+
+#!markdown
+
+There's also `ThenByDescending`.
 
 #!markdown
 
@@ -99,17 +150,1066 @@ LINQ operators to get a pipeline processing our data stream.
 
 #!csharp
 
-var sequence = new [] { 1, 2, 3, 4, 5 };
+IEnumerable<int> sequence = new [] { 1, 2, 3, 4, 5 };
 
-var result = sequence.Select(x => x * x)
+IEnumerable<int> result = sequence.Select(x => x * x)
                 .Where(x => x < 20)
-                .Select(x => x + 1);
+                .Select(x => x + 1)
+                .OrderByDescending(x => x);
 
 PrintSequence(result);
 
 #!markdown
 
+### Grouping with `GroupBy`
+
+```csharp
+IEnumerable<System.Linq.IGrouping<TKey, TSource>> GroupBy<TSource, TKey> (this IEnumerable<TSource> source, Func<TSource, TKey> keySelector);
+
+interface IGrouping<out TKey, out TElement> : IEnumerable<out TElement>
+{
+    TKey Key { get; }
+}
+```
+
+Next up, grouping:
+
+#!csharp
+
+class Event
+{
+    public TimeOnly Timestamp { get; init; }
+    public string Type { get; init; }
+
+    public override string ToString() => $"[{Timestamp:hh:mm:ss}]: {Type}";
+}
+
+IEnumerable<Event> events = new Event[]
+{
+    new() { Timestamp = new(11, 59, 59), Type = "Start" },
+    new() { Timestamp = new(12, 00, 03), Type = "Message received" },
+    new() { Timestamp = new(12, 00, 03), Type = "Message received" },
+    new() { Timestamp = new(12, 00, 05), Type = "Response" },
+    new() { Timestamp = new(12, 00, 06), Type = "Response" },
+    new() { Timestamp = new(12, 00, 06), Type = "Stop" },
+};
+
+IEnumerable<IGrouping<TimeOnly, Event>> result = events.GroupBy(x => x.Timestamp);
+
+foreach (IGrouping<TimeOnly, Event> group in result)
+{
+    Console.Write($"[{group.Key:hh:mm:ss}]: ");
+    PrintSequence(group.Select(e => e.Type));
+}
+
+#!markdown
+
+## Aggregation
+
+The above operations modify sequences, but we often want to aggregate them into a single value.
+
+### `Count`
+
+```csharp
+int Count<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate);
+```
+
+Most standard aggregation is counting the number of elements, _or_ counting the number of elements that satisfy a given predicate:
+
+#!csharp
+
+IEnumerable<int> sequence = new [] { 1, 2, 3, 4, 5 };
+
+int totalCount = sequence.Count();
+int oddCount = sequence.Count(x => x % 2 == 1);
+
+Console.WriteLine($"totalCount: {totalCount}");
+Console.WriteLine($"oddCount: {oddCount}");
+
+#!markdown
+
+### Arithmetic: `Sum`, `Average`, `Max`, `Min`
+
+```csharp
+int Sum(this IEnumerable<int> source);
+long Sum(this IEnumerable<long> source);
+// ...
+int Sum<TSource>(this IEnumerable<TSource> source, Func<TSource, int> selector);
+long Sum<TSource>(this IEnumerable<TSource> source, Func<TSource, long> selector);
+```
+
+We can perform that on sequences of numeric values:
+
+#!csharp
+
+IEnumerable<int> sequence = new [] { 1, 2, 4, 7, 14 };
+
+int sum = sequence.Sum();
+double average = sequence.Average();
+int max = sequence.Max();
+int min = sequence.Min();
+
+Console.WriteLine($"sum: {sum}");
+Console.WriteLine($"average: {average}");
+Console.WriteLine($"max: {max}");
+Console.WriteLine($"min: {min}");
+
+#!markdown
+
+But there's also an overload with a selector:
+
+#!csharp
+
+IEnumerable<Weapon> sequence = new Weapon[]
+{ 
+    new() { Name = "Magical Sword", Damage = 30 },
+    new() { Name = "Dagger", Damage = 10 },
+    new() { Name = "Sword", Damage = 20 },
+    new() { Name = "Mace", Damage = 20 },
+};
+
+int sum = sequence.Sum(x => x.Damage);
+double average = sequence.Average(x => x.Damage);
+int max = sequence.Max(x => x.Damage);
+int min = sequence.Min(x => x.Damage);
+
+Console.WriteLine($"sum: {sum}");
+Console.WriteLine($"average: {average}");
+Console.WriteLine($"max: {max}");
+Console.WriteLine($"min: {min}");
+
+#!markdown
+
+```csharp
+TSource MaxBy<TSource, TResult>(this IEnumerable<TSource> source, Func<TSource, TResult> selector);
+TSource MinBy<TSource, TResult>(this IEnumerable<TSource> source, Func<TSource, TResult> selector);
+```
+
+Additionally, there are `MaxBy` and `MinBy` overloads that return the entire object that satisfies the maximum instead of only the projected value:
+
+#!csharp
+
+IEnumerable<Weapon> sequence = new Weapon[]
+{ 
+    new() { Name = "Magical Sword", Damage = 30 },
+    new() { Name = "Dagger", Damage = 10 },
+    new() { Name = "Sword", Damage = 20 },
+    new() { Name = "Mace", Damage = 20 },
+};
+
+Weapon max = sequence.MaxBy(x => x.Damage);
+Weapon min = sequence.MinBy(x => x.Damage);
+
+Console.WriteLine($"max: {max}");
+Console.WriteLine($"min: {min}");
+
+#!markdown
+
+`Max` and friends use `IComparable<T>` implementations (and, alternatively, have an overload that takes a comparator object).
+The `Sum` and `Average` operations are defined only for basic numeric types.
+
+#!markdown
+
+### General aggregation: `Aggregate`
+
+```csharp
+TAccumulate Aggregate<TSource, TAccumulate>(this IEnumerable<TSource> source, TAccumulate seed, Func<TAccumulate, TSource, TAccumulate> func);
+TSource Aggregate<TSource>(this IEnumerable<TSource> source, Func<TSource, TSource, TSource> func);
+```
+
+If we want a more complex aggregation, then there's the general aggregation method
+akin to a fold operation in functional languages.
+
+#!csharp
+
+IEnumerable<int> sequence = new [] { 1, 2, 3, 4, 5 };
+
+int product = sequence.Aggregate((a, x) => a * x);
+double binary = sequence.Aggregate(0.0, (a, x) => a + Math.Pow(2, x));
+
+Console.WriteLine($"product: {product}");
+Console.WriteLine($"binary: {binary}");
+
+#!markdown
+
+### Predicate aggregation: `All`, `Any`
+
+```csharp
+bool All<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate);
+bool Any<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate);
+```
+
+We can check if a given predicate is satisfied by some or all elements in a sequence:
+
+#!csharp
+
+IEnumerable<int> sequence = new [] { 17, 4, -3, 20, 42 };
+
+bool allPositive = sequence.All(x => x > 0);
+bool anyOddNegatives = sequence.Any(x => x < 0 && x % 2 != 0);
+
+Console.WriteLine($"allPositive: {allPositive}");
+Console.WriteLine($"anyOddNegatives: {anyOddNegatives}");
+
+#!markdown
+
+### Single element selectors: `First`, `Last`, `FirstOrDefault`, `LastOrDefault`
+
+```csharp
+TSource First<TSource>(this IEnumerable<TSource> source);
+```
+
+#!markdown
+
+`First` and `Last` give the first or last element in the collection.
+
+#!csharp
+
+IEnumerable<int> sequence = new [] { 17, -3, 47, 20, 13 };
+
+int first = sequence.First();
+int last = sequence.Last();
+
+Console.WriteLine($"first: {first}");
+Console.WriteLine($"last: {last}");
+
+#!markdown
+
+What if the sequence is empty? Then `First` and `Last` throw an `InvalidOperationException`:
+
+#!csharp
+
+IEnumerable<int> sequence = Array.Empty<int>();
+
+int first = sequence.First();
+
+#!markdown
+
+```csharp
+TSource? FirstOrDefault<TSource>(this IEnumerable<TSource> source);
+TSource FirstOrDefault<TSource>(this IEnumerable<TSource> source, TSource defaultValue);
+```
+
+Therefore, the `XOrDefault` methods exist, returning the `default(TSource)` (or a custom default value), if the sequence is empty.
+
+#!csharp
+
+IEnumerable<int> sequence = Array.Empty<int>();
+
+int firstOrDefault = sequence.FirstOrDefault();
+
+Console.WriteLine($"firstOrDefault: {firstOrDefault}");
+
+#!markdown
+
+```csharp
+TSource First<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate);
+
+TSource? FirstOrDefault<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate);
+TSource FirstOrDefault<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate, TSource defaultValue);
+```
+
+There are also overloads with a predicate, so that we can choose "first/last element that satisfies":
+
+#!csharp
+
+IEnumerable<int> sequence = new [] { 17, -3, 47, -20, 13 };
+
+int firstNegative = sequence.First(x => x < 0);
+int lastNegative = sequence.Last(x => x < 0);
+
+Console.WriteLine($"firstNegative: {firstNegative}");
+Console.WriteLine($"lastNegative: {lastNegative}");
+
+#!markdown
+
+If no element satisfies the predicate then it throws `InvalidOperationException`.
+
+#### When to use throwing versions
+
+When would we use `First`/`Last`? Well, when we don't expect that a sequence might be empty.
+In such a case the exception is a loud indicator of a bug in our logic. Maybe a more useful framework is the other
+way around: we should use `First`/`Last`, and _only if_ it makes sense in a given point for the sequence to be empty
+and we actually want that case handled with a default, we should use `FirstOrDefault`/`LastOrDefault`.
+
+#### `Single`, `SingleOrDefault`
+
+```csharp
+TSource Single<TSource>(this IEnumerable<TSource> source);
+TSource Single<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate);
+
+TSource? SingleOrDefault<TSource>(this IEnumerable<TSource> source);
+TSource SingleOrDefault<TSource>(this IEnumerable<TSource> source, TSource defaultValue);
+TSource? SingleOrDefault<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate);
+TSource SingleOrDefault<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate, TSource defaultValue);
+```
+
+Extending this, there is also `Single`, which is the same as `First`, but throws if the sequence has less or _more_ than one element.
+
+#!csharp
+
+IEnumerable<int> sequence = new [] { 1, 2 };
+
+int single = sequence.Single();
+
+#!markdown
+
+`SingleOrDefault` is an equivalent of `FirstOrDefault`.
+
+A similar code guideline applies: if we want to assert that at a given point a sequence is a singleton, use `Single` instead of `First`.
+
+#!markdown
+
+## Combining sequences
+
+There are also operations to be done on multiple sequences:
+
+### `Concat`
+
+```csharp
+IEnumerable<TSource> Concat<TSource>(this IEnumerable<TSource> first, IEnumerable<TSource> second);
+```
+
+Combine two sequences by appending the second to the first:
+
+#!csharp
+
+var sequence = new [] { 1, 2, 3, 4, 5 };
+var squares = sequence.Select(x => x * x);
+
+var result = sequence.Concat(squares);
+
+PrintSequence(result);
+
+#!markdown
+
+### Flattening maps with `SelectMany`
+
+```csharp
+IEnumerable<TResult> SelectMany<TSource,TResult>(this IEnumerable<TSource> source, Func<TSource,IEnumerable<TResult>> selector);
+```
+
+A combination of selecting multiple results for each element and then concatenating the result sequences. In other languages usually called a `flatMap` or a `concatMap`.
+
+#!csharp
+
+var sequence = new [] { 1, 2, 3, 4, 5 };
+
+var result = sequence.SelectMany(x => new [] { x, x * 10, x * 100 });
+
+PrintSequence(result);
+
+#!markdown
+
+### `Zip`
+
+```csharp
+IEnumerable<(TFirst First, TSecond Second)> Zip<TFirst,TSecond>(this IEnumerable<TFirst> first, IEnumerable<TSecond> second);
+IEnumerable<TResult> Zip<TFirst, TSecond, TResult>(this IEnumerable<TFirst> first, IEnumerable<TSecond> second, Func<TFirst, TSecond, TResult> resultSelector);
+```
+
+Combine two sequences into a sequence of pairs, or project the pairs to something else:
+
+#!csharp
+
+var sequence = new [] { 1, 2, 3, 4, 5 };
+var squares = sequence.Select(x => x * x);
+
+var result = sequence.Zip(squares);
+
+PrintSequence(result);
+
+#!csharp
+
+var sequence = new [] { 1, 2, 3, 4, 5 };
+
+var squares = sequence.Select(x => x * x);
+var result = sequence.Zip(squares, (x, y) => x + y);
+
+PrintSequence(result);
+
+#!markdown
+
+## Set operations
+
+Next set of operations works on sequences as if they were sets, with equality
+defined either by default equality, or by equality of keys determined with a selector.
+
+### `Contains`
+
+```csharp
+bool Contains<TSource>(this IEnumerable<TSource> source, TSource value);
+```
+
+Checking if an element equal to `value` exists in the sequence:
+
+#!csharp
+
+var sequence = new [] { 1, 2, 2, 3, 4, 4 };
+
+var result3 = sequence.Contains(3);
+var result5 = sequence.Contains(5);
+
+Console.WriteLine(result3);
+Console.WriteLine(result5);
+
+#!markdown
+
+### `Distinct`, `DistinctBy`
+
+```csharp
+IEnumerable<TSource> Distinct<TSource>(this IEnumerable<TSource> source);
+IEnumerable<TSource> DistinctBy<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> selector);
+```
+
+Removing duplicates:
+
+#!csharp
+
+var sequence = new [] { 1, 2, 2, 3, 4, 4 };
+
+var result = sequence.Distinct();
+
+PrintSequence(result);
+
+#!markdown
+
+### `Union`, `UnionBy`, `Except`, `ExceptBy`, `Intersect`, `IntersectBy`
+
+```csharp
+IEnumerable<TSource> Union<TSource> (this IEnumerable<TSource> first, IEnumerable<TSource> second);
+IEnumerable<TSource> Except<TSource> (this IEnumerable<TSource> first, IEnumerable<TSource> second);
+IEnumerable<TSource> Intersect<TSource> (this IEnumerable<TSource> first, IEnumerable<TSource> second);
+
+IEnumerable<TSource> UnionBy<TSource,TKey> (this IEnumerable<TSource> first, IEnumerable<TSource> second, Func<TSource,TKey> keySelector);
+IEnumerable<TSource> ExceptBy<TSource,TKey> (this IEnumerable<TSource> first, IEnumerable<TSource> second, Func<TSource,TKey> keySelector);
+IEnumerable<TSource> IntersectBy<TSource,TKey> (this IEnumerable<TSource> first, IEnumerable<TSource> second, Func<TSource,TKey> keySelector);
+```
+
+Set union, difference and intersection operations:
+
+#!csharp
+
+var sequence1 = new [] { 1, 2, 3, 4, 5 };
+var sequence2 = new [] { 2, 3, 3, 6 };
+
+var union = sequence1.Union(sequence2);
+var difference = sequence1.Except(sequence2);
+var intersection = sequence1.Intersect(sequence2);
+
+Console.Write("union: ");
+PrintSequence(union);
+Console.Write("difference: ");
+PrintSequence(difference);
+Console.Write("intersection: ");
+PrintSequence(intersection);
+
+#!markdown
+
+## Creating sequences
+
+We can also create sequences from scratch using regular helper statics.
+
+### `Empty`
+
+```csharp
+IEnumerable<TResult> Empty<TResult>();
+```
+
+...
+
+What, you expect a description?
+
+#!csharp
+
+PrintSequence(Enumerable.Empty<string>());
+
+#!csharp
+
+Console.WriteLine(Enumerable.Empty<string>().Count());
+
+#!markdown
+
+### `Range`
+
+```csharp
+IEnumerable<int> Range(int start, int count);
+```
+
+A sequence of naturals from `start` up to `start + count - 1` inclusive.
+
+#!csharp
+
+PrintSequence(Enumerable.Range(27, 3));
+
+#!markdown
+
+### `Repeat`
+
+```csharp
+IEnumerable<TResult> Repeat<TResult>(TResult element, int count);
+```
+
+A sequence of `element` repeated `count`:
+
+#!csharp
+
+PrintSequence(Enumerable.Repeat(27, 3));
+
+#!markdown
+
+## Collecting
+
+In the end it's useful to put our data into a richer collection than just `IEnumerable<T>`.
+
+### `ToList`
+
+```csharp
+List<TSource> ToList<TSource> (this IEnumerable<TSource> source);
+```
+
+Arguably the most used LINQ method ever, copies all elements from a sequence into a new `List<T>`.
+
+#!csharp
+
+IEnumerable<int> sequence = new [] { 1, 2, 2, 3, 4, 4 };
+List<int> list = sequence.ToList();
+list.Add(28);
+
+PrintSequence(list);
+
+#!markdown
+
+### `ToArray`
+
+```csharp
+TSource[] ToArray<TSource> (this IEnumerable<TSource> source);
+```
+
+Similar to `ToList`, but gives an array. Considerably less useful, since arrays are meh,
+but sometimes you do need an array.
+
+#!csharp
+
+IEnumerable<int> sequence = new [] { 1, 2, 2, 3, 4, 4 };
+int[] list = sequence.ToArray();
+list[2] = 28;
+
+PrintSequence(list);
+
+#!markdown
+
+### `ToHashSet`
+
+```csharp
+HashSet<TSource> ToHashSet<TSource> (this IEnumerable<TSource> source);
+```
+
+Turns the sequence into a `HashSet<T>`.
+
+#!csharp
+
+IEnumerable<int> sequence = new [] { 1, 2, 2, 3, 4, 4 };
+HashSet<int> set = sequence.ToHashSet();
+
+PrintSequence(set);
+
+#!markdown
+
+Curiously, there's no `ToSortedSet`, probably since `SortedSet<T>` is used much less frequently than `HashSet<T>`.
+It's easy enough to define by yourself, though:
+
+#!csharp
+
+static SortedSet<TSource> ToSortedSet<TSource>(this IEnumerable<TSource> source) => new SortedSet<TSource>(source);
+
+IEnumerable<int> sequence = new [] { 1, 2, 2, 3, 4, 4 };
+SortedSet<int> set = sequence.ToSortedSet();
+
+PrintSequence(set);
+
+#!markdown
+
+### `ToDictionary`
+
+```csharp
+Dictionary<TKey,TSource> ToDictionary<TSource,TKey>(
+    this IEnumerable<TSource> source,
+    Func<TSource, TKey> keySelector);
+
+Dictionary<TKey,TElement> ToDictionary<TSource,TKey,TElement>(
+    this IEnumerable<TSource> source,
+    Func<TSource, TKey> keySelector,
+    Func<TSource, TElement> elementSelector);
+```
+
+Turns the sequence into a dictionary, either by choosing a key and putting the entire object as value,
+or by selecting both key and value.
+
+#!csharp
+
+IEnumerable<Weapon> sequence = new Weapon[]
+{ 
+    new() { Name = "Magical Sword", Damage = 30 },
+    new() { Name = "Dagger", Damage = 10 },
+    new() { Name = "Sword", Damage = 20 },
+    new() { Name = "Mace", Damage = 20 },
+};
+
+Dictionary<string, int> dictionary = sequence.ToDictionary(x => x.Name, x => x.Damage);
+
+PrintSequence(dictionary);
+
+#!markdown
+
 ## Deferred execution
+
+We have all the basic blocks, but before we go and write useful queries we need to understand
+what really happens when we write LINQ.
+
+First of all, most LINQ operators don't do anything.
+No, really. See this code? It does nothing.
+
+#!csharp
+
+IEnumerable<int> sequence = new [] { 1, 2, 3, 4, 5 };
+
+IEnumerable<int> result = sequence.Select(x => 
+{
+    throw new InvalidOperationException("Boom!");
+    return 42;
+});
+
+#!markdown
+
+No exception. No big explosion. This also does nothing:
+
+#!csharp
+
+IEnumerable<int> sequence = new [] { 1, 2, 3, 4, 5 };
+IEnumerable<int> exploding = sequence.Select(x => 
+{
+    throw new InvalidOperationException("Boom!");
+    return 42;
+});
+
+IEnumerable<int> result = exploding.Select(x => x * x)
+    .Where(x => x > 10)
+    .GroupBy(x => x)
+    .Select(g => g.Key * g.Count(x => x % 2 == 0))
+    .OrderBy(x => x)
+    .Distinct();
+
+#!markdown
+
+... but if I do this ...
+
+#!csharp
+
+result.ToList();
+
+#!markdown
+
+There it is! And what a long stacktrace it comes with!
+
+Okay, so what's the trick here? Most LINQ operators, namely the ones that merely transform `IEnumerable` into a different
+`IEnumerable`, don't actually _execute_ any operation. They just create a [**decorator object**](https://refactoring.guru/design-patterns/decorator)
+over the input sequence that promises to do the transformation once enumerated. This should be natural after we've come to know iterator methods.
+
+#!csharp
+
+var sequence = new [] { 1, 2, 3 };
+
+IEnumerable<int> result = sequence.Select(x =>
+{
+    Console.WriteLine($"Enumerating {x}...");
+    return x;
+});
+
+Console.WriteLine("Result constructed.");
+foreach (var x in result)
+{
+    Console.WriteLine($"{x} yielded from result.");
+}
+
+#!markdown
+
+For example, the `Select` operator can be basically implemented like this:
+
+#!csharp
+
+public static IEnumerable<TResult> MySelect<TSource, TResult>(
+    this IEnumerable<TSource> source, Func<TSource, TResult> selector)
+{
+    foreach (var element in source)
+    {
+        yield return selector(element);
+    }
+}
+
+PrintSequence(new [] { 1, 2, 3, 4, 5 }.MySelect(x => x * x));
+
+#!markdown
+
+This model is also called **deferred execution** and is important to keep in mind when working with LINQ.
+The execution is _forced_ when we use one of the operators that consume the input. This are all aggregation
+methods, as well as all collectors. The easiest way to execute a LINQ query is to `foreach` it,
+if we need the results in place, or `ToList` it, if we need to persist them in memory.
+
+#!markdown
+
+This is a very useful feature. First of all, we can construct complex queries using LINQ and
+then execute them efficiently, since every call to a transformer method incurs only a constant-time cost
+of decorating our pipeline.
+
+#!csharp
+
+IEnumerable<int> Foo(IEnumerable<int> input, bool useAdditionalFilter)
+{
+    IEnumerable<int> result = input.Select(x => x * x);
+
+    if (useAdditionalFilter)
+    {
+        result = result.Where(x => x > 10);
+    }
+
+    return result.GroupBy(x => x)
+        .Select(g => g.Key * g.Count(x => x % 2 == 0))
+        .OrderBy(x => x)
+        .Distinct();
+}
+
+IEnumerable<int> ProduceInput()
+{
+    Console.WriteLine("Producing input...");
+
+    foreach (var x in new [] { 1, 2, 3, 8, 8, 8, 14, 14 })
+    {
+        yield return x;
+    }
+}
+    
+IEnumerable<int> input = ProduceInput();
+IEnumerable<int> result1 = Foo(input, true);
+IEnumerable<int> result2 = Foo(input, false);
+
+PrintSequence(result1);
+PrintSequence(result2);
+
+#!markdown
+
+Even though we call LINQ operators a dozen times over, we only enumerate the input sequence twice.
+
+#!markdown
+
+## Multiple Enumeration
+
+There's a second side of this coin. As we can see in the above example,
+we basically execute `ProduceInput` twice. This could be desired, or it could not.
+Imagine that method works _really hard_ to produce its input, it reads it from a file,
+or from a database, or asks a remote server for it. Then we would have to do that heavy lifting
+twice. In that case it would've been much better to just materialise the input first:
+
+#!csharp
+
+IEnumerable<int> input = ProduceInput().ToList();
+//                                      ^^^^^^^^
+IEnumerable<int> result1 = Foo(input, true);
+IEnumerable<int> result2 = Foo(input, false);
+
+PrintSequence(result1);
+PrintSequence(result2);
+
+#!markdown
+
+## Query syntax
+
+Everything up to now was the fluent syntax, also called the method syntax. LINQ wouldn't be very "integrated" into the language if not for query syntax, however.
+
+Instead of calling the extension methods directly we can write queries in an SQL-like parlance:
+
+#!csharp
+
+IEnumerable<Event> events = new Event[]
+{
+    new() { Timestamp = new(11, 59, 57), Type = "Start" },
+    new() { Timestamp = new(12, 00, 03), Type = "Message received" },
+    new() { Timestamp = new(12, 00, 03), Type = "Message received" },
+    new() { Timestamp = new(12, 00, 05), Type = "Response" },
+    new() { Timestamp = new(12, 00, 06), Type = "Response" },
+    new() { Timestamp = new(12, 00, 06), Type = "Stop" },
+};
+
+IEnumerable<IGrouping<TimeOnly, string>> results = 
+    from e in events
+    where e.Timestamp.Hour >= 12
+    group e.Type by e.Timestamp into g
+    orderby g.Key
+    select g;
+
+foreach (var group in results)
+{
+    Console.Write($"[{group.Key:hh:mm:ss}]: ");
+    PrintSequence(group);
+}
+
+#!markdown
+
+LINQ queries in this syntax must start with a `from` clause, which is basically a foreach declaration (compare `foreach (var x in s)` to `from x in s`).
+Then we can use `where`, `group by` and `orderby` operators.
+
+What compiler magic hides behind this? None, really. This is one of the least magical things in C#, the compiler
+strips this down to regular method calls as basically the first thing it does when compiling. It's equivalent to this:
+
+#!csharp
+
+IEnumerable<IGrouping<TimeOnly, string>> results = 
+    events.Where(e => e.Timestamp.Hour >= 12)
+        .GroupBy(e => e.Timestamp, e => e.Type)
+        .OrderBy(g => g.Key);
+
+foreach (var group in results)
+{
+    Console.Write($"[{group.Key:hh:mm:ss}]: ");
+    PrintSequence(group);
+}
+
+#!markdown
+
+Pretty underwhelming, actually. As is, query syntax seems to only bloat the query. That's true for simple queries like this,
+but there are many facilities that query syntax gives us, and that's where it really shines.
+
+#!markdown
+
+### `Join`
+
+There's a method that I didn't mention in fluent section, because its signature is damn awful:
+
+```csharp
+IEnumerable<TResult> Join<TOuter,TInner,TKey,TResult>(
+    this IEnumerable<TOuter> outer,
+    IEnumerable<TInner> inner,
+    Func<TOuter, TKey> outerKeySelector,
+    Func<TInner, TKey> innerKeySelector,
+    Func<TOuter, TInner, TResult> resultSelector)
+```
+
+Using it in fluent is terrible:
+
+#!csharp
+
+enum Severity { Information, Warning, Error };
+class EventSeverity
+{
+    public string EventType { get; init; }
+
+    public Severity Level { get; init; }
+}
+
+#!csharp
+
+using static Severity;
+
+IEnumerable<EventSeverity> severities = new EventSeverity[]
+{
+    new() { EventType = "Start", Level = Information },
+    new() { EventType = "Stop", Level = Information },
+    new() { EventType = "Message received", Level = Information },
+    new() { EventType = "Response", Level = Information },
+    new() { EventType = "Invalid request", Level = Warning },
+    new() { EventType = "Error", Level = Error },
+};
+
+IEnumerable<Event> events = new Event[]
+{
+    new() { Timestamp = new(11, 59, 57), Type = "Start" },
+    new() { Timestamp = new(12, 00, 03), Type = "Message received" },
+    new() { Timestamp = new(12, 00, 03), Type = "Response" },
+    new() { Timestamp = new(12, 00, 04), Type = "Invalid request" },
+    new() { Timestamp = new(12, 00, 05), Type = "Error" },
+    new() { Timestamp = new(12, 00, 06), Type = "Stop" },
+};
+
+IEnumerable<string> results = events.Join(severities, e => e.Type, s => s.EventType, (e, s) => $"[{s.Level}] {e}");
+
+foreach (var result in results) Console.WriteLine(result);
+
+#!markdown
+
+That line is sooo long, and it's sooo unreadable, it pains me to look at it. In query syntax it's slick, though:
+
+#!csharp
+
+IEnumerable<string> results = from e in events
+                              join s in severities on e.Type equals s.EventType
+                              select $"[{s.Level}] {e}";
+
+foreach (var result in results) Console.WriteLine(result);
+
+#!markdown
+
+It reads easily and it's immediately clear what is joined with what and on what keys. The limitation of this is that it only works with equijoins, but these are by far the most common.
+
+#!markdown
+
+### Anonymous types!
+
+What if we don't want strings, we actually want to get the event with its severity and carry it further?
+We could declare a special type for that, but it's not going to be useful in many places... An ideal candidate for an
+anonymous type!
+
+#!csharp
+
+var results = from e in events
+              join s in severities on e.Type equals s.EventType
+              select new { s.Level, Event = e };
+
+foreach (var result in results)
+{
+    Console.WriteLine($"[{result.Level}] {result.Event}");
+}
+
+#!markdown
+
+### Multiple range variables
+
+To showcase one more strength of query syntax, we flip our example a bit. Now we're getting
+in a stream of events in the form (timestamp, list of events that happened), and we want to
+"unflatten" the sequence, skipping all "Invalid request" messages. This is done easily with query syntax:
+
+#!csharp
+
+var input = new (TimeOnly timestamp, IEnumerable<string> events)[]
+{
+    (new (11, 59, 57), new string[] { "Start" }),
+    (new (12, 00, 03), new string[] { "Message received", "Message received", "Invalid request" }),
+    (new (12, 00, 05), new string[] { "Invalid request", "Response" }),
+    (new (12, 00, 06), new string[] { "Response", "Stop" }),
+};
+
+IEnumerable<Event> result = 
+    from x in input
+    from e in x.events
+    where e != "Invalid request"
+    select new Event { Timestamp = x.timestamp, Type = e };
+
+foreach (var e in result)
+{
+    Console.WriteLine(e);
+}
+
+#!markdown
+
+Now try writing it in fluent syntax! There's an issue. We want something like this:
+
+```csharp
+input.SelectMany(x => x.events)
+    .Where(e => e != "Invalid request")
+    .Select(e => new Event { Timestamp = ???, Type = e });
+```
+
+But then we lose access to the original timestamp! Where do we take it from? Well, the solution is exactly what is generated in the
+query syntax case -- we need a temporary carrier for the original timestamp:
+
+#!csharp
+
+IEnumerable<Event> result = input.SelectMany(x => x.events.Select(e => new { Event = e, Timestamp = x.timestamp } ))
+    .Where(x => x.Event != "Invalid request")
+    .Select(x => new Event { Timestamp = x.Timestamp, Type = x.Event });
+
+foreach (var e in result)
+{
+Console.WriteLine(e);
+}
+
+#!markdown
+
+In our case we could've just created the `Event` in the initial projection, but in the general case we need a special anonymous type to carry the original
+data. This becomes more and more complex the more sequences and nesting levels we add to the query, becoming unwieldy to write in fluent syntax.
+Even now, the query syntax counterpart is much simpler to read and understand.
+
+#!markdown
+
+### Transparent identifiers
+
+Another construct that query syntax give us is the ability to declare a special range variable that corresponds
+to a computed expression. Let's say we're tasked with finding out the times during which we get the most
+invalid messages on our server after noon, discarding hours that don't see a lot of them, say we want at least 2.
+
+#!csharp
+
+IEnumerable<Event> events = new Event[]
+{
+    new() { Timestamp = new(11, 59, 57), Type = "Start" },
+    new() { Timestamp = new(11, 59, 59), Type = "Invalid message" },
+    new() { Timestamp = new(12, 00, 03), Type = "Message received" },
+    new() { Timestamp = new(12, 00, 03), Type = "Invalid message" },
+    new() { Timestamp = new(12, 00, 05), Type = "Response" },
+    new() { Timestamp = new(12, 00, 06), Type = "Invalid message" },
+    // Obviously could be much longer...
+    new() { Timestamp = new(13, 00, 33), Type = "Invalid message" },
+    new() { Timestamp = new(13, 00, 36), Type = "Stop" },
+};
+
+var results = 
+    from e in events
+    where e.Timestamp.Hour >= 12
+    where e.Type == "Invalid message"
+    group e.Type by e.Timestamp.Hour into g
+    select new { Timestamp = g.Key, Count = g.Count() } into x
+    where x.Count >= 2
+    select x;
+
+PrintSequence(results);
+
+#!markdown
+
+That's a bit ugly. But we can rewrite it with transparent identifiers to make it better:
+
+#!csharp
+
+var results = 
+    from e in events
+    let hour = e.Timestamp.Hour
+    where hour >= 12
+    where e.Type == "Invalid message"
+    group e.Type by hour into g
+    let count = g.Count()
+    where count >= 2
+    select new { Timestamp = g.Key, Count = count };
+
+PrintSequence(results);
+
+#!markdown
+
+That's less repetition for the `e.Timestamp.Hour` expression and less twiddling with `g.Count()`.
+
+#!markdown
+
+### Query syntax summary
+
+Query syntax is a very important tool in our LINQ toolbox. For simple `select-where` queries it doesn't offer much,
+therefore _most_ code you'll ever see will use fluent syntax. It also doesn't support all the constructions: there is
+no query syntax for `Zip` or `Union`, you still need to call `ToList` in the end if you want to materialise the query, etc.
+
+However, when writing complex queries it offers not only more readable _syntax_, but also a much useful _mental model_,
+and that's worth _a lot_. I find writing complex queries using the more declarative query syntax easier
+than fiddling with extension methods. Even if in the end you'd decide to convert it to fluent syntax,
+starting off writing in queries might help tackle complex requirements.
+
+#!markdown
+
+## MoreLINQ
+
+There's a few operators that we've skipped over, since this is not an API reference, but a course.
+Now, LINQ offers only basic blocks, so when you're tasked with writing something more complex there are two approaches:
+
+1. Write your own specific extension method. This has the usual drawbacks of having to maintain your own library code,
+but if the operation is so specific that you'd have to write it by hand anyway, then that's unavoidable.
+2. Consider [`MoreLINQ`](https://morelinq.github.io/). It's an open-source project that contains _a ton_ of extensions to regular LINQ,
+including many static generator methods and quality-of-life helpers. Many of the methods there get ported to the BCL overtime (examples
+include `MinBy`, `MaxBy`, `DistinctBy`, `Batch` that got ported as `Chunks`...), but there's still a ton to go. A motivating example
+is `Scan`, which calculates a prefix sum (a running aggregation, to be exact).
 
 #!markdown
 

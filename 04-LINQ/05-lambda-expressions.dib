@@ -243,9 +243,78 @@ Console.WriteLine();
 
 ## Under the hood
 
-I wouldn't be myself if I didn't show you how the compiler implements lambdas.
+I wouldn't be myself if I didn't show you how the compiler implements lambdas. Here's a fun lambda that does capturing:
 
-TODO:
+#!csharp
+
+class C
+{
+    private int _field;
+
+    int Foo(int parameter)
+    {
+        int local = 42;
+
+        var result = Call(() => {
+            _field += 1;
+            local += 2;
+            return parameter + _field + local;
+        });
+
+        return result + local;
+    }
+    
+    static int Call(Func<int> f) => f();
+}
+
+#!markdown
+
+This gets lowered to:
+
+```csharp
+internal class C
+{
+    [CompilerGenerated]
+    private sealed class <>c__DisplayClass1_0
+    {
+        public C _this;
+
+        public int local;
+
+        public int parameter;
+
+        internal int <Foo>b__0()
+        {
+            _this._field++;
+            local += 2;
+            return parameter + _this._field + local;
+        }
+    }
+
+    private int _field;
+
+    private int Foo(int parameter)
+    {
+        <>c__DisplayClass1_0 lambda = new <>c__DisplayClass1_0();
+        lambda._this = this;
+        lambda.parameter = parameter;
+        lambda.local = 42;
+        return Call(new Func<int>(lambda.<Foo>b__0)) + lambda.local;
+    }
+}
+
+```
+
+#!markdown
+
+Key takeaways:
+
+1. A class gets generated to hold the data of the lambda and its method.
+2. If fields of the overlying object are used, `this` is copied to a field of the class.
+3. All locals of a method are hoisted to the class.
+4. Logic of the lambda gets moved to a unique method on the class.
+
+Here's the [sharplab link](https://sharplab.io/#gist:b69276f63e202f320cd2fc941fea974e), have fun playing with the lambda!
 
 #!markdown
 
