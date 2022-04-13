@@ -119,15 +119,15 @@ Console.WriteLine(squareSquarer.Delegate(4, 6));
 There are three useful frameworks for thinking about delegates,
 each giving a slightly different perspective:
 
-1. **Delegates are single-method interfaces** -- a value being of a delegate
+1. **Delegates are single-method interfaces** – a value being of a delegate
 type simply gives us a guarantee that it has a specific `Invoke` method that
 takes parameters of some type and returns a value of some type. Delegate
 variance is therefore a special case of interface variance, simply for interfaces
 with a single method.
-2. **Delegate values are functor objects** -- an idiom popular in C++ is a functor
-object -- an object with the `()` operator overloaded. In C# we cannot overload
+2. **Delegate values are functor objects** – an idiom popular in C++ is a functor
+object – an object with the `()` operator overloaded. In C# we cannot overload
 `()`, but we can specify its signature as a delegate type and pass it around.
-3. **Delegates are functions** -- for programmers familiar with functional programming
+3. **Delegates are functions** – for programmers familiar with functional programming
 there's nothing interesting happening here. A delegate is simply a function type
 like any other, be it `int -> int -> int` or `(IComparable a) => a -> a -> int` for the generic
 comparison type. This breaks down at the strong typing boundary, however.
@@ -334,7 +334,7 @@ assertion("Something else")
 Okay, so imagine we have a method that can produce assertions for
 any `string`. Should it be assignable to something that excepts a producer
 of assertions for `object`? Obviously not. The other way around, however, makes
-sense -- if we know how to assert against any `object`, then in particular we know how
+sense – if we know how to assert against any `object`, then in particular we know how
 to assert against any `string`.
 
 The general rules can be briefly summarized as follows: covariance
@@ -400,7 +400,7 @@ Console.WriteLine(Flipped(Operations.Minus, 4, 8));
 
 Declaring own delegate types is useful for two cases:
 
-1. As a newtype alias -- when a signature of a standard `Func` or `Action` delegate would be
+1. As a newtype alias – when a signature of a standard `Func` or `Action` delegate would be
 way too complicated, it's useful to define a short type to make the code more clear.
 
 ```csharp
@@ -414,7 +414,7 @@ class Foo<TFrob, TBlah, TBulbulator>
 }
 ```
 
-2. When we want to distinguish types with the same signature -- we might have a class
+2. When we want to distinguish types with the same signature – we might have a class
 that takes in two binary operations on `int`, but they are very different from each other
 semantically. In that case, we create a delegate type for each of these cases to not make a mistake down the line.
 

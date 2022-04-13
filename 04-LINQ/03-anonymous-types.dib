@@ -194,7 +194,7 @@ internal sealed class AnonymousType0<TFirstName, TLastName>
 
 #!markdown
 
-## Nondestructive mutation -- `with` syntax
+## Nondestructive mutation – `with` syntax
 
 #!markdown
 

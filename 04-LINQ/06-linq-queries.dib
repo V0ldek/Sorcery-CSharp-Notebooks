@@ -70,7 +70,7 @@ PrintSequence(squares);
 
 #!markdown
 
-The operation is non-destructive -- it creates a new sequence, but
+The operation is non-destructive – it creates a new sequence, but
 leaves the original one intact.
 
 #!markdown
@@ -81,7 +81,7 @@ leaves the original one intact.
 IEnumerable<T> Where<T>(this IEnumerable<T> source, Func<T, bool> predicate);
 ```
 
-Another basic building block -- filtering by a boolean predicate:
+Another basic building block – filtering by a boolean predicate:
 
 #!csharp
 
@@ -876,6 +876,12 @@ IEnumerable<int> Foo(IEnumerable<int> input, bool useAdditionalFilter)
     return result.GroupBy(x => x)
         .Select(g => g.Key * g.Count(x => x % 2 == 0))
         .OrderBy(x => x)
+IEnumerable<int> result = exploding.Select(x => x * x)
+    .Where(x => x > 10)
+    .GroupBy(x => x)
+    .Select(g => g.Key * g.Count(x => x % 2 == 0))
+    .OrderBy(x => x)
+    .Distinct();
         .Distinct();
 }
 
@@ -919,6 +925,45 @@ IEnumerable<int> result2 = Foo(input, false);
 
 PrintSequence(result1);
 PrintSequence(result2);
+
+#!markdown
+
+## Interdiction: extension methods
+
+This is a great moment to reflect upon extension methods.
+There's no need to write prose, I will just let code do the talking --
+here is the exact same query written with and without extension methods:
+
+#!csharp
+
+IEnumerable<int> source = new [] { 1, 2, 3, 8, 8, 8, 17, 17 };
+
+#!csharp
+
+IEnumerable<int> result = source.Select(x => x * x)
+    .Where(x => x > 10)
+    .GroupBy(x => x)
+    .Select(g => g.Key * g.Count(x => x % 2 == 0))
+    .OrderBy(x => x)
+    .Distinct();
+
+PrintSequence(result);
+
+#!csharp
+
+IEnumerable<int> result = 
+    Enumerable.Distinct(
+        Enumerable.OrderBy(
+            Enumerable.Select(
+                Enumerable.GroupBy(
+                    Enumerable.Where(
+                        Enumerable.Select(source, x => x * x), 
+                        x => x > 10), 
+                    x => x),
+                g => g.Key * Enumerable.Count(g, x => x % 2 == 0)),
+            x => x));
+
+PrintSequence(result);
 
 #!markdown
 
@@ -1109,7 +1154,7 @@ input.SelectMany(x => x.events)
 ```
 
 But then we lose access to the original timestamp! Where do we take it from? Well, the solution is exactly what is generated in the
-query syntax case -- we need a temporary carrier for the original timestamp:
+query syntax case – we need a temporary carrier for the original timestamp:
 
 #!csharp
 
@@ -1215,7 +1260,7 @@ is `Scan`, which calculates a prefix sum (a running aggregation, to be exact).
 
 ## Summary
 
-We've met the standard facility for performing operations on sequences of data -- LINQ.
+We've met the standard facility for performing operations on sequences of data – LINQ.
 We know most of the basic operators, learnt how to use query syntax to write complex queries,
 and know where to turn to for even more useful operators.
 
