@@ -495,7 +495,7 @@ A combination of selecting multiple results for each element and then concatenat
 
 var sequence = new [] { 1, 2, 3, 4, 5 };
 
-var result = sequence.SelectMany(x => new [] { x, x * 10, x * 100 });
+IEnumerable<int> result = sequence.SelectMany(x => new [] { x, x * 10, x * 100 });
 
 PrintSequence(result);
 
@@ -515,7 +515,16 @@ Combine two sequences into a sequence of pairs, or project the pairs to somethin
 var sequence = new [] { 1, 2, 3, 4, 5 };
 var squares = sequence.Select(x => x * x);
 
-var result = sequence.Zip(squares);
+IEnumerable<(int, int)> result = sequence.Zip(squares);
+
+PrintSequence(result);
+
+#!csharp
+
+var sequence1 = new [] { 1, 2, 3, 4, 5 };
+var sequence2 = new [] { 6, 7, 8, 9 };
+
+IEnumerable<(int, int)> result = sequence1.Zip(sequence2);
 
 PrintSequence(result);
 
@@ -603,6 +612,16 @@ Console.Write("difference: ");
 PrintSequence(difference);
 Console.Write("intersection: ");
 PrintSequence(intersection);
+
+#!csharp
+
+var sequence1 = new [] { 1, 2, 2 };
+var sequence2 = new [] { 1, 2 };
+
+var difference = sequence1.Except(sequence2);
+
+Console.Write("difference: ");
+PrintSequence(difference);
 
 #!markdown
 
@@ -709,7 +728,7 @@ Turns the sequence into a `HashSet<T>`.
 
 #!csharp
 
-IEnumerable<int> sequence = new [] { 1, 2, 2, 3, 4, 4 };
+IEnumerable<int> sequence = new [] { 5, 2, 2, 3, 4, 4 };
 HashSet<int> set = sequence.ToHashSet();
 
 PrintSequence(set);
@@ -721,9 +740,10 @@ It's easy enough to define by yourself, though:
 
 #!csharp
 
-static SortedSet<TSource> ToSortedSet<TSource>(this IEnumerable<TSource> source) => new SortedSet<TSource>(source);
+static SortedSet<TSource> ToSortedSet<TSource>(this IEnumerable<TSource> source) =>
+    new SortedSet<TSource>(source);
 
-IEnumerable<int> sequence = new [] { 1, 2, 2, 3, 4, 4 };
+IEnumerable<int> sequence = new [] { 5, 2, 2, 3, 4, 4 };
 SortedSet<int> set = sequence.ToSortedSet();
 
 PrintSequence(set);
@@ -876,12 +896,6 @@ IEnumerable<int> Foo(IEnumerable<int> input, bool useAdditionalFilter)
     return result.GroupBy(x => x)
         .Select(g => g.Key * g.Count(x => x % 2 == 0))
         .OrderBy(x => x)
-IEnumerable<int> result = exploding.Select(x => x * x)
-    .Where(x => x > 10)
-    .GroupBy(x => x)
-    .Select(g => g.Key * g.Count(x => x % 2 == 0))
-    .OrderBy(x => x)
-    .Distinct();
         .Distinct();
 }
 

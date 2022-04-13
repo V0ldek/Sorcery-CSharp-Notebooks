@@ -219,7 +219,7 @@ The modified properties need an accessible `set` or `init` accessor.
 
 #!csharp
 
-struct Point
+readonly struct Point
 {
     public double X { get; init; }
     public double Y { get; init; }

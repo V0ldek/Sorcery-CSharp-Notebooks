@@ -301,7 +301,8 @@ for example to check that both are equal. Here's a usage:
 
 static class Assertions
 {
-    public static Do<T> Equality<T>(Return<T> t) => new EqualityAssertion<T>(t()).Assert;
+    public static Do<T> Equality<T>(Return<T> t) => 
+        new EqualityAssertion<T>(t()).Assert;
     
     private class EqualityAssertion<T>
     {
@@ -324,7 +325,7 @@ static class Producer
     public static string Value() => "Value";
 }
 
-var assertion = Assertions.Equality(Producer.Value);
+Do<T> assertion = Assertions.Equality(Producer.Value);
 
 assertion("Value");
 assertion("Something else")
