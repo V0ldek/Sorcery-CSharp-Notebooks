@@ -1215,11 +1215,9 @@ is `Scan`, which calculates a prefix sum (a running aggregation, to be exact).
 
 ## Summary
 
-We've learnt how to define strongly typed function objects in C#.
-We know that they can be generic, and that most of them are in some way
-equivalent to `Action` and `Func`. We know that method group expressions
-give us values of delegate types, and in the next section we will learn how to
-produce delegate values more easily with lambda expressions.
+We've met the standard facility for performing operations on sequences of data -- LINQ.
+We know most of the basic operators, learnt how to use query syntax to write complex queries,
+and know where to turn to for even more useful operators.
 
 #!markdown
 
