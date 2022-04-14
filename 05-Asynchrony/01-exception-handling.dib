@@ -1,6 +1,6 @@
 #!markdown
 
-# 3.1. Exceptions
+# 5.1. Exception Handling
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/5-asynchrony.
 
-It covers topics for section [3.1. Exceptions](https://gienieczko.com/teaching/csharp/2-references-and-values/3-exceptions).
+It covers topics for section [5.1. Exception Handling](https://gienieczko.com/teaching/csharp/5-asynchrony/1-exception-handling).
 
 ### Notebook flow
 
@@ -416,5 +416,5 @@ and the most common exceptions used in defensive programming.
 
 ## Next up:
 
-Continue with the next section, [1.4. Nested Types](https://gienieczko.com/teaching/csharp/2-references-and-values/4-nested-types),
-or straight to the next notebook, `04-nested-types.dib`.
+Continue with the next section, [5.2. Disposable Resources](https://gienieczko.com/teaching/csharp/5-asynchrony/2-disposable-resources),
+or straight to the next notebook, `02-disposable-resources.dib`.

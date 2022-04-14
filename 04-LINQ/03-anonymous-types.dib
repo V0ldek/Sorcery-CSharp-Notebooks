@@ -266,5 +266,5 @@ for LINQ queries later.
 
 ## Next up:
 
-Continue with the next section, [4.4. Nondestructive Mutation](https://gienieczko.com/teaching/csharp/4-linq/4-nondestructive-mutation),
-or straight to the next notebook, [`04-nondestructive-mutation.dib`](/04-LINQ/04-nondestructive-mutation.dib).
+Continue with the next section, [4.4. Delegates](https://gienieczko.com/teaching/csharp/4-linq/4-delegates),
+or straight to the next notebook, [`04-delegates.dib`](/04-LINQ/04-delegates.dib).

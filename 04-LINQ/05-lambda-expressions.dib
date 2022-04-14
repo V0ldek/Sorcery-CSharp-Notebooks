@@ -345,11 +345,8 @@ allocating a new object each time the lambda would be created.
 
 ## Summary
 
-We've learnt how to define strongly typed function objects in C#.
-We know that they can be generic, and that most of them are in some way
-equivalent to `Action` and `Func`. We know that method group expressions
-give us values of delegate types, and in the next section we will learn how to
-produce delegate values more easily with lambda expressions.
+We've learnt how to create concise values of delegate types with lambda expressions.
+We know about the capturing semantics and how they are implemented under the hood.
 
 #!markdown
 
