@@ -357,7 +357,6 @@ class Publisher
     {
         if (Event is not null)
         {
-            Thread.Sleep(1);
             Event.Invoke(this, e);
         }
     }
@@ -403,37 +402,6 @@ consumerThread.Start();
 
 publisherThread.Join(1000);
 consumerThread.Join(1000);
-
-#!markdown
-
-There's a race, and racing is dangerous.
-
-Now, under the hood, the compiler does three things:
-
-1. It creates a field of the delegate type.
-2. It redirects all references to the event inside the declaring type to the field.
-3. It redirects all `+=` and `-=` calls from the outside to special `add` and `remove`
-accessors.
-
-The accessors are akin to `get` and `set` accessors on properties.
-Here's an approximation of the expansion of the event we declared:
-
-```csharp
-private EventHandler _event;
-
-public event EventHandler? Event
-{
-    add { _event += value; }
-    remove { _event += value; }
-}
-```
-
-This is almost true, only that the compiler injects some thread-safety
-into the delegate access that we will talk about after we learn about synchronisation mechanisms.
-
-There's seldom any reason to not use the default expansion and
-implement `add` and `remove` by hand, a notable use-case would
-be creating a thin wrapper over some other delegate in a different class.
 
 #!markdown
 

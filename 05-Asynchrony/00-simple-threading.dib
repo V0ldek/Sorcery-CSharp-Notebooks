@@ -1,0 +1,183 @@
+#!markdown
+
+# 5.0. Simple Threading
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/5-asynchrony.
+
+It covers topics for section [5.2. Disposable Resources](https://gienieczko.com/teaching/csharp/5-asynchrony/2-disposable-resources).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Running on a Different Thread
+
+**NOTE: The threading API we'll see now is a relatively low-level API, and usually should _not_ be used directly.
+We need to introduce it for demonstration reasons before we reach [`5.X. Thread Pool`], but in general
+you should never have to interact with the `Thread` class at all.**
+
+We can spawn a child thread by using `System.Threading.Thread`,
+with its constructor taking a `ThreadStart` is a delegate type equivalent to `Action`.
+
+#!csharp
+
+using System.Threading;
+
+var thread = new Thread(() => Console.WriteLine("Hello from a different thread."));
+
+#!markdown
+
+This does nothing. To do anything we need to start the thread.
+
+#!csharp
+
+thread.Start();
+thread.Join();
+
+#!markdown
+
+Joining _blocks_ the current thread until the other thread finishes.
+
+We can artificially suspend the thread for some time using `Thread.Sleep`.
+
+#!csharp
+
+using System.Diagnostics;
+using System.Threading;
+
+var stopwatch = new Stopwatch();
+Console.WriteLine("Hello");
+
+stopwatch.Start();
+Thread.Sleep(1000);
+
+stopwatch.Stop();
+Console.WriteLine(stopwatch.Elapsed);
+
+#!markdown
+
+Finally, we can access the current thread and get its unique ID for diagnostic purposes.
+
+#!csharp
+
+using System.Threading;
+
+static void WriteFromThread(string message) =>
+    Console.WriteLine($"[{Thread.CurrentThread.ManagedThreadId}] {message}");
+
+var thread1 = new Thread(() => WriteFromThread("Hello!"));
+var thread2 = new Thread(() => WriteFromThread("Hello!"));
+
+thread1.Start();
+thread2.Start();
+
+WriteFromThread("Hello!");
+thread1.Join();
+thread2.Join();
+
+#!markdown
+
+## Races and Locks
+
+We're on a very low and unsafe level. There's no inherent thread synchronisation
+going on.
+
+#!csharp
+
+using System.Threading;
+
+var counter = 0;
+
+var thread = new Thread(() =>
+{
+    for (var i = 0; i < 1_000_000; i += 1)
+    {
+        counter++;
+    }
+});
+
+thread.Start();
+
+for (var i = 0; i < 1_000_000; i += 1)
+{
+    counter++;
+}
+
+thread.Join();
+
+Console.WriteLine(counter);
+
+#!markdown
+
+We'll talk about various synchronisation mechanisms
+later, but for now there's a very straightforward mechanism
+of a `lock`.
+
+#!csharp
+
+using System.Threading;
+
+var counter = 0;
+object lockObject = new object();
+
+var thread = new Thread(() =>
+{
+    for (var i = 0; i < 1_000_000; i += 1)
+    {
+        lock (lockObject)
+        {
+            counter++;
+        }
+    }
+});
+
+thread.Start();
+
+for (var i = 0; i < 1_000_000; i += 1)
+{
+    lock (lockObject)
+    {
+        counter++;
+    }
+}
+
+thread.Join();
+
+Console.WriteLine(counter);
+
+#!markdown
+
+This is a **mutual-exclusion lock** that uses the passed object to enforce
+exclusion -- only one thread can hold a lock around a given object.
+
+The object must obviously be a reference type to work.
+
+#!markdown
+
+## Summary
+
+We've learnt how to throw, catch, and rethrow exceptions. We can define our own exception types.
+We know how to use advanced filters with the `when` clause. We know when to use exceptions
+and the most common exceptions used in defensive programming.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [5.2. Disposable Resources](https://gienieczko.com/teaching/csharp/5-asynchrony/2-disposable-resources),
+or straight to the next notebook, `02-disposable-resources.dib`.
