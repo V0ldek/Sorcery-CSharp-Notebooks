@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/5-asynchrony.
 
-It covers topics for section [5.2. Disposable Resources](https://gienieczko.com/teaching/csharp/5-asynchrony/2-disposable-resources).
+It covers topics for section [5.0. Simple Threading](https://gienieczko.com/teaching/csharp/5-asynchrony/0-simple-threading).
 
 ### Notebook flow
 
@@ -163,7 +163,7 @@ Console.WriteLine(counter);
 #!markdown
 
 This is a **mutual-exclusion lock** that uses the passed object to enforce
-exclusion -- only one thread can hold a lock around a given object.
+exclusion – only one thread can hold a lock around a given object.
 
 The object must obviously be a reference type to work.
 
@@ -171,13 +171,12 @@ The object must obviously be a reference type to work.
 
 ## Summary
 
-We've learnt how to throw, catch, and rethrow exceptions. We can define our own exception types.
-We know how to use advanced filters with the `when` clause. We know when to use exceptions
-and the most common exceptions used in defensive programming.
+We've learnt how to create simple, low-level threads and how to synchronise access with
+a primitive mutex.
 
 #!markdown
 
 ## Next up:
 
-Continue with the next section, [5.2. Disposable Resources](https://gienieczko.com/teaching/csharp/5-asynchrony/2-disposable-resources),
-or straight to the next notebook, `02-disposable-resources.dib`.
+Continue with the next section, [5.1. Events](https://gienieczko.com/teaching/csharp/5-asynchrony/1-events),
+or straight to the next notebook, `01-events.dib`.

@@ -1,6 +1,6 @@
 #!markdown
 
-# 5.2. Disposable Resources
+# 5.3. Disposable Resources
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/5-asynchrony.
 
-It covers topics for section [5.2. Disposable Resources](https://gienieczko.com/teaching/csharp/5-asynchrony/2-disposable-resources).
+It covers topics for section [5.3. Disposable Resources](https://gienieczko.com/teaching/csharp/5-asynchrony/3-disposable-resources).
 
 ### Notebook flow
 
@@ -386,7 +386,7 @@ in its field then it most likely owns it. Obtaining an instance from a shared pl
 like a static method or property, is not ownership.
 
 In other words, we have ownership when the lifetime of the owning object determines the lifetime of the owned object.
-Think aggregate/composite distinction in domain modelling -- if an object has no purpose outside of its containing
+Think aggregate/composite distinction in domain modelling – if an object has no purpose outside of its containing
 object, then it's owned by it.
 
 #!markdown
@@ -431,13 +431,11 @@ Believe me, the longer you don't hear about finalizers, the better for you.
 
 ## Summary
 
-We've learnt how to throw, catch, and rethrow exceptions. We can define our own exception types.
-We know how to use advanced filters with the `when` clause. We know when to use exceptions
-and the most common exceptions used in defensive programming.
+We've learnt how to dispose of held resources using `IDisposable` and how to implement it ourselves.
 
 #!markdown
 
 ## Next up:
 
-Continue with the next section, [5.2. Disposable Resources](https://gienieczko.com/teaching/csharp/5-asynchrony/2-disposable-resources),
-or straight to the next notebook, `02-disposable-resources.dib`.
+Continue with the next section, [5.4. Async and Await](https://gienieczko.com/teaching/csharp/5-asynchrony/4-async-and-await),
+or straight to the next notebook, `04-async-and-await.dib`.

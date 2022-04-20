@@ -1,6 +1,6 @@
 #!markdown
 
-# 5.1. Exception Handling
+# 5.2. Exception Handling
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/5-asynchrony.
 
-It covers topics for section [5.1. Exception Handling](https://gienieczko.com/teaching/csharp/5-asynchrony/1-exception-handling).
+It covers topics for section [5.2. Exception Handling](https://gienieczko.com/teaching/csharp/5-asynchrony/2-exception-handling).
 
 ### Notebook flow
 
@@ -416,5 +416,5 @@ and the most common exceptions used in defensive programming.
 
 ## Next up:
 
-Continue with the next section, [5.2. Disposable Resources](https://gienieczko.com/teaching/csharp/5-asynchrony/2-disposable-resources),
-or straight to the next notebook, `02-disposable-resources.dib`.
+Continue with the next section, [5.3. Disposable Resources](https://gienieczko.com/teaching/csharp/5-asynchrony/3-disposable-resources),
+or straight to the next notebook, `03-disposable-resources.dib`.

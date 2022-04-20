@@ -1,6 +1,6 @@
 #!markdown
 
-# 5.0. Events
+# 5.1. Events
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -10,7 +10,7 @@
 
 This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/5-asynchrony.
 
-It covers topics for section [5.0. Events](https://gienieczko.com/teaching/csharp/5-asynchrony/0-events).
+It covers topics for section [5.2. Exception Handling](https://gienieczko.com/teaching/csharp/5-asynchrony/2-exception-handling).
 
 ### Notebook flow
 
@@ -439,13 +439,11 @@ be creating a thin wrapper over some other delegate in a different class.
 
 ## Summary
 
-We've learnt how to throw, catch, and rethrow exceptions. We can define our own exception types.
-We know how to use advanced filters with the `when` clause. We know when to use exceptions
-and the most common exceptions used in defensive programming.
+We've learnt how to declare and subscribe to events for a publisher-observer model.
 
 #!markdown
 
 ## Next up:
 
-Continue with the next section, [5.1. Exception Handling](https://gienieczko.com/teaching/csharp/5-asynchrony/1-exception-handling),
-or straight to the next notebook, `01-exception-handling.dib`.
+Continue with the next section, [5.2. Exception Handling](https://gienieczko.com/teaching/csharp/5-asynchrony/2-exception-handling),
+or straight to the next notebook, `02-exception-handling.dib`.

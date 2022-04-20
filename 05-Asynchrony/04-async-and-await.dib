@@ -1,0 +1,159 @@
+#!markdown
+
+# 5.4. Async and Await
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/5-asynchrony.
+
+It covers topics for section [5.4. Async and Await](https://gienieczko.com/teaching/csharp/5-asynchrony/4-async-and-await).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Asynchrony – What Does It Mean?
+
+We call stuff **asynchronous** when there are some events that happen independently
+of the main code flow. Anyone familiar with internals of operating systems knows
+that asynchrony is key for anything to work efficiently and happens all the time.
+
+Things like loading data from disk is done asynchronously on the low-level --
+pieces of hardware between the CPU and the hard drive communicate and the hard drive
+starts the slow work of moving its head and reading data from physical storage. It then
+leaves the read data in a special buffer and signals the CPU that the data is ready.
+The reading of data happens _concurrently_, and the whole operations of a disk read completes
+_asynchronously_ at some point in the future after it was initialised.
+
+![Asynchronous completion](img/asynchrony.svg "Asynchronous completion")
+
+#!markdown
+
+## Asynchrony – Why?
+
+What do you mean, I just gave you a perfect use case – reading data from a disk!
+
+Okay, let me put it another way. There are plenty of operations where CPU is not the bottleneck,
+but the outside world is. We call such operations **I/O bound** (as opposed to CPU bound).
+For a CPU, I/O bound operations take ages, and it doesn't need to do anything during that time.
+
+You use asynchrony all the time in your life. Imagine putting in laundry or loading and running a dishwasher.
+It's a process that take rather long, happen without your input after set off, and there's plenty of useful
+stuff you could be doing in the meantime. It'd be an extreme time waste if you had to sit around
+looking at the working dishwasher, doing nothing. It's much more reasonable to put in stuff,
+wait for it to complete asynchronously while doing something else with your time, and then only come once it's done
+and unload the dishes.
+
+Now imagine a web server that needs to query the database on a request.
+Well, databases are dishwashers of programming. The CPU can perform
+millions of operations per millisecond, so I/O communication with a
+database that takes even 1ms is extremely wasteful. It'd be much better
+if the CPU could go do some useful work and come back when the database
+request returns.
+
+#!markdown
+
+## Task Parallel Library
+
+The basic unit for concurrency (and parallelism, as we'll see later), is `Task` and `Task<TResult>`
+from `System.Threading.Tasks` (one more implicit using). They encapsulate an operation
+that says it might complete later, and, in case of `Task<TResult>`, that it will then return
+an instance of `TResult`.
+
+Tasks are like promises in other languages. They can be passed around and handled like regular
+objects, while the operation they represent is ongoing. We can tell it to do something after
+it completes and react to whether it was successful or failed with an exception.
+
+Before we learn of any useful async operations, we can use `Task.Delay` to construct a task
+that completes after a given delay, just as a showcase. Unlike with threads, when we have
+a task in hand it is always already started (or even already completed).
+
+#!markdown
+
+We can chain tasks together
+
+#!csharp
+
+using System.Diagnostics;
+using System.Threading;
+
+Task delay = Task.Delay(1000);
+var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+while (!delay.IsCompleted)
+{
+    Console.WriteLine($"[{stopwatch.Elapsed}] Waiting...");
+    Thread.Sleep(200);
+}
+
+stopwatch.Stop();
+Console.WriteLine($"[{stopwatch.Elapsed}] Completed.");
+
+#!markdown
+
+We can chain continuations onto tasks:
+
+#!csharp
+
+using System.Diagnostics;
+using System.Threading;
+
+Task<int> delay = Task.Delay(1000).ContinueWith(t => 
+{
+    Console.WriteLine("Task completing...");
+    return 42;
+});
+var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+while (!delay.IsCompleted)
+{
+    Console.WriteLine($"[{stopwatch.Elapsed}] Waiting...");
+    Thread.Sleep(200);
+}
+
+stopwatch.Stop();
+Console.WriteLine($"[{stopwatch.Elapsed}] Completed with: {delay.Result}");
+
+#!markdown
+
+If we throw an exception from the task then it pops out only when
+we inspect the `Result` (or `Exception`) property manually.
+
+#!csharp
+
+using System.Diagnostics;
+using System.Threading;
+
+Task<int> delay = Task.Delay(1000).ContinueWith(t => 
+{
+    Console.WriteLine("Task completing...");
+    throw new InvalidOperationException("Boom.");
+    return 42;
+});
+var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+while (!delay.IsCompleted)
+{
+    Console.WriteLine($"[{stopwatch.Elapsed}] Waiting...");
+    Thread.Sleep(200);
+}
+
+stopwatch.Stop();
+Console.WriteLine($"[{stopwatch.Elapsed}] Completed, inspecting result...");
+Console.WriteLine($"[{stopwatch.Elapsed}] Completed with: {delay.Result}");

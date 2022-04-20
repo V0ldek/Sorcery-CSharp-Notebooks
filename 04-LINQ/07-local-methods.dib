@@ -71,7 +71,7 @@ Foo();
 
 #!markdown
 
-Local methods are, well, local -- not visible from outside the declaring method.
+Local methods are, well, local – not visible from outside the declaring method.
 They can appear anywhere in the code of the declaring method, although it is customary
 to put them at the bottom. They follow the same rules as lambda expressions when it comes
 to captures, and can be static.
