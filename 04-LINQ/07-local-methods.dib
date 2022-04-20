@@ -1,0 +1,157 @@
+#!markdown
+
+# 4.7. Local Methods
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/4-linq.
+
+It covers topics for section [4.7. Local Methods](https://gienieczko.com/teaching/csharp/4-linq/7-local-methods).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Declaring Local Methods
+
+A local method is similar to a lambda expression that you would declare in a method
+and assign somewhere to encapsulate some logic, but it has a name and follows standard method syntax.
+
+So, instead of writing something like this:
+
+#!csharp
+
+void Foo()
+{
+    var i = 0;
+    Action increment = () => i += 1;
+
+    while (i < 3)
+    {
+        Console.WriteLine(i);
+        increment();
+    }
+}
+
+Foo();
+
+#!markdown
+
+We write:
+
+#!csharp
+
+void Foo()
+{
+    var i = 0;
+
+    while (i < 3)
+    {
+        Console.WriteLine(i);
+        Increment();
+    }
+
+    void Increment() => i += 1;
+}
+
+Foo();
+
+#!markdown
+
+Local methods are, well, local -- not visible from outside the declaring method.
+They can appear anywhere in the code of the declaring method, although it is customary
+to put them at the bottom. They follow the same rules as lambda expressions when it comes
+to captures, and can be static.
+
+#!csharp
+
+void Foo()
+{
+    for (var i = 1; i <= 3; i += 1)
+    {
+        Console.WriteLine(Square(i));
+    }
+
+    static int Square(int i) => i * i;
+}
+
+Foo();
+
+#!markdown
+
+## Usage
+
+Local methods are useful when there's a piece of logic required inside a given method,
+but it's not really germane to the type as a whole, and there's little chance that it'd
+be called from other places if it were promoted to a `private` method. They are usually
+preferable to creating a lambda expression and assigning it to a variable that's then used
+in the method, since it communicates intent better.
+
+One very notable usage that we'll see throughout upcoming code samples is separating a coroutine
+from its validation code. Recall an example from [`4.1. Iterators`](./01-iterators.dib):
+
+#!csharp
+
+IEnumerable<T> Reverse<T>(IReadOnlyList<T> list)
+{
+    ArgumentNullException.ThrowIfNull(list);
+
+    return ReverseIterator(list);
+}
+
+private IEnumerable<T> ReverseIterator<T>(IReadOnlyList<T> list)
+{
+    for (var i = 1; i <= list.Count; i += 1)
+    {
+        yield return list[^i];
+    }
+}
+
+#!markdown
+
+There's basically zero chance that `ReverseIterator` is useful for anything else than `Reverse`.
+
+#!csharp
+
+IEnumerable<T> Reverse<T>(IReadOnlyList<T> list)
+{
+    ArgumentNullException.ThrowIfNull(list);
+
+    return Iterator(list);
+
+    IEnumerable<T> Iterator(IReadOnlyList<T> list)
+    {
+        for (var i = 1; i <= list.Count; i += 1)
+        {
+            yield return list[^i];
+        }
+    }
+}
+
+#!markdown
+
+## Summary
+
+We've met the standard facility for performing operations on sequences of data – LINQ.
+We know most of the basic operators, learnt how to use query syntax to write complex queries,
+and know where to turn to for even more useful operators.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [4.6. LINQ Queries](https://gienieczko.com/teaching/csharp/4-linq/6-linq-queries),
+or straight to the next notebook, [`06-linq-queries.dib`](/04-LINQ/06-linq-queries.dib).

@@ -25,6 +25,40 @@ That's kind of the point of doing all this in notebooks.
 
 #!markdown
 
+## Asynchrony -- What Does It Mean?
+
+We call stuff **asynchronous** when there are some events that happen independently
+of the main code flow. Anyone familiar with internals of operating systems knows
+that asynchrony is key for anything to work efficiently and happens all the time.
+
+Things like loading data from disk is done asynchronously on the low-level --
+pieces of hardware between the CPU and the hard drive communicate and the hard drive
+starts the slow work of moving its head and reading data from physical storage. It then
+leaves the read data in a special buffer and signals the CPU that the data is ready.
+The reading of data happens _concurrently_, and the whole operations of a disk read completes
+_asynchronously_ at some point in the future after it was initialised.
+
+![Asynchronous completion](img/asynchrony.svg "Asynchronous completion")
+
+#!markdown
+
+## Asynchrony -- Why?
+
+What do you mean, I just gave you a perfect use case -- reading data from a disk!
+
+Okay, let me put it another way. There are plenty of operations where CPU is not the bottleneck,
+but the outside world is. We call such operations **I/O bound** (as opposed to CPU bound).
+For a CPU, I/O bound operations take ages, and it doesn't need to do anything during that time.
+
+You use asynchrony all the time in your life. Imagine putting in laundry or loading and running a dishwasher.
+It's a process that take rather long, happen without your input after set off, and there's plenty of useful
+stuff you could be doing in the meantime. It'd be an extreme time waste if you had to sit around
+looking at the working dishwasher, doing nothing. It's much more reasonable to put in stuff,
+wait for it to complete asynchronously while doing something else with your time, and then only come once it's done
+and unload the dishes.
+
+#!markdown
+
 ## Summary
 
 We've learnt how to throw, catch, and rethrow exceptions. We can define our own exception types.

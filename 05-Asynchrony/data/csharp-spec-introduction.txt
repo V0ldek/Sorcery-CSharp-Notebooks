@@ -1,0 +1,11 @@
+Note: this is an excerpt from the Introduction of the C# draft specification (https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/introduction).
+As the definition of C# evolved, the goals used in its design were as follows:
+- C# is intended to be a simple, modern, general-purpose, object-oriented programming language.
+- The language, and implementations thereof, should provide support for software engineering principles such as strong type checking, array bounds checking, detection of attempts to use uninitialized variables, and automatic garbage collection. Software robustness, durability, and programmer productivity are important.
+- The language is intended for use in developing software components suitable for deployment in distributed environments.
+- Source code portability is very important, as is programmer portability, especially for those programmers already familiar with C and C++.
+- Support for internationalization is very important.
+- C# is intended to be suitable for writing applications for both hosted and embedded systems, ranging from the very large that use sophisticated operating systems, down to the very small having dedicated functions.
+- Although C# applications are intended to be economical with regard to memory and processing power requirements, the language was not intended to compete directly on performance and size with C or assembly language.
+The name C# is pronounced “C Sharp”.
+The name C# is written as the LATIN CAPITAL LETTER C (U+0043) followed by the NUMBER SIGN # (U+0023).

@@ -25,6 +25,410 @@ That's kind of the point of doing all this in notebooks.
 
 #!markdown
 
+## Explicit Cleanup
+
+Some objects own resources that need to be released when the object stops using them.
+Since we're starting to talk about real-world applications, the need to handle things like
+file handles, OS-level synchronisation constructs, network sockets, etc., arises.
+When you open a file, the OS savoir-vivre says that you should close it as soon as possible.
+
+But C# is garbage collected, so closing on deallocation is a very _weak_ contract.
+It can happen next instruction, it can happen in a second, it can happen literally never.
+
+.NET gives a tool for **cooperative cleanup** with `IDisposable`. It's a special interface
+that defines a single method:
+
+```csharp
+public interface IDisposable
+{
+    void Dispose();
+}
+```
+
+This interface is implemented for types that hold resources that are better released
+as soon as possible. A classic example of this is an open file.
+
+#!markdown
+
+## Quick Dive into Files
+
+In .NET we handle IO mostly with the `System.IO` namespace.
+The main facilities it gives is the `Stream` API, which provides both
+low-level constructs for dealing with arbitrary streams of bytes, as well
+as high-level decorators that allow us to treat such a stream as a stream of text lines.
+
+To open a file we use the `File` static class:
+
+#!csharp
+
+using System.IO;
+
+StreamReader stream = File.OpenText("./data/csharp-spec-introduction.txt");
+
+string line = stream.ReadLine();
+
+stream.Dispose();
+
+Console.WriteLine(line);
+
+#!markdown
+
+We can also get the low level byte stream:
+
+#!csharp
+
+using System.IO;
+
+FileStream stream = File.OpenRead("./data/csharp-spec-introduction.txt");
+
+var buffer = new byte[16];
+int read = stream.Read(buffer, 0, 16);
+
+stream.Dispose();
+
+Console.WriteLine(read);
+Console.WriteLine($"[ {string.Join(", ", buffer)} ]");
+
+#!markdown
+
+The top-level base class of all streams, `Stream`, implements `IDisposable`, because the vast majority
+of streams work on some underlying OS asset that provides the bytes, like a file or a network socket.
+And it's not okie-dokie to hold onto those resources for longer than we need.
+
+#!markdown
+
+## Why All That Code Above Is Bad
+
+Now all that code above is bad, because we completely disregard exception safety.
+The `Dispose` is not called if, for some reason, `ReadLine` or `Read` crashed with an exception.
+The proper way would be this:
+
+#!csharp
+
+using System.IO;
+
+StreamReader stream = File.OpenText("./data/csharp-spec-introduction.txt");
+string line;
+try
+{
+    line = stream.ReadLine();
+}
+finally
+{
+    stream.Dispose();    
+}
+
+Console.WriteLine(line);
+
+#!markdown
+
+That's quite a handful, so C# has a shortcut for that, called **`using` statements**.
+
+#!csharp
+
+using System.IO;
+
+// I had to wrap it in a method body, otherwise the notebook breaks syntax highlighting.
+void Foo() 
+{
+    using (StreamReader stream = File.OpenText("./data/csharp-spec-introduction.txt"))
+    {
+        var line = stream.ReadLine();
+    }
+    
+    Console.WriteLine(line);
+}
+
+Foo();
+
+#!markdown
+
+There's an even shorter syntax, called a **`using` declaration**.
+
+#!csharp
+
+using System.IO;
+
+void Foo() 
+{
+    using StreamReader stream = File.OpenText("./data/csharp-spec-introduction.txt");
+    var line = stream.ReadLine();
+    
+    Console.WriteLine(line);
+}
+
+Foo();
+
+#!markdown
+
+It directly translates to a `using` block from the point of declaration to the end of the current scope
+(basically the next curly brace). So the two above snippets are not equivalent, the second is equivalent to:
+
+#!csharp
+
+using System.IO;
+
+void Foo() 
+{
+    using (StreamReader stream = File.OpenText("./data/csharp-spec-introduction.txt"))
+    {
+        var line = stream.ReadLine();
+        
+        Console.WriteLine(line);
+    }
+}
+
+Foo();
+
+#!markdown
+
+All of them provide exception safety, however, and take care of calling `Dispose` for us.
+The above translates to:
+
+#!csharp
+
+using System.IO;
+
+void Foo() 
+{
+    StreamReader stream = File.OpenText("./data/csharp-spec-introduction.txt");
+    try
+    {
+        var line = stream.ReadLine();
+        
+        Console.WriteLine(line);
+    }
+    finally
+    {
+        stream?.Dispose();
+    }
+}
+
+Foo();
+
+#!markdown
+
+## Implementing `IDisposable`
+
+We should implement `IDisposable` whenever our type holds some disposable resources,
+or needs to perform some work as soon as it get disposed.
+
+#!csharp
+
+#nullable enable
+sealed class SpecSearcher : IDisposable
+{
+    private const string SpecPath = "./data/csharp-spec-introduction.txt";
+
+    private readonly string _pattern;
+    private readonly StreamReader _reader;
+
+    public SpecSearcher(string pattern)
+    {
+        _pattern = pattern;
+        _reader = File.OpenText(SpecPath);
+    }
+
+    public IEnumerable<(int lineNumber, string line)> EnumerateMatches()
+    {
+        _reader.BaseStream.Position = 0;
+        var lineNumber = 0;
+        while (!_reader.EndOfStream)
+        {
+            var line = _reader.ReadLine();
+            lineNumber += 1;
+
+            if (line!.Contains(_pattern))
+            {
+                yield return (lineNumber, line);
+            }
+        }
+    }
+
+    public void Dispose() => _reader.Dispose();
+}
+
+void Foo()
+{
+    using var searcher = new SpecSearcher("C#");
+    
+    foreach (var (lineNumber, line) in searcher.EnumerateMatches())
+    {
+        Console.WriteLine($"[{lineNumber:000}]: {line}");
+    }
+}
+
+Foo();
+
+#!markdown
+
+This implementation is flawed, though. There are four rules of `IDisposable` implementations:
+
+1. Calling `Dispose` multiple times causes no error.
+2. After `Dispose` was called every other method on the object MAY unapologetically throw an `ObjectDisposedException`
+in your face.
+3. If the type _owns_ a disposable object, it must call its `Dispose` method in the `Dispose` implementation.
+4. There must be a safe way for deriving classes to define a finalizer and cooperate with `Dispose`.
+
+Starting from the end: we will cover number 4. later in this section; we own only the `Stream` and
+dispose of it, so number 3. is covered; numbers 2. and 1. are a bit hairy.
+
+Once we dispose of our structure someone can still call the `EnumerateMatches` method
+and get an enumerable out of us. But that enumerable is poisoned, the stream is disposed
+and therefore an attempt to actually `MoveNext` on an enumerator will throw `ObjectDisposedException`
+from the bowels of the `Stream`.
+
+#!csharp
+
+var searcher = new SpecSearcher("C#");
+searcher.Dispose();
+IEnumerable<int> numbers = searcher.EnumerateMatches().Select(x => x.lineNumber);
+
+PrintNumbers(numbers);
+
+void PrintNumbers(IEnumerable<int> enumerable)
+{
+    ArgumentNullException.ThrowIfNull(enumerable);
+
+    // Maybe some logic.
+
+    Console.WriteLine(string.Join(", ", enumerable));
+}
+
+#!markdown
+
+This is against the principle of Fail Fast.
+
+On a related note, it is good practice to _not_ assume that others follow good practices (defensive programming).
+In this case, `Stream` is a BCL class, so it follows the rules almost certainly. But if we owned an `IDisposable`
+from the outside, then there's a chance that someone else violated rule 1. So, while the design guideline
+is to allow multiple calls to `Dispose` and make the ones outside the first no-ops, the coding guideline
+is to **avoid calling `Dispose` multiple times**, if possible.
+
+With those two things in mind, our refactoring might look like this:
+
+#!csharp
+
+#nullable enable
+sealed class SpecSearcher : IDisposable
+{
+    private const string SpecPath = "./data/csharp-spec-introduction.txt";
+
+    private readonly string _pattern;
+    private StreamReader? _reader;
+
+    private StreamReader Reader => _reader ?? throw new ObjectDisposedException(nameof(_reader));
+
+    public SpecSearcher(string pattern)
+    {
+        _pattern = pattern;
+        _reader = File.OpenText(SpecPath);
+    }
+
+    public IEnumerable<(int lineNumber, string line)> EnumerateMatches()
+    {
+        return Enumerable(Reader, _pattern);
+
+        static IEnumerable<(int lineNumber, string line)> Enumerable(StreamReader reader, string pattern)
+        {
+            reader.BaseStream.Position = 0;
+            var lineNumber = 0;
+            while (!reader.EndOfStream)
+            {
+                var line = reader.ReadLine();
+                lineNumber += 1;
+    
+                if (line!.Contains(pattern))
+                {
+                    yield return (lineNumber, line);
+                }
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _reader?.Dispose();
+        _reader = null;
+    }
+}
+
+#!csharp
+
+var searcher = new SpecSearcher("C#");
+searcher.Dispose();
+IEnumerable<int> numbers = searcher.EnumerateMatches().Select(x => x.lineNumber);
+
+PrintNumbers(numbers);
+
+void PrintNumbers(IEnumerable<int> enumerable)
+{
+    ArgumentNullException.ThrowIfNull(enumerable);
+
+    // Maybe some logic.
+
+    Console.WriteLine(string.Join(", ", enumerable));
+}
+
+#!markdown
+
+We validate the state first by explicitly calling `Reader`. Since it's an iterator method,
+we separate the validation from the iterator with a local method (as in [`4.7. Local Methods`](../04-LINQ/07-local-methods.dib)).
+
+#!markdown
+
+## Ownership or Not?
+
+There's a fuzzy term we've been using above, where we said that we need to dispose of an object if
+we're the _owners_ of it. What does that mean? Unfortunately, .NET doesn't have strict ownership rules
+like Rust, so it's a bit murky. In general, if a type holds an instance of an `IDisposable`
+in its field then it most likely owns it. Obtaining an instance from a shared place,
+like a static method or property, is not ownership.
+
+In other words, we have ownership when the lifetime of the owning object determines the lifetime of the owned object.
+Think aggregate/composite distinction in domain modelling -- if an object has no purpose outside of its containing
+object, then it's owned by it.
+
+#!markdown
+
+## Dragons and finalizers
+
+We will cover the disastrous necessity that finalizers are later, because it's a very advanced topic.
+They do have an impact on `IDisposable`, however.
+
+The easiest way to declare an `IDisposable` type is to make it `sealed`.
+Remember, you should be doing that _by default_, unless you want to explicitly allow subclassing.
+When you really need an unsealed `IDisposable` type, there's a **Disposable pattern** that you need to follow
+for everything to work smoothly.
+
+#!csharp
+
+class Unsealed : IDisposable
+{
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing)
+        {
+            return;
+        }
+
+        // Dispose logic.
+    }
+}
+
+#!markdown
+
+This is some sorcery that we will explain near the end of the course.
+Believe me, the longer you don't hear about finalizers, the better for you.
+
+#!markdown
+
 ## Summary
 
 We've learnt how to throw, catch, and rethrow exceptions. We can define our own exception types.
