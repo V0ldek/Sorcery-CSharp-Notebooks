@@ -1172,13 +1172,14 @@ query syntax case – we need a temporary carrier for the original timestamp:
 
 #!csharp
 
-IEnumerable<Event> result = input.SelectMany(x => x.events.Select(e => new { Event = e, Timestamp = x.timestamp } ))
+IEnumerable<Event> result = input
+    .SelectMany(x => x.events.Select(e => new { Event = e, Timestamp = x.timestamp } ))
     .Where(x => x.Event != "Invalid request")
     .Select(x => new Event { Timestamp = x.Timestamp, Type = x.Event });
 
 foreach (var e in result)
 {
-Console.WriteLine(e);
+    Console.WriteLine(e);
 }
 
 #!markdown

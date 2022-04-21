@@ -132,7 +132,7 @@ IEnumerable<T> Reverse<T>(IReadOnlyList<T> list)
 
     return Iterator(list);
 
-    IEnumerable<T> Iterator(IReadOnlyList<T> list)
+    static IEnumerable<T> Iterator(IReadOnlyList<T> list)
     {
         for (var i = 1; i <= list.Count; i += 1)
         {

@@ -80,13 +80,13 @@ using System.Threading;
 static void WriteFromThread(string message) =>
     Console.WriteLine($"[{Thread.CurrentThread.ManagedThreadId}] {message}");
 
-var thread1 = new Thread(() => WriteFromThread("Hello!"));
-var thread2 = new Thread(() => WriteFromThread("Hello!"));
+var thread1 = new Thread(() => WriteFromThread("Hello (1)!"));
+var thread2 = new Thread(() => WriteFromThread("Hello (2)!"));
 
 thread1.Start();
 thread2.Start();
 
-WriteFromThread("Hello!");
+WriteFromThread("Hello (main)!");
 thread1.Join();
 thread2.Join();
 
@@ -179,4 +179,4 @@ a primitive mutex.
 ## Next up:
 
 Continue with the next section, [5.1. Events](https://gienieczko.com/teaching/csharp/5-asynchrony/1-events),
-or straight to the next notebook, `01-events.dib`.
+or straight to the next notebook, [`01-events.dib`](01-events.dib).

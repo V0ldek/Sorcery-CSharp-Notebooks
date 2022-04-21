@@ -424,7 +424,7 @@ private EventHandler _event;
 public event EventHandler? Event
 {
     add { _event += value; }
-    remove { _event += value; }
+    remove { _event -= value; }
 }
 ```
 
@@ -446,4 +446,4 @@ We've learnt how to declare and subscribe to events for a publisher-observer mod
 ## Next up:
 
 Continue with the next section, [5.2. Exception Handling](https://gienieczko.com/teaching/csharp/5-asynchrony/2-exception-handling),
-or straight to the next notebook, `02-exception-handling.dib`.
+or straight to the next notebook, [`02-exception-handling.dib`](02-exception-handling.dib).

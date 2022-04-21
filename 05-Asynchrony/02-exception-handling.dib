@@ -417,4 +417,4 @@ and the most common exceptions used in defensive programming.
 ## Next up:
 
 Continue with the next section, [5.3. Disposable Resources](https://gienieczko.com/teaching/csharp/5-asynchrony/3-disposable-resources),
-or straight to the next notebook, `03-disposable-resources.dib`.
+or straight to the next notebook, [`03-disposable-resources.dib`](03-disposable-resources.dib).
