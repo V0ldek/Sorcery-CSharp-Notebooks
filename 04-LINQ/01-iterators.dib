@@ -286,10 +286,7 @@ programming and guards. Consider an enumerator that simply reverses a list:
 
 public IEnumerable<T> Reverse<T>(IReadOnlyList<T> list)
 {
-    if (list is null)
-    {
-        throw new ArgumentNullException(nameof(list));
-    }
+    ArgumentNullException.ThrowIfNull(list);
 
     for (var i = 1; i <= list.Count; i += 1)
     {
@@ -346,10 +343,7 @@ method that validates parameters and then invokes the private iterator method:
 
 IEnumerable<T> Reverse<T>(IReadOnlyList<T> list)
 {
-    if (list is null)
-    {
-        throw new ArgumentNullException(nameof(list));
-    }
+    ArgumentNullException.ThrowIfNull(list);
 
     return ReverseIterator(list);
 }

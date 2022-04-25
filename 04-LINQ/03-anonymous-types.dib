@@ -41,15 +41,8 @@ We can do it like this:
 
 string? FindLowestPriceProduct(IReadOnlyList<string> names, IReadOnlyList<decimal> prices)
 {
-    if (names is null)
-    {
-        throw new ArgumentNullException(nameof(names));
-    }
-    
-    if (prices is null)
-    {
-        throw new ArgumentNullException(nameof(prices));
-    }
+    ArgumentNullException.ThrowIfNull(names);
+    ArgumentNullException.ThrowIfNull(prives);
 
     if (names.Count != prices.Count)
     {

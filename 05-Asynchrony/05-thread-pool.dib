@@ -1,0 +1,67 @@
+#!markdown
+
+# 5.5. Thread Pool
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/5-asynchrony.
+
+It covers topics for section [5.5. Thread Pool](https://gienieczko.com/teaching/csharp/5-asynchrony/5-thread-pool).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Where Did These Threads Come From?
+
+Even in this simple async code we have a new thread popping into the execution, even though we never
+instantiate any threads ourselves.
+
+#!csharp
+
+using System.Diagnostics;
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+    
+Log("Hello!");
+await Task.Delay(1000);
+Log("Hello again!");
+
+#!markdown
+
+Where is it coming from? The origin of a main thread is obvious, when we run
+a .NET program the runtime spawns a thread that runs our `Main` method.
+
+#!markdown
+
+## Summary
+
+We've met one of the hardest concepts in C#, the `async`/`await` mechanism.
+Despite its complexity it is also one of the most important concepts.
+We know how to construct `async` methods and use `await` to asynchronously wait
+for completion of subtasks. We've met `Task.WhenAll` and `Task.WhenAny` as general-purpose
+task combinators.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [5.5. Thread Pool](https://gienieczko.com/teaching/csharp/5-asynchrony/5-thread-pool),
+or straight to the next notebook, [`05-thread-pool.dib`](05-thread-pool.dib).

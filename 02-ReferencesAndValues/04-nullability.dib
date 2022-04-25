@@ -321,6 +321,26 @@ public class Public
 
 #!markdown
 
+Or, more concisely:
+
+#!csharp
+
+#nullable enable
+
+public class Public
+{
+    public void Receive(string notnull)
+    {
+        ArgumentNullException.ThrowIfNull(notnull);
+
+        var length = notnull.Length;
+
+        // ...
+    }
+}
+
+#!markdown
+
 Unfortunately, the billion dollar mistake will haunt us, probably forever.
 
 It's important to remember that this feature was introduced in C# _8_. That's 2019,

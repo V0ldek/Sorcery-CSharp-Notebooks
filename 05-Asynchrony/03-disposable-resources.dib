@@ -438,4 +438,4 @@ We've learnt how to dispose of held resources using `IDisposable` and how to imp
 ## Next up:
 
 Continue with the next section, [5.4. Async and Await](https://gienieczko.com/teaching/csharp/5-asynchrony/4-async-and-await),
-or straight to the next notebook, `04-async-and-await.dib`.
+or straight to the next notebook, [`04-async-and-await.dib`](04-async-and-await.dib).

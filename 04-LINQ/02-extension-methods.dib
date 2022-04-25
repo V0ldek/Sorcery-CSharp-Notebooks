@@ -342,15 +342,8 @@ public static SortedDictionary<TKey, TValue> ToSortedDictionary<TKey, TValue>(
 public static SortedDictionary<TKey, TValue> ToSortedDictionary<TKey, TValue>(
     this IEnumerable<(TKey, TValue)> enumerable, IComparer<TKey> comparer)
 {
-    if (enumerable is null)
-    {
-        throw new ArgumentNullException(nameof(enumerable));
-    }
-
-    if (comparer is null)
-    {
-        throw new ArgumentNullException(nameof(comparer));
-    }
+    ArgumentNullException.ThrowIfNull(enumerable);
+    ArgumentNullException.ThrowIfNull(comparer);
 
     var dictionary = new SortedDictionary<TKey, TValue>(comparer);
 

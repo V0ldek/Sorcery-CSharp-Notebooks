@@ -770,5 +770,132 @@ because the context-switch associated with actual asynchronous execution is very
 It's a special method that does many complicated things, but the gist is that it schedules a continuation that will
 invoke this state machine to run again when the task completes.
 
-After we exit this branching, the task is surely completed, so `GetResult()` is called on the awaiter,
-exceptions handled, and execution continues.
+After we exit this branching, the task is surely completed, so `GetResult()` is called on the awaiter.
+Exceptions are handled by setting the returned `Task`'s state to Faulted and giving it an exception.
+After that the execution continues to the next `await` point, if an exception was not thrown.
+
+#!markdown
+
+## Distilling the Intuition
+
+Let's walk by this code step-by-step to _really_ get what `async`/`await` does.
+
+#!markdown
+
+```csharp
+using System;
+using System.Threading.Tasks;
+
+static class Program
+{
+    public static async Task Main()
+    {
+        var result = await ComputeAsync();
+        Console.WriteLine(result);
+    }
+
+    static async Task<int> ComputeAsync()
+    {
+        await Task.Delay(1000);
+        return 42;
+    }
+}
+```
+
+```csharp
+public static async Task Main()
+```
+
+This is the entrypoint. It works just like a normal `Main`, only that it returns a `Task`.
+The CLR runs `Main` and then waits until the returned `Task` completes. Nothing much changes yet.
+
+The `async` keyword tells the compiler to emit the state machine for our method. It causes a rewrite similar
+to iterators, but instead of yielding elements with `Current` we return a `Task` that has its results updated
+via continuations.
+
+```csharp
+var result = await ComputeAsync();
+```
+
+We call `ComputeAsync()`.
+
+```csharp
+static async Task<int> ComputeAsync()
+```
+
+Again, `async` means we are creating an async state machine. It promises to return an `int`
+once it completes.
+
+```csharp
+await Task.Delay(1000);
+```
+
+We call `Task.Delay(1000)`. What happens there is irrelevant to us, you can trust me
+that it doesn't contain any `await` code and just returns a low-level `Task` that completes after a second.
+We get this task and `await` it.
+
+99.99% of the time it won't be completed yet -- there's a slight
+chance that our operating system has massive work overload and preempts our application for a second
+between the `Delay` call and the `await`. In that case nothing will happen here and we'd go to the next line.
+Most likely, however, we will take the task, add a continuation saying "call my state machine again when you complete",
+and return a `Task<int>` to the caller that will not be complete yet.
+
+```csharp
+var result = await ComputeAsync();
+```
+
+We're back in `Main`, `ComputeAsync` returned an uncompleted `Task`.
+Our `await` statement sees this, adds a continuation to it, and returns to the runtime.
+The runtime awaits our `Main`.
+
+Nothing happens until the second passes. When it does, low-level magic happens causing the task
+returned by `Delay` to complete. This triggers the continuation scheduled by `ComputeAsync`.
+
+```csharp
+await Task.Delay(1000);
+```
+
+The continuation triggers our method to resume from this point.
+The task is completed successfully, so we proceed.
+
+```csharp
+return 42;
+```
+
+The `return` statement means we're done. We set the result of our task to `42`
+and complete it. Nothing remains to be done, so we exit.
+
+Back in `Main`'s state machine, the continuation that we scheduled gets triggered now,
+since `ComputeAsync`'s task completed.
+
+```csharp
+var result = await ComputeAsync();
+```
+
+The result is `42`, we save it in the `result` variable and move on.
+
+```csharp
+Console.WriteLine(result);
+```
+
+Nothing to see here, just synchronous printing. And that's it.
+We return, completing the `Main`'s `Task` and the runtime cleans up and terminates the app.
+
+Hopefully this step-by-step gives you more insight into how `async`/`await` works.
+
+#!markdown
+
+## Summary
+
+We've met one of the hardest concepts in C#, the `async`/`await` mechanism.
+Despite its complexity it is also one of the most important concepts.
+We know how to construct `async` methods and use `await` to asynchronously wait
+for completion of subtasks. We've met `Task.WhenAll` and `Task.WhenAny` as general-purpose
+task combinators.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [5.5. Thread Pool](https://gienieczko.com/teaching/csharp/5-asynchrony/5-thread-pool),
+or straight to the next notebook, [`05-thread-pool.dib`](05-thread-pool.dib).
