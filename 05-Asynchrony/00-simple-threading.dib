@@ -78,7 +78,7 @@ Finally, we can access the current thread and get its unique ID for diagnostic p
 using System.Threading;
 
 static void WriteFromThread(string message) =>
-    Console.WriteLine($"[{Thread.CurrentThread.ManagedThreadId}] {message}");
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}] {message}");
 
 var thread1 = new Thread(() => WriteFromThread("Hello (1)!"));
 var thread2 = new Thread(() => WriteFromThread("Hello (2)!"));

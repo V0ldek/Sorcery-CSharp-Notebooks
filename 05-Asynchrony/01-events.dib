@@ -60,7 +60,7 @@ Now an example publisher that simulates that it does some hard work:
 using System.Threading;
 
 static void WriteFromThread(string message) =>
-    Console.WriteLine($"[{Thread.CurrentThread.ManagedThreadId}] {message}");
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}] {message}");
 
 #!csharp
 

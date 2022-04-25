@@ -66,7 +66,7 @@ request returns.
 
 #!markdown
 
-## Task Parallel Library
+## Tasks, Blocking, and Continuations
 
 The basic unit for concurrency (and parallelism, as we'll see later), is `Task` and `Task<TResult>`
 from `System.Threading.Tasks` (one more implicit using). They encapsulate an operation
@@ -105,29 +105,53 @@ Console.WriteLine($"[{stopwatch.Elapsed}] Completed.");
 
 #!markdown
 
-We can chain continuations onto tasks:
+We can wait for a `Task` to complete in a blocking manner (**don't ever do this**, the `async`/`await` we'll cover in this section is the correct way):
 
 #!csharp
 
 using System.Diagnostics;
 using System.Threading;
 
-Task<int> delay = Task.Delay(1000).ContinueWith(t => 
-{
-    Console.WriteLine("Task completing...");
-    return 42;
-});
+Task delay = Task.Delay(1000);
 var stopwatch = new Stopwatch();
 stopwatch.Start();
 
+Console.WriteLine($"[{stopwatch.Elapsed}] Waiting...");
+
+delay.Wait();
+
+stopwatch.Stop();
+Console.WriteLine($"[{stopwatch.Elapsed}] Completed: {delay.IsCompleted}");
+
+#!markdown
+
+More usefully, we can chain continuations onto tasks:
+
+#!csharp
+
+using System.Diagnostics;
+using System.Threading;
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+
+Task<int> delay = Task.Delay(1000).ContinueWith(t => 
+{
+    Log("Task completing...");
+    return 42;
+});
+
 while (!delay.IsCompleted)
 {
-    Console.WriteLine($"[{stopwatch.Elapsed}] Waiting...");
+    Log($"Waiting...");
     Thread.Sleep(200);
 }
 
 stopwatch.Stop();
-Console.WriteLine($"[{stopwatch.Elapsed}] Completed with: {delay.Result}");
+Log($"Completed with: {delay.Result}");
 
 #!markdown
 
@@ -139,21 +163,612 @@ we inspect the `Result` (or `Exception`) property manually.
 using System.Diagnostics;
 using System.Threading;
 
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+
 Task<int> delay = Task.Delay(1000).ContinueWith(t => 
 {
-    Console.WriteLine("Task completing...");
+    Log("Task completing...");
     throw new InvalidOperationException("Boom.");
     return 42;
 });
-var stopwatch = new Stopwatch();
-stopwatch.Start();
 
 while (!delay.IsCompleted)
 {
-    Console.WriteLine($"[{stopwatch.Elapsed}] Waiting...");
+    Log($"Waiting...");
     Thread.Sleep(200);
 }
 
-stopwatch.Stop();
-Console.WriteLine($"[{stopwatch.Elapsed}] Completed, inspecting result...");
-Console.WriteLine($"[{stopwatch.Elapsed}] Completed with: {delay.Result}");
+Log($"Completed, inspecting result...");
+Log($"Completed with: {delay.Result}");
+
+#!markdown
+
+We can see the promise model here.
+
+1. We tell a method to trigger a computation.
+2. The method returns "sure, I'll complete it eventually" and a `Task<TResult>` that represents this completion promise.
+3. We can register stuff to happen when it completes, and then go around doing our own stuff.
+4. Once the computation completes we can inspect the task to get the `TResult`.
+
+#!csharp
+
+using System.Diagnostics;
+using System.Threading;
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+
+class DirtyLaundry { }
+class CleanLaundry { }
+
+static class Dryer
+{ 
+    public static void PutLaundry(CleanLaundry l) => Log("Putting clean laundry on the dryer...");
+}
+
+static class LaundryMachine
+{
+    public static Task<CleanLaundry> Wash(DirtyLaundry l)
+    {
+        Log("Washing dirty laundry...");
+        return Task.Delay(4000)
+            .ContinueWith(_ => 
+            {
+                Log("Washing complete.");
+                return new CleanLaundry();
+            });
+    }
+}
+
+var laundry = new DirtyLaundry();
+
+var washLaundryTask = LaundryMachine.Wash(laundry);
+
+var washAndDryLaundryTask = washLaundryTask.ContinueWith(t => 
+    {
+        Log("Taking clean laundry to the dryer...");
+        Dryer.PutLaundry(t.Result);
+    });
+
+Log("Doing Important Work™...");
+const long Number = 1_000_000_000_000_002_137;
+Log($"{Number} {(IsPrime(Number) ? "is" : "is not")} prime.");
+Log("Important Work™ done.");
+
+Log($"Completed: {washAndDryLaundryTask.IsCompleted}");
+
+bool IsPrime(long number)
+{
+    for (long i = 2; i <= Math.Sqrt(number); i += 1)
+    {
+        if (number % i == 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+#!markdown
+
+## Automating Everything with `async`/`await`
+
+Programming asynchronously like this would be terrible. If we had to manually take care of the `Task` instances,
+set their results, handle exceptions, register continuations... Writing async code would require a lot of brain power
+and result in extremely complex code.
+
+Fortunately, we don't have to do that. Let's write something that will demonstrate the advantage of async
+over sync computation. The requirements are simple:
+- Take a list of URLs to Wikipedia;
+- send a GET to every URL;
+- print the number of lines of HTML returned for each request; and
+- sum those numbers together.
+
+At the same time we will be trying to figure whether some number is a prime.
+
+#!csharp
+
+static class Input
+{
+    public static IReadOnlyList<Uri> Pages => new Uri[]
+    {
+        new("https://en.wikipedia.org/wiki/C_Sharp_(programming_language)"),
+        new("https://en.wikipedia.org/wiki/.NET"),
+        new("https://en.wikipedia.org/wiki/F_Sharp_(programming_language)"),
+        new("https://en.wikipedia.org/wiki/Type_system"),
+        new("https://en.wikipedia.org/wiki/Asynchronous_I/O"),
+        new("https://en.wikipedia.org/wiki/Thread_(computing)"),
+        new("https://en.wikipedia.org/wiki/Concurrent_computing"),
+        new("https://en.wikipedia.org/wiki/Async/await"),
+        new("https://en.wikipedia.org/wiki/Coroutine"),
+        new("https://en.wikipedia.org/wiki/Thread_pool"),
+    };
+}
+
+#!markdown
+
+To send HTTP requests with BCL we use the [`System.Net.Http.HttpClient`](https://docs.microsoft.com/en-us/dotnet/api/system.net.http.httpclient?view=net-6.0) class.
+Here's a synchronous implementation:
+
+#!csharp
+
+using System.IO;
+using System.Net.Http;
+
+public sealed class SynchronousImplementation
+{
+    private readonly HttpClient _httpClient = new();
+
+    public int Execute(IReadOnlyList<Uri> pages, Action<string> logger)
+    {
+        logger($"Execution starts.");
+        var sum = 0;
+
+        foreach (var page in pages)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, page);
+            HttpResponseMessage response = _httpClient.Send(request);
+
+            response.EnsureSuccessStatusCode(); // Throws if request was not successful.
+
+            using var content = response.Content.ReadAsStream();
+            // Normally we would have to get the encoding from the response, but the course page is fully UTF8.
+            using var textStream = new StreamReader(content, Encoding.UTF8); 
+            var lines = 0;
+
+            while (!textStream.EndOfStream)
+            {
+                lines += 1;
+                textStream.ReadLine();
+            }
+
+            logger($"Read {page} for {lines} lines.");
+            sum += lines;
+        }
+
+        return sum;
+    }
+}
+
+#!csharp
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+    
+var synchronous = new SynchronousImplementation();
+var result = synchronous.Execute(Input.Pages, Log);
+
+const long Number = 10_000_000_000_002_137;
+Log($"{Number} {(IsPrime(Number) ? "is" : "is not")} prime.");
+Log($"Final result: {result}");
+
+#!markdown
+
+The fetch itself takes Around 0.6s, and we can see that there's some initial overhead for spinning up the client and then every next page
+is processed in roughly 0.05s. But that means that fetching 100 pages would take around 5s, while 1000 would take 50!
+
+This is a classical example of an I/O bound task. Most of the time here is spent waiting for the
+network request to fly to Wikipedia and back. At that time our CPU is doing absolutely nothing,
+even though it could be churning through the divisors during that time. We need asynchrony!
+
+Okay, so there are two aspects of asynchrony, these visible to the user via the method signature,
+and these visible only in the implementation.
+
+Externally, an asynchronous method:
+1. Returns an awaitable object, usually `Task`, `Task<TResult>`, in some cases a `ValueTask` or `ValueTask<TResult>` which we'll cover later.
+2. Has a name ending with an `Async` suffix.
+
+The translation is simple -- if a synchronous method were `void Foo(args)` then an asynchronous one is `Task FooAsync(args)`.
+If we had a return value, `int Foo(args)`, then the asynchronous version is `Task<int> FooAsync(args)`. The `Async` suffix is there
+because in C# we cannot create methods that differ only by return values, so if we want to have both a synchronous `Foo` and an
+asynchronous `Foo` we need to change the name of one of them.
+
+Internally, an asynchronous method:
+1. Uses the `async` keyword to inform the compiler that it needs to treat the method as an asynchronous one.
+2. Uses the `await` keyword in its implementation to asynchronously wait for results of other operations.
+
+The basic awaitable is a `Task` or `Task<TResult>`. We will write the solution first and then dig into the details.
+We will be using the `await` keyword. Here's the gist of the semantics:
+
+_`await x` means that I need `x` to complete before I do anything more, and if it hasn't then I will asynchronously wait for it_
+
+Asynchrony is an all-in deal. When we start using `await` then everything else up to the `Main` method will have to be
+asynchronous. In a console application it literally means that we should change our `Main` signature to `static Task Main()`. When we
+start using `Task` and `await`, we need to asynchronously `await` all the tasks, and **never** block.
+
+When writing async code we usually have some root methods that are asynchronous. For example `HttpClient` methods
+all have asynchronous counterparts.
+
+#!csharp
+
+using System.IO;
+using System.Net.Http;
+
+public sealed class AsynchronousImplementation
+{
+    private readonly HttpClient _httpClient = new();
+
+    // async keyword enables usage of await
+    //     vvvvv
+    public async Task<int> ExecuteAsync(IReadOnlyList<Uri> pages, Action<string> logger)
+    {
+        logger($"Execution starts.");
+        var sum = 0;
+
+        foreach (var page in pages)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, page);
+            // We get a Task<HttpResponseMessage> and immediatelly await it, since we need the result.
+            //                             vvvvv             vvvvvvvvv
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
+
+            response.EnsureSuccessStatusCode(); // Throws if request was not successful.
+
+            using var content = response.Content.ReadAsStream();
+            // Normally we would have to get the encoding from the response, but the course page is fully UTF8.
+            using var textStream = new StreamReader(content, Encoding.UTF8); 
+            var lines = 0;
+
+            while (!textStream.EndOfStream)
+            {
+                lines += 1;
+              // Stream methods also have asynchronous overloads. Here we get a Task<string> and await it without
+              // using the result at all.
+              //vvvvv            vvvvvvvvvvvvv
+                await textStream.ReadLineAsync();
+            }
+
+            logger($"Read {page} for {lines} lines.");
+            sum += lines;
+        }
+
+        // Normal control-flow works in the method, this just completes the returned task
+        // and sets its result to `sum`.
+        return sum;
+    }
+}
+
+#!csharp
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+    
+var asynchronous = new AsynchronousImplementation();
+Task<int> resultTask = asynchronous.ExecuteAsync(Input.Pages, Log);
+
+const long Number = 10_000_000_000_002_137;
+Log($"{Number} {(IsPrime(Number) ? "is" : "is not")} prime.");
+
+var result = await resultTask;
+Log($"Final result: {result}");
+
+#!markdown
+
+Now this is much better. The method that does prime churning can freely run on one core,
+while the other gets sometimes notified about an HTTP request completing and jumps in to complete the rest of the work.
+
+The core ideas are all here:
+1. If we need to go and do some hard processing before going further, we `await` a task.
+2. We can also fire a computation earlier and then `await` it at a point where we really need
+to synchronise and use the result. This is what our main method does here, by firing the `ExecuteAsync`
+task _without awaiting it_, then doing some important prime-number stuff, and awaiting at the very end to
+print the result.
+
+This is very similar to how threads work -- one can fire up a thread to do some stuff, and then at some point
+`Join` with it to synchronise. Tasks are much more abstract and powerful, though.
+
+#!markdown
+
+## Task Combinators
+
+Our current solution is still inefficient. Sure, the main method might be able
+to churn some prime number calculation while we're waiting for our pages, but the waiting
+itself is wasteful, since we're sending requests one-by-one. We know that servers
+can handle more than one request concurrently, especially a webpage as big as Wikipedia.
+
+Instead of instantly awaiting the result of a single page fetch we can refactor our code
+to trigger all GET requests in bulk, and then collect them one-by-one:
+
+#!csharp
+
+using System.IO;
+using System.Net.Http;
+
+public sealed class AsynchronousImplementation
+{
+    private readonly HttpClient _httpClient = new();
+
+    public async Task<int> ExecuteAsync(IReadOnlyList<Uri> pages, Action<string> logger)
+    {
+        logger($"Execution starts.");
+        var sum = 0;
+        var requests = new List<Task<int>>(pages.Count);
+
+        foreach (var page in pages)
+        {
+            // Start a request task.
+            //           vvvvvvvvvvvvv
+            requests.Add(FetchOneAsync(page));
+        }
+
+        // All requests are running now.
+
+        foreach (var (task, page) in requests.Zip(pages))
+        {
+            // Wait for each to complete.
+            //          vvvvv
+            var lines = await task;
+            logger($"Read {page} for {lines} lines.");
+            sum += lines;
+        }
+
+        return sum;
+    }
+
+    private async Task<int> FetchOneAsync(Uri page)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, page);
+        HttpResponseMessage response = await _httpClient.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+
+        using var content = response.Content.ReadAsStream();
+        using var textStream = new StreamReader(content, Encoding.UTF8); 
+        var lines = 0;
+
+        while (!textStream.EndOfStream)
+        {
+            lines += 1;
+            await textStream.ReadLineAsync();
+        }
+
+        return lines;
+    }
+}
+
+#!csharp
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+    
+var asynchronous = new AsynchronousImplementation();
+Task<int> resultTask = asynchronous.ExecuteAsync(Input.Pages, Log);
+
+const long Number = 10_000_000_000_002_137;
+Log($"{Number} {(IsPrime(Number) ? "is" : "is not")} prime.");
+
+var result = await resultTask;
+Log($"Final result: {result}");
+
+#!markdown
+
+Now we get basically all the results at the same time! Looking only at the fetching routine we cut down the processing time sharply.
+There's some initial overhead as we send out all the requests, but then we wait for all of them instead of one-at-a-time.
+
+This pattern of creating tasks and waiting for them to complete is very common, so common in fact that there exists a BCL combinator for it, `Task.WhenAll`:
+
+#!csharp
+
+using System.IO;
+using System.Net.Http;
+
+public sealed class AsynchronousImplementation
+{
+    private readonly HttpClient _httpClient = new();
+
+    public async Task<int> ExecuteAsync(IReadOnlyList<Uri> pages, Action<string> logger)
+    {
+        logger($"Execution starts.");
+        var sum = 0;
+        var requests = new List<Task<int>>(pages.Count);
+
+        foreach (var page in pages)
+        {
+            requests.Add(FetchOneAsync(page));
+        }
+
+        // Wait for all requests in a single `Task<int[]>`.
+        //                    vvvvvvvvvvvv
+        int[] results = await Task.WhenAll(requests);
+
+        foreach (var (lines, page) in results.Zip(pages))
+        {
+            logger($"Read {page} for {lines} lines.");
+            sum += lines;
+        }
+
+        return sum;
+    }
+
+    private async Task<int> FetchOneAsync(Uri page)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, page);
+        HttpResponseMessage response = await _httpClient.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+
+        using var content = response.Content.ReadAsStream();
+        using var textStream = new StreamReader(content, Encoding.UTF8); 
+        var lines = 0;
+
+        while (!textStream.EndOfStream)
+        {
+            lines += 1;
+            await textStream.ReadLineAsync();
+        }
+
+        return lines;
+    }
+}
+
+#!csharp
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+    
+var asynchronous = new AsynchronousImplementation();
+Task<int> resultTask = asynchronous.ExecuteAsync(Input.Pages, Log);
+
+const long Number = 10_000_000_000_002_137;
+Log($"{Number} {(IsPrime(Number) ? "is" : "is not")} prime.");
+
+var result = await resultTask;
+Log($"Final result: {result}");
+
+#!markdown
+
+There's also a `Task.WhenAny` that completes when any one passed task completes and returns that task.
+Because `Task` operates on such a high abstraction level, you can create your own task combinators
+without caring about what those tasks actually are or what results they produce.
+
+#!markdown
+
+## What's Going On Inside
+
+Okay, so to fully understand the async flow we need to think one level lower, about what actually
+the compiler does with our `await` statements. Consider this simple code:
+
+```csharp
+using System;
+using System.Threading.Tasks;
+
+static class Program
+{
+    public static async Task Main()
+    {
+        var result = await ComputeAsync();
+        Console.WriteLine(result);
+    }
+
+    static async Task<int> ComputeAsync()
+    {
+        await Task.Delay(1000);
+        return 42;
+    }
+}
+```
+
+Now, we've already seen [`4.1. Iterators`](https://gienieczko.com/teaching/csharp/4-linq/1-iterators), so we're familiar
+with the idea of coroutines -- a method that can have its execution suspended at a point, returning to the caller,
+and then continuing from that pause point when triggered again. When we mark a method with `async`, the compiler creates
+an automaton similarly as with iterator methods. The execution inside proceeds normally, until it reaches an `await`.
+
+```csharp
+internal static class Program
+{
+    [CompilerGenerated]
+    private sealed class MainAsyncStateMachine : IAsyncStateMachine
+    {
+        public int _state;
+
+        public AsyncTaskMethodBuilder _builder;
+
+        private int _result;
+
+        private int _computeAsyncResult;
+
+        private TaskAwaiter<int> _computeAsyncAwaiter;
+
+        private void MoveNext()
+        {
+            int state = _state;
+            try
+            {
+                TaskAwaiter<int> awaiter;
+                if (state != 0)
+                {
+                    awaiter = ComputeAsync().GetAwaiter();
+                    if (!awaiter.IsCompleted)
+                    {
+                        _state = 0;
+                        _computeAsyncAwaiter = awaiter;
+                        MainAsyncStateMachine stateMachine = this;
+                        _builder.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine);
+                        return;
+                    }
+                }
+                else
+                {
+                    awaiter = _computeAsyncAwaiter;
+                    _computeAsyncAwaiter = default(TaskAwaiter<int>);
+                    _state = -1;
+                }
+                _computeAsyncResult = awaiter.GetResult();
+                _result = _computeAsyncResult;
+                Console.WriteLine(_result);
+            }
+            catch (Exception exception)
+            {
+                _state = -2;
+                _builder.SetException(exception);
+                return;
+            }
+            _state = -2;
+            _builder.SetResult();
+        }
+
+        void IAsyncStateMachine.MoveNext()
+        {
+            //ILSpy generated this explicit interface implementation from .override directive in MoveNext
+            this.MoveNext();
+        }
+
+        [DebuggerHidden]
+        private void SetStateMachine(IAsyncStateMachine stateMachine)
+        {
+        }
+
+        void IAsyncStateMachine.SetStateMachine(IAsyncStateMachine stateMachine)
+        {
+            //ILSpy generated this explicit interface implementation from .override directive in SetStateMachine
+            this.SetStateMachine(stateMachine);
+        }
+    }
+
+    [AsyncStateMachine(typeof(MainAsyncStateMachine))]
+    [DebuggerStepThrough]
+    private static Task Main()
+    {
+        MainAsyncStateMachine stateMachine = new MainAsyncStateMachine();
+        stateMachine._builder = AsyncTaskMethodBuilder.Create();
+        stateMachine._state = -1;
+        stateMachine._builder.Start(ref stateMachine);
+        return stateMachine._builder.Task;
+    }
+}
+```
+
+There are three important things to note here.
+
+1. The compiler doesn't use the standard `ContinueWith`, it uses a special "awaiter" returned
+by `GetAwaiter`.
+2. The compiler special-cases the possibility that a `Task` is already completed when it's awaited,
+with the `if (!awaiter.IsCompleted)` check. Such a case is called **synchronous completion**. It happens
+when the potentially long-running operation already had a lot of time to run and completed, or maybe
+it was cached somewhere in lower layers so that it got returned instantly. This optimisation is very important,
+because the context-switch associated with actual asynchronous execution is very costly.
+3. In case of actual asynchrony, the compiler calls `_builder.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine)`.
+It's a special method that does many complicated things, but the gist is that it schedules a continuation that will
+invoke this state machine to run again when the task completes.
+
+After we exit this branching, the task is surely completed, so `GetResult()` is called on the awaiter,
+exceptions handled, and execution continues.
