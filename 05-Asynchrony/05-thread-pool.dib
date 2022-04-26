@@ -25,7 +25,7 @@ That's kind of the point of doing all this in notebooks.
 
 #!markdown
 
-## Where Did These Threads Come From?
+## Who Let the Threads out?
 
 Even in this simple async code we have a new thread popping into the execution, even though we never
 instantiate any threads ourselves.
@@ -47,21 +47,298 @@ Log("Hello again!");
 #!markdown
 
 Where is it coming from? The origin of a main thread is obvious, when we run
-a .NET program the runtime spawns a thread that runs our `Main` method.
+a .NET program the runtime spawns a thread that runs our `Main` method. But the other one?
+
+Well, one could presume that it's the runtime creating a new thread for us when we `await`, but
+that's false -- it'd be way too inefficient. Instead, .NET uses a thread pool, _the_ `System.Threading.ThreadPool`,
+actually.
+
+When we start doing thready stuff, the .NET runtime creates a thread pool and spins up a few threads for us,
+in the current implementation equal to the number of cores on the machine. These threads are already hot,
+they have their stack all set-up and they're waiting for a signal to start executing code.
+
+The implementation of the pool is _very_ complex. The gist is that there exists some global queue of work items
+that get posted from the outside. You can actually enqueue your own work using a method directly on the pool,
+but don't do that -- we will show a better way to do that. The threads are asleep, waiting for an item
+to be posted to the queue so that they can grab and run it.
+
+Now when a continuation gets triggered it gets posted to the `ThreadPool` work queue.
+Then _some_ thread from the `ThreadPool` gets that continuation and executes it. It is not only
+not guaranteed to be the same thread that originally executed the `await`, AFAIK if the original
+thread was the main thread it is sure that it will be a different one.
+
+When a thread finishes executing stuff it goes back to the queue. If it's empty,
+it falls asleep once again, but remains vigilant, ready to be awakened when the realm
+needs them the most...
+
+#!markdown
+
+## Executing Things on the `ThreadPool`
+
+This mechanism is pretty powerful. I've just said that there's a pool of
+threads out there, just waiting to be utilised for our operations!
+
+We can run things on the pool and wait for them to complete asynchronously
+using `Task.Run`. For example let's say that we _really_ want to search a very
+large text for a pattern input by a user.
+
+#!csharp
+
+using System.Diagnostics;
+using System.IO;
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+
+int Search(string text, string pattern)
+{
+    Log($"Running search for {pattern}...");
+
+    var idx = 0;
+    var count = 0;
+    
+    while (true)
+    {
+        idx = text.IndexOf(pattern, idx, StringComparison.InvariantCultureIgnoreCase);
+        
+        if (idx == -1)
+        {
+            break;
+        }
+
+        idx += 1;
+        count += 1;
+    }
+
+    Log($"Found {count} occurrences of {pattern}.");
+
+    return count;
+}
+
+void Main()
+{
+    string text;
+    using (var file = File.OpenText("./data/lorem-ipsum.txt"))
+    {
+        text = file.ReadToEnd();
+    }
+
+    stopwatch.Restart();
+    Log($"File loaded, processing...");
+    
+    var results = new int[]
+    {
+        Search(text, "lorem"),
+        Search(text, "ipsum"),
+        Search(text, "et"),
+    };
+
+    Log("All requests done.");
+    Log($"Total = {results.Sum()}");
+}
+
+Main();
+
+#!markdown
+
+This isn't an inherently asynchronous operation -- the data is all in memory already. It's **CPU-bound**,
+as opposed to I/O-bound. But we can still offload this work to a different thread using `Task.Run`:
+
+#!csharp
+
+using System.Diagnostics;
+using System.IO;
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+
+static int Search(string text, string pattern)
+{
+    Log($"Running search for {pattern}...");
+
+    var idx = 0;
+    var count = 0;
+    
+    while (true)
+    {
+        idx = text.IndexOf(pattern, idx, StringComparison.InvariantCultureIgnoreCase);
+        
+        if (idx == -1)
+        {
+            break;
+        }
+
+        idx += 1;
+        count += 1;
+    }
+
+    Log($"Found {count} occurrences of {pattern}.");
+
+    return count;
+}
+
+static async Task Main()
+{
+    string text;
+    using (var file = File.OpenText("./data/lorem-ipsum.txt"))
+    {
+        text = file.ReadToEnd();
+    }
+
+    stopwatch.Restart();
+    Log($"File loaded, processing...");
+    
+    var requests = new Task<int>[]
+    {
+        Task.Run(() => Search(text, "lorem")),
+        Task.Run(() => Search(text, "ipsum")),
+        Task.Run(() => Search(text, "et")),
+    };
+    
+    Log("Awaiting requests...");
+    
+    int[] results = await Task.WhenAll(requests);
+
+    Log("All requests done.");
+    Log($"Total = {results.Sum()}");
+}
+
+await Main();
+
+#!markdown
+
+As always with complex systems, there are some rules that we should follow as a user
+for the pool to run smoothly. The rules are:
+
+1. Most tasks are relatively short-running. The ideal runtime is around 100ms, should
+be below 250ms.
+2. There isn't too much blocking going on in the threads.
+
+This is due to how the `ThreadPool` is implemented, which we cover briefly below.
+Whenever we have a very long-running task, it's better for overall performance to
+create a new thread for it -- remember, the cost that we're saving with a thread pool is that
+of spinning up a new thread every time a request comes in.
+
+You can do this in a slightly more involved way, by calling the `Task.Factory.StartNew` method
+and passing the `LongRunning` flag. `Task.Run` is basically a shorthand for `Task.Factory.StartNew`.
+To illustrate this, let's run the same code, but this time we will quadruple the input size artificially:
+
+#!csharp
+
+using System.Diagnostics;
+using System.IO;
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+
+static int Search(string text, string pattern)
+{
+    Log($"Running search for {pattern}...");
+
+    var idx = 0;
+    var count = 0;
+    
+    while (true)
+    {
+        idx = text.IndexOf(pattern, idx, StringComparison.InvariantCultureIgnoreCase);
+        
+        if (idx == -1)
+        {
+            break;
+        }
+
+        idx += 1;
+        count += 1;
+    }
+
+    Log($"Found {count} occurrences of {pattern}.");
+
+    return count;
+}
+
+static async Task Main()
+{
+    string text;
+    using (var file = File.OpenText("./data/lorem-ipsum.txt"))
+    {
+        text = file.ReadToEnd();
+    }
+
+    text = text + text + text + text;
+
+    stopwatch.Restart();
+    Log($"File loaded, processing...");
+    
+    var requests = new Task<int>[]
+    {
+        Task.Factory.StartNew(() => Search(text, "lorem"), TaskCreationOptions.LongRunning),
+        Task.Factory.StartNew(() => Search(text, "ipsum"), TaskCreationOptions.LongRunning),
+        Task.Factory.StartNew(() => Search(text, "et"), TaskCreationOptions.LongRunning),
+    };
+    
+    Log("Awaiting requests...");
+    
+    int[] results = await Task.WhenAll(requests);
+
+    Log("All requests done.");
+    Log($"Total = {results.Sum()}");
+}
+
+await Main();
+
+#!markdown
+
+This is still much better than the low-level, manual thread creation we've seen in
+`[5.0. Simple Threading]`(https://gienieczko.com/teaching/csharp/5-asynchrony/0-simple-threading).
+The runtime handles the thread creation, management, and disposal for us, and we stay on the
+high abstraction level of tasks.
+
+#!markdown
+
+## Brief Implementation Sketch
+
+The `ThreadPool` has a number of threads called _work threads_, that are responsible for doing
+hard work, and a few _async I/O threads_, that are specifically used for operating system level
+async callbacks. Think the kind of stuff that happens when the hard drive finishes loading a data
+segment into a buffer -- very low level, specific things.
+
+While the application is running it monitors the state of the pool. It keeps in mind
+the number of existing threads, threads that are actively working,
+CPU utilisation...
+
+Naively, it might seem like a good idea to just create a lot of threads and let
+the system sort itself out. Unfortunately, this isn't an optimal solution.
+When there are more threads than CPU cores we get **oversubscription**.
+If we have 6 cores, 12 threads and 12 tasks that take about the same time,
+and they all utilise 100% of the core they run on,
+the 12 tasks will take _longer_ than if we ran them on 6 threads,
+because the threads constantly compete for the CPU and incur expensive context switches.
+There's also an additional cost of data locality, since each thread has its own stack
+and data on it, and the CPU won't have enough cache to keep all of that.
+
+If CPU utilisation is low, the algorithm assumes it means that many threads are blocked
+waiting for something, and if the queue has waiting work items it produces more threads to process them.
 
 #!markdown
 
 ## Summary
 
-We've met one of the hardest concepts in C#, the `async`/`await` mechanism.
-Despite its complexity it is also one of the most important concepts.
-We know how to construct `async` methods and use `await` to asynchronously wait
-for completion of subtasks. We've met `Task.WhenAll` and `Task.WhenAny` as general-purpose
-task combinators.
+We now know where those threads are coming from. We know how to schedule
+small tasks on the thread pool with `Task.Run`, or long running tasks
+with `Task.Factory.StartNew`.
 
 #!markdown
 
 ## Next up:
 
-Continue with the next section, [5.5. Thread Pool](https://gienieczko.com/teaching/csharp/5-asynchrony/5-thread-pool),
-or straight to the next notebook, [`05-thread-pool.dib`](05-thread-pool.dib).
+Continue with the next section, [5.6. Cancellation](https://gienieczko.com/teaching/csharp/5-asynchrony/6-cancellation),
+or straight to the next notebook, [`06-cancellation.dib`](06-cancellation.dib).

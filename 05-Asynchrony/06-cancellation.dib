@@ -1,0 +1,401 @@
+#!markdown
+
+# 5.6. Cancellation and Progress
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/5-asynchrony.
+
+It covers topics for section [5.6. Cancellation](https://gienieczko.com/teaching/csharp/5-asynchrony/6-cancellation).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Cooperative Cancellation
+
+Cancelling long-running operations may sound like a small thing,
+but it's actually pretty important and common. Think how many times
+you leave a webpage before it loads because it took too long, or
+you cancel some operating system file copy or search function.
+
+Most operations can be cancelled by simply "pulling the plug",
+sending a SIGTERM to a process, outright murdering it without even
+asking whether it would like to maybe stop by itself.
+
+This is bad when we're doing anything complex, though. For example,
+if we have the example from the previous section with an endpoint that
+seeks for a provided pattern in a text. When the user decides they're tired
+of waiting and cancels the request, we'd like a better way of cancelling the operation
+than executing the thread without mercy.
+
+The only way to achieve this is via _cooperative_ cancellation.
+The operation in question needs to agree on a protocol that allows us to cancel it.
+If it doesn't, well, there's really no other way of cancelling than a rude one.
+
+#!markdown
+
+## `CancellationToken` and `CancellationTokenSource`
+
+The idea of the protocol is simple, yet elegant.
+There is a source reference type called `CancellationTokenSource`
+that controls when to trigger a cancellation signal. It also allows
+us to give out `CancellationToken` value type instances linked to the source.
+When the source decides that a cancellation is in order, the token gets triggered
+and reflects that.
+
+Many async methods provide us with an overload that takes in a `CancellationToken` that allows us
+to cancel it if it takes too long. Here's an example, we have two web downloads,
+one of them is small and takes less than a second, while the other is very long.
+We only wait a few seconds before cancelling the operation if it's not completed yet.
+
+#!csharp
+
+using System.Diagnostics;
+using System.IO;
+using System.Net.Http;
+using System.Threading;
+
+static var httpClient = new HttpClient();
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+    
+async Task<Stream> DownloadAsync(Uri uri, CancellationToken cancellationToken)
+{
+    HttpResponseMessage response;
+    string fileName = uri.Segments[^1];
+
+    try 
+    {
+        Log($"Downloading '{fileName}'...");
+        response = await httpClient.GetAsync(uri, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        Log($"Downloading '{fileName}' completed.");
+
+        return await response.Content.ReadAsStreamAsync(cancellationToken);
+    }
+    catch (Exception exception)
+    {
+        Log($"Exception downloading '{fileName}': {exception.Message}");
+        throw;
+    }
+}
+
+var cancellationTokenSource = new CancellationTokenSource();
+Task timer = Task.Delay(10_000);
+Task<Stream> slowDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.med.png"), cancellationTokenSource.Token);
+Task<Stream> fastDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.small.png"), cancellationTokenSource.Token);
+
+Task<Stream[]> allDownloads = Task.WhenAll(slowDownload, fastDownload);
+
+Task firstToComplete = await Task.WhenAny(allDownloads, timer);
+
+if (firstToComplete == timer)
+{
+    cancellationTokenSource.Cancel();
+}
+
+if (fastDownload.IsCompletedSuccessfully)
+{
+    Stream fastStream = fastDownload.Result;
+    Log($"Fast download fetched {fastStream.Length} bytes.");    
+}
+else
+{
+    Log("Fast download faulted.");
+}
+
+if (slowDownload.IsCompletedSuccessfully)
+{
+    Stream slowStream = slowDownload.Result;
+    Log($"Slow download fetched {slowStream.Length} bytes.");    
+}
+else
+{
+    Log("Slow download faulted.");
+}
+
+#!markdown
+
+We didn't even have to look at the tokens to do this.
+By the way, I did it the convoluted way so you can see the details
+and some nice usage of `Task.WhenAny`, but in reality you should use
+the `CancellationTokenSource.CancelAfter` method:
+
+#!csharp
+
+using System.Diagnostics;
+using System.IO;
+using System.Net.Http;
+using System.Threading;
+
+static var httpClient = new HttpClient();
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+    
+async Task<Stream> DownloadAsync(Uri uri, CancellationToken cancellationToken)
+{
+    HttpResponseMessage response;
+    string fileName = uri.Segments[^1];
+
+    try 
+    {
+        Log($"Downloading '{fileName}'...");
+        response = await httpClient.GetAsync(uri, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        Log($"Downloading '{fileName}' completed.");
+
+        return await response.Content.ReadAsStreamAsync(cancellationToken);
+    }
+    catch (Exception exception)
+    {
+        Log($"Exception downloading '{fileName}': {exception.Message}");
+        throw;
+    }
+}
+
+var cancellationTokenSource = new CancellationTokenSource();
+cancellationTokenSource.CancelAfter(10_000);
+Task<Stream> slowDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.small.png"), cancellationTokenSource.Token);
+Task<Stream> fastDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.med.png"), cancellationTokenSource.Token);
+
+Task<Stream[]> allDownloads = Task.WhenAll(slowDownload, fastDownload);
+
+try
+{
+    Stream stream = await fastDownload;
+    Log($"Fast download fetched {stream.Length} bytes.");
+}
+catch
+{
+    Log("Fast download faulted.");
+}
+try
+{
+    Stream stream = await slowDownload;
+    Log($"Slow download fetched {stream.Length} bytes.");
+}
+catch
+{
+    Log("Slow download faulted.");
+}
+
+#!markdown
+
+`CancellationToken` has to be weaved through an async method,
+passed to all the basic methods used (most async BCL methods support cancellation),
+and handled near the top. It's best to wrap cancellable operations in a `try`/`catch (OperationCanceledException)`
+and then exit in a less fiery manner.
+
+Now, when writing methods using a `CancellationToken` we need to consciously
+cooperate with it to support smooth cancellation. Here's how we'd add cancellation support
+for the string searching method we've wrote earlier:
+
+```csharp
+static int Search(string text, string pattern)
+{
+    Log($"Running search for {pattern}...");
+
+    var idx = 0;
+    var count = 0;
+    
+    while (true)
+    {
+        idx = text.IndexOf(pattern, idx, StringComparison.InvariantCultureIgnoreCase);
+        
+        if (idx == -1)
+        {
+            break;
+        }
+
+        idx += 1;
+        count += 1;
+    }
+
+    Log($"Found {count} occurrences of {pattern}.");
+
+    return count;
+}
+```
+
+First we add a `CancellationToken` as a parameter. For public
+methods this is usually done by providing an overload in the usual manner:
+
+```csharp
+static int Search(string text, string pattern) => Search(text, pattern, CancellationToken.None);
+
+static int Search(string text, string pattern, CancellationToken cancellationToken)
+```
+
+`CancellationToken.None` is the same as `default(CancellationToken)` and is a dud
+token that never gets cancellation triggered.
+
+Then we need to manually inspect cancellation and take actions to stop our operation.
+This is done by the `IsCancellationRequested` property. When it is true,
+our code should do its best to stop what it's doing, clean up whatever it needs to clean up,
+and exit the method, usually by throwing `OperationCanceledException`. If there's no
+other actions that need to be taken before throw, there's a shortcut: `ThrowIfCancellationRequested()`.
+
+In our case we have a single good place to investigate cancellation, before we start looking
+for the next occurrence of the pattern:
+
+#!csharp
+
+using System.Diagnostics;
+using System.IO;
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+
+static int Search(string text, string pattern) => Search(text, pattern, CancellationToken.None);
+
+static int Search(string text, string pattern, CancellationToken cancellationToken)
+{
+    Log($"Running search for {pattern}...");
+
+    var idx = 0;
+    var count = 0;
+    
+    while (true)
+    {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            Log($"Cancelling after finding {count} occurrences in {idx} bytes.");
+            throw new OperationCanceledException();
+        }
+
+        idx = text.IndexOf(pattern, idx, StringComparison.InvariantCultureIgnoreCase);
+        
+        if (idx == -1)
+        {
+            break;
+        }
+
+        idx += 1;
+        count += 1;
+    }
+
+    Log($"Found {count} occurrences of {pattern}.");
+
+    return count;
+}
+
+
+static int? SearchUntilCanceled(string text, string pattern, CancellationToken token)
+{
+    try
+    {
+        return Search(text, pattern, token);
+    }
+    catch (OperationCanceledException)
+    {
+        return null;
+    }
+}
+
+static async Task Main()
+{
+    string text;
+    using (var file = File.OpenText("./data/lorem-ipsum.txt"))
+    {
+        text = file.ReadToEnd();
+    }
+
+    text = text + text;
+    
+    stopwatch.Restart();
+    Log($"File loaded, processing...");
+
+    var cancellationTokenSource = new CancellationTokenSource();
+    cancellationTokenSource.CancelAfter(1_250);
+    
+    var requests = new Task<int?>[]
+    {
+        Task.Run(() => SearchUntilCanceled(text, "lorem", cancellationTokenSource.Token)),
+        Task.Run(() => SearchUntilCanceled(text, "ipsum", cancellationTokenSource.Token)),
+        Task.Run(() => SearchUntilCanceled(text, "et", cancellationTokenSource.Token)),
+    };
+    
+    Log("Awaiting requests...");
+    
+    int?[] results = await Task.WhenAll(requests);
+
+    Log("All requests done.");
+    Log($"Total = {results.Sum()}, {results.Count(x => x is null)} out of {results.Length} requests cancelled.");
+}
+
+await Main();
+
+#!markdown
+
+Now we support cancellation! There's one hole in our method though,
+say we have a pattern that occurs very rarely. Then most of the time our
+method spends inside the `IndexOf` call. And `IndexOf` does not support cancellation.
+
+There are two ways of handling this:
+1. Not handling it. _(recommended)_
+2. Changing our logic so that it blocks more rarely.
+
+There's a trade-off here between cancellation smoothness and performance.
+We could write a method that uses a different overload of `IndexOf` that checks
+up to $N$ characters, set, say, $N = 1000$, stop every $N$ characters and check cancellation.
+We could also do that after every character. This is a general rule -- you could
+always make cancellation smoother by checking it more often, but that becomes an
+obviously stupid idea at some point.
+
+However, putting cancellation checks after operations that we know may take
+non-negligible time is a good idea.
+
+#!markdown
+
+## A Few Cancellations More
+
+There are a few more interesting things for cancellation.
+It's a pretty powerful mechanism, and the idea of creating a single
+source that gives out tokens that somehow react to the source is really nice.
+
+Cancellation tokens also allow us to register callbacks using `CancellationToken.Register(Action)`.
+We can also create a new token source out of existing tokens using `CancellationTokenSource.CreateLinkedTokenSource`,
+that will be triggered to cancel once any passed token will be cancelled, allowing us to look at many
+possible cancellations at the same time.
+
+The most crucial usage of cancellation is for web servers. If users
+cancel a request we want it to be cancelled on the server as well, because
+servers cost a lot of money.
+
+#!markdown
+
+## Summary
+
+We now know where those threads are coming from. We know how to schedule
+small tasks on the thread pool with `Task.Run`, or long running tasks
+with `Task.Factory.StartNew`.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [5.6. Cancellation](https://gienieczko.com/teaching/csharp/5-asynchrony/6-cancellation),
+or straight to the next notebook, [`06-cancellation.dib`](06-cancellation.dib).
