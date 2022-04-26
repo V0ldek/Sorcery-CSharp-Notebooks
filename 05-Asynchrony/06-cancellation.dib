@@ -361,7 +361,7 @@ There are two ways of handling this:
 There's a trade-off here between cancellation smoothness and performance.
 We could write a method that uses a different overload of `IndexOf` that checks
 up to $N$ characters, set, say, $N = 1000$, stop every $N$ characters and check cancellation.
-We could also do that after every character. This is a general rule -- you could
+We could also do that after every character. This is a general rule – you could
 always make cancellation smoother by checking it more often, but that becomes an
 obviously stupid idea at some point.
 

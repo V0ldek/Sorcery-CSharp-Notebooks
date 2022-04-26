@@ -50,7 +50,7 @@ Where is it coming from? The origin of a main thread is obvious, when we run
 a .NET program the runtime spawns a thread that runs our `Main` method. But the other one?
 
 Well, one could presume that it's the runtime creating a new thread for us when we `await`, but
-that's false -- it'd be way too inefficient. Instead, .NET uses a thread pool, _the_ `System.Threading.ThreadPool`,
+that's false – it'd be way too inefficient. Instead, .NET uses a thread pool, _the_ `System.Threading.ThreadPool`,
 actually.
 
 When we start doing thready stuff, the .NET runtime creates a thread pool and spins up a few threads for us,
@@ -59,7 +59,7 @@ they have their stack all set-up and they're waiting for a signal to start execu
 
 The implementation of the pool is _very_ complex. The gist is that there exists some global queue of work items
 that get posted from the outside. You can actually enqueue your own work using a method directly on the pool,
-but don't do that -- we will show a better way to do that. The threads are asleep, waiting for an item
+but don't do that – we will show a better way to do that. The threads are asleep, waiting for an item
 to be posted to the queue so that they can grab and run it.
 
 Now when a continuation gets triggered it gets posted to the `ThreadPool` work queue.
@@ -144,7 +144,7 @@ Main();
 
 #!markdown
 
-This isn't an inherently asynchronous operation -- the data is all in memory already. It's **CPU-bound**,
+This isn't an inherently asynchronous operation – the data is all in memory already. It's **CPU-bound**,
 as opposed to I/O-bound. But we can still offload this work to a different thread using `Task.Run`:
 
 #!csharp
@@ -222,7 +222,7 @@ be below 250ms.
 
 This is due to how the `ThreadPool` is implemented, which we cover briefly below.
 Whenever we have a very long-running task, it's better for overall performance to
-create a new thread for it -- remember, the cost that we're saving with a thread pool is that
+create a new thread for it – remember, the cost that we're saving with a thread pool is that
 of spinning up a new thread every time a request comes in.
 
 You can do this in a slightly more involved way, by calling the `Task.Factory.StartNew` method
@@ -309,7 +309,7 @@ high abstraction level of tasks.
 The `ThreadPool` has a number of threads called _work threads_, that are responsible for doing
 hard work, and a few _async I/O threads_, that are specifically used for operating system level
 async callbacks. Think the kind of stuff that happens when the hard drive finishes loading a data
-segment into a buffer -- very low level, specific things.
+segment into a buffer – very low level, specific things.
 
 While the application is running it monitors the state of the pool. It keeps in mind
 the number of existing threads, threads that are actively working,

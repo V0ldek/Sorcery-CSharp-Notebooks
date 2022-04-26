@@ -368,7 +368,7 @@ Externally, an asynchronous method:
 1. Returns an awaitable object, usually `Task`, `Task<TResult>`, in some cases a `ValueTask` or `ValueTask<TResult>` which we'll cover later.
 2. Has a name ending with an `Async` suffix.
 
-The translation is simple -- if a synchronous method were `void Foo(args)` then an asynchronous one is `Task FooAsync(args)`.
+The translation is simple – if a synchronous method were `void Foo(args)` then an asynchronous one is `Task FooAsync(args)`.
 If we had a return value, `int Foo(args)`, then the asynchronous version is `Task<int> FooAsync(args)`. The `Async` suffix is there
 because in C# we cannot create methods that differ only by return values, so if we want to have both a synchronous `Foo` and an
 asynchronous `Foo` we need to change the name of one of them.
@@ -467,7 +467,7 @@ to synchronise and use the result. This is what our main method does here, by fi
 task _without awaiting it_, then doing some important prime-number stuff, and awaiting at the very end to
 print the result.
 
-This is very similar to how threads work -- one can fire up a thread to do some stuff, and then at some point
+This is very similar to how threads work – one can fire up a thread to do some stuff, and then at some point
 `Join` with it to synchronise. Tasks are much more abstract and powerful, though.
 
 #!markdown
@@ -668,7 +668,7 @@ static class Program
 ```
 
 Now, we've already seen [`4.1. Iterators`](https://gienieczko.com/teaching/csharp/4-linq/1-iterators), so we're familiar
-with the idea of coroutines -- a method that can have its execution suspended at a point, returning to the caller,
+with the idea of coroutines – a method that can have its execution suspended at a point, returning to the caller,
 and then continuing from that pause point when triggered again. When we mark a method with `async`, the compiler creates
 an automaton similarly as with iterator methods. The execution inside proceeds normally, until it reaches an `await`.
 
@@ -834,7 +834,7 @@ We call `Task.Delay(1000)`. What happens there is irrelevant to us, you can trus
 that it doesn't contain any `await` code and just returns a low-level `Task` that completes after a second.
 We get this task and `await` it.
 
-99.99% of the time it won't be completed yet -- there's a slight
+99.99% of the time it won't be completed yet – there's a slight
 chance that our operating system has massive work overload and preempts our application for a second
 between the `Delay` call and the `await`. In that case nothing will happen here and we'd go to the next line.
 Most likely, however, we will take the task, add a continuation saying "call my state machine again when you complete",
