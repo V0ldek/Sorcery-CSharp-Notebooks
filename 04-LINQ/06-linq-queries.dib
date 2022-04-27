@@ -1283,5 +1283,5 @@ and know where to turn to for even more useful operators.
 
 ## Next up:
 
-Continue with the next section, [4.6. LINQ Queries](https://gienieczko.com/teaching/csharp/4-linq/6-linq-queries),
-or straight to the next notebook, [`06-linq-queries.dib`](/04-LINQ/06-linq-queries.dib).
+Continue with the next section, [4.7. Local Methods](https://gienieczko.com/teaching/csharp/4-linq/7-local-methods),
+or straight to the next notebook, [`07-local-methods.dib`](/04-LINQ/07-local-methods.dib).

@@ -97,39 +97,44 @@ async Task<Stream> DownloadAsync(Uri uri, CancellationToken cancellationToken)
     }
 }
 
-var cancellationTokenSource = new CancellationTokenSource();
-Task timer = Task.Delay(10_000);
-Task<Stream> slowDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.med.png"), cancellationTokenSource.Token);
-Task<Stream> fastDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.small.png"), cancellationTokenSource.Token);
-
-Task<Stream[]> allDownloads = Task.WhenAll(slowDownload, fastDownload);
-
-Task firstToComplete = await Task.WhenAny(allDownloads, timer);
-
-if (firstToComplete == timer)
+async Task Main()
 {
-    cancellationTokenSource.Cancel();
+    using var cancellationTokenSource = new CancellationTokenSource();
+    Task timer = Task.Delay(10_000);
+    Task<Stream> slowDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.med.png"), cancellationTokenSource.Token);
+    Task<Stream> fastDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.small.png"), cancellationTokenSource.Token);
+    
+    Task<Stream[]> allDownloads = Task.WhenAll(slowDownload, fastDownload);
+    
+    Task firstToComplete = await Task.WhenAny(allDownloads, timer);
+    
+    if (firstToComplete == timer)
+    {
+        cancellationTokenSource.Cancel();
+    }
+    
+    if (fastDownload.IsCompletedSuccessfully)
+    {
+        Stream fastStream = fastDownload.Result;
+        Log($"Fast download fetched {fastStream.Length} bytes.");    
+    }
+    else
+    {
+        Log("Fast download faulted.");
+    }
+    
+    if (slowDownload.IsCompletedSuccessfully)
+    {
+        Stream slowStream = slowDownload.Result;
+        Log($"Slow download fetched {slowStream.Length} bytes.");    
+    }
+    else
+    {
+        Log("Slow download faulted.");
+    }
 }
 
-if (fastDownload.IsCompletedSuccessfully)
-{
-    Stream fastStream = fastDownload.Result;
-    Log($"Fast download fetched {fastStream.Length} bytes.");    
-}
-else
-{
-    Log("Fast download faulted.");
-}
-
-if (slowDownload.IsCompletedSuccessfully)
-{
-    Stream slowStream = slowDownload.Result;
-    Log($"Slow download fetched {slowStream.Length} bytes.");    
-}
-else
-{
-    Log("Slow download faulted.");
-}
+await Main();
 
 #!markdown
 
@@ -173,31 +178,36 @@ async Task<Stream> DownloadAsync(Uri uri, CancellationToken cancellationToken)
     }
 }
 
-var cancellationTokenSource = new CancellationTokenSource();
-cancellationTokenSource.CancelAfter(10_000);
-Task<Stream> slowDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.small.png"), cancellationTokenSource.Token);
-Task<Stream> fastDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.med.png"), cancellationTokenSource.Token);
+async Task Main()
+{
+    using var cancellationTokenSource = new CancellationTokenSource();
+    cancellationTokenSource.CancelAfter(10_000);
+    Task<Stream> slowDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.small.png"), cancellationTokenSource.Token);
+    Task<Stream> fastDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.med.png"), cancellationTokenSource.Token);
 
-Task<Stream[]> allDownloads = Task.WhenAll(slowDownload, fastDownload);
+    Task<Stream[]> allDownloads = Task.WhenAll(slowDownload, fastDownload);
 
-try
-{
-    Stream stream = await fastDownload;
-    Log($"Fast download fetched {stream.Length} bytes.");
+    try
+    {
+        Stream stream = await fastDownload;
+        Log($"Fast download fetched {stream.Length} bytes.");
+    }
+    catch
+    {
+        Log("Fast download faulted.");
+    }
+    try
+    {
+        Stream stream = await slowDownload;
+        Log($"Slow download fetched {stream.Length} bytes.");
+    }
+    catch
+    {
+        Log("Slow download faulted.");
+    }
 }
-catch
-{
-    Log("Fast download faulted.");
-}
-try
-{
-    Stream stream = await slowDownload;
-    Log($"Slow download fetched {stream.Length} bytes.");
-}
-catch
-{
-    Log("Slow download faulted.");
-}
+
+await Main();
 
 #!markdown
 
@@ -252,8 +262,13 @@ token that never gets cancellation triggered.
 Then we need to manually inspect cancellation and take actions to stop our operation.
 This is done by the `IsCancellationRequested` property. When it is true,
 our code should do its best to stop what it's doing, clean up whatever it needs to clean up,
-and exit the method, usually by throwing `OperationCanceledException`. If there's no
+and exit the method by throwing `OperationCanceledException`. If there's no
 other actions that need to be taken before throw, there's a shortcut: `ThrowIfCancellationRequested()`.
+
+**The method should almost always throw an `OperationCancelledException` if it complied with the cancellation request.**
+If the case is different, it should be documented. It might be feasible that partial results of a computation might
+be useful to the caller, but in that case it should be clearly documented, best included in the type, when a result
+is a full result and when it's partial. The caller must know whether the method just returned normally or got cancelled.
 
 In our case we have a single good place to investigate cancellation, before we start looking
 for the next occurrence of the pattern:
@@ -262,6 +277,7 @@ for the next occurrence of the pattern:
 
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 
 static var stopwatch = new Stopwatch();
 stopwatch.Start();
@@ -328,7 +344,7 @@ static async Task Main()
     stopwatch.Restart();
     Log($"File loaded, processing...");
 
-    var cancellationTokenSource = new CancellationTokenSource();
+    using var cancellationTokenSource = new CancellationTokenSource();
     cancellationTokenSource.CancelAfter(1_250);
     
     var requests = new Task<int?>[]
@@ -397,5 +413,5 @@ with `Task.Factory.StartNew`.
 
 ## Next up:
 
-Continue with the next section, [5.6. Cancellation](https://gienieczko.com/teaching/csharp/5-asynchrony/6-cancellation),
-or straight to the next notebook, [`06-cancellation.dib`](06-cancellation.dib).
+This is the end of the module, next up is the Assignment!
+Click here to go there: [Assignment 5. - Asynchronous Adventures](https://gienieczko.com/teaching/csharp/5-asynchronous/assignment/5-asynchronous-adventures).

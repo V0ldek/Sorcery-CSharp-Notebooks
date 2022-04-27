@@ -885,6 +885,220 @@ Hopefully this step-by-step gives you more insight into how `async`/`await` work
 
 #!markdown
 
+## Laziness Strikes Again
+
+Remember the whole shtick with [`4.1. Iterators`](https://gienieczko.com/teaching/csharp/4-linq/1-iterators) and how their
+state machine causes precondition checks to be thrown not at point-of-call but later at point-of-use? The same
+thing is true for `async`!
+
+#!csharp
+
+public async Task WaitAsync(int seconds)
+{
+    if (seconds <= 0)
+    {
+        throw new ArgumentOutOfRangeException(nameof(seconds));
+    }
+
+    await Task.Delay(TimeSpan.FromSeconds(seconds));
+}
+
+Console.WriteLine("Calling...");
+Task waitTask = WaitAsync(-42);
+
+// Logic here...
+
+Console.WriteLine("Awaiting...");
+await waitTask;
+
+#!markdown
+
+This is actually easily solvable in this case, that last `await` is unnecessary anyway:
+
+#!csharp
+
+public Task WaitAsync(int seconds)
+{
+    if (seconds <= 0)
+    {
+        throw new ArgumentOutOfRangeException(nameof(seconds));
+    }
+
+    return Task.Delay(TimeSpan.FromSeconds(seconds));
+}
+
+Console.WriteLine("Calling...");
+Task waitTask = WaitAsync(-42);
+
+// Logic here...
+
+Console.WriteLine("Awaiting...");
+await waitTask;
+
+#!markdown
+
+In general that's not the case though. We can use the same local method trick
+as with iterators to get what we want:
+
+#!csharp
+
+public Task<int> ComputeAsync(int milliseconds)
+{
+    if (milliseconds <= 0)
+    {
+        throw new ArgumentOutOfRangeException(nameof(milliseconds));
+    }
+
+    return Async(milliseconds);
+
+    static async Task<int> Async(int milliseconds)
+    {
+        await Task.Delay(milliseconds);
+        return 42;
+    }
+}
+
+Console.WriteLine("Calling...");
+Task waitTask = WaitAsync(-42);
+
+// Logic here...
+
+Console.WriteLine("Awaiting...");
+await waitTask;
+
+#!markdown
+
+## Holding Resources Across Await
+
+Not everything can be held across an `await` statement.
+For example, holding a `lock` is straight-up illegal:
+
+#!csharp
+
+// Intentionally does not compile.
+var locker = new object();
+
+lock (locker)
+{
+    await Task.Delay(1000);
+}
+
+#!markdown
+
+That's because it's not guaranteed that the same thread will resume after `await`,
+and a lock has to be released by the same thread that acquired it.
+
+There's also a pitfall that one might fall into when refactoring code using `async`.
+Sometimes we write a method that doesn't do much except for setting something up
+and invoking some other `async` method.
+
+```csharp
+async Task<HttpResponseMessage> SendToServerAsync(string message)
+{
+    return await httpClient.PostAsync("http://example.com", new ByteArrayContent(Encoding.UTF8.GetBytes(message)));
+}
+```
+
+This is redundant. We're creating a task and instantly awaiting it, wrapping it in yet another
+task. This implementation would be better:
+
+```csharp
+Task<HttpResponseMessage> SendToServerAsync(string message)
+{
+    return httpClient.PostAsync("http://example.com", new ByteArrayContent(Encoding.UTF8.GetBytes(message)));
+}
+```
+
+It's shorter and it avoids an unnecessary overhead.
+
+This pattern is, however, not always what you want!
+These two snippets have different semantics, and one of them is 
+completely incorrect.
+
+#!csharp
+
+using System.IO;
+
+async Task<string> ReadAsync(string path)
+{
+    using var file = File.OpenText(path);
+    return await file.ReadToEndAsync();
+}
+
+var text = await ReadAsync("./data/csharp-spec-introduction.txt");
+Console.WriteLine(text.Length);
+
+#!csharp
+
+using System.IO;
+
+Task<string> WrongReadAsync(string path)
+{
+    using var file = File.OpenText(path);
+    return file.ReadToEndAsync();
+}
+
+var text = await WrongReadAsync("./data/csharp-spec-introduction.txt");
+Console.WriteLine(text.Length);
+
+#!markdown
+
+This way of writing it might be more illuminating:
+
+#!csharp
+
+using System.IO;
+
+Task<string> WrongReadAsync(string path)
+{
+    using (var file = File.OpenText(path))
+    {
+        return file.ReadToEndAsync();
+    }
+}
+
+var text = await WrongReadAsync("./data/csharp-spec-introduction.txt");
+Console.WriteLine(text.Length);
+
+#!markdown
+
+This is the same as:
+
+#!csharp
+
+using System.IO;
+
+Task<string> WrongReadAsync(string path)
+{
+    StreamReader file = File.OpenText(path);
+    Task<string> task;
+
+    try
+    {
+        task = file.ReadToEndAsync();
+    }
+    finally
+    {
+        file.Dispose();
+    }
+
+    return task;
+}
+
+var text = await WrongReadAsync("./data/csharp-spec-introduction.txt");
+Console.WriteLine(text.Length);
+
+#!markdown
+
+We're creating a task to read from the stream and then immediately dispose of the stream,
+without waiting for the operation to finish!
+
+This is a nasty bug, because it's very hard to track down. We return a task that
+is inherently poisonous, but it'll be awaited in a different place and throw a bizarre
+`ObjectDisposedException`.
+
+#!markdown
+
 ## Summary
 
 We've met one of the hardest concepts in C#, the `async`/`await` mechanism.

@@ -216,89 +216,19 @@ await Main();
 As always with complex systems, there are some rules that we should follow as a user
 for the pool to run smoothly. The rules are:
 
-1. Most tasks are relatively short-running. The ideal runtime is around 100ms, should
-be below 250ms.
+1. Most tasks are relatively short-running.
 2. There isn't too much blocking going on in the threads.
 
 This is due to how the `ThreadPool` is implemented, which we cover briefly below.
 Whenever we have a very long-running task, it's better for overall performance to
 create a new thread for it – remember, the cost that we're saving with a thread pool is that
-of spinning up a new thread every time a request comes in.
-
-You can do this in a slightly more involved way, by calling the `Task.Factory.StartNew` method
-and passing the `LongRunning` flag. `Task.Run` is basically a shorthand for `Task.Factory.StartNew`.
-To illustrate this, let's run the same code, but this time we will quadruple the input size artificially:
-
-#!csharp
-
-using System.Diagnostics;
-using System.IO;
-
-static var stopwatch = new Stopwatch();
-stopwatch.Start();
-
-static void Log(string message) => 
-    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
-
-static int Search(string text, string pattern)
-{
-    Log($"Running search for {pattern}...");
-
-    var idx = 0;
-    var count = 0;
-    
-    while (true)
-    {
-        idx = text.IndexOf(pattern, idx, StringComparison.InvariantCultureIgnoreCase);
-        
-        if (idx == -1)
-        {
-            break;
-        }
-
-        idx += 1;
-        count += 1;
-    }
-
-    Log($"Found {count} occurrences of {pattern}.");
-
-    return count;
-}
-
-static async Task Main()
-{
-    string text;
-    using (var file = File.OpenText("./data/lorem-ipsum.txt"))
-    {
-        text = file.ReadToEnd();
-    }
-
-    text = text + text + text + text;
-
-    stopwatch.Restart();
-    Log($"File loaded, processing...");
-    
-    var requests = new Task<int>[]
-    {
-        Task.Factory.StartNew(() => Search(text, "lorem"), TaskCreationOptions.LongRunning),
-        Task.Factory.StartNew(() => Search(text, "ipsum"), TaskCreationOptions.LongRunning),
-        Task.Factory.StartNew(() => Search(text, "et"), TaskCreationOptions.LongRunning),
-    };
-    
-    Log("Awaiting requests...");
-    
-    int[] results = await Task.WhenAll(requests);
-
-    Log("All requests done.");
-    Log($"Total = {results.Sum()}");
-}
-
-await Main();
+of spinning up a new thread every time a request comes in. This can be done with
+`Task.Factory.StartNew` and passing in a `LongRunning` option flag.
 
 #!markdown
 
-This is still much better than the low-level, manual thread creation we've seen in
-`[5.0. Simple Threading]`(https://gienieczko.com/teaching/csharp/5-asynchrony/0-simple-threading).
+This is a much better way of handling threading than what we've seen in
+[`5.0. Simple Threading`](https://gienieczko.com/teaching/csharp/5-asynchrony/0-simple-threading).
 The runtime handles the thread creation, management, and disposal for us, and we stay on the
 high abstraction level of tasks.
 

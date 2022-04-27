@@ -25,7 +25,7 @@ That's kind of the point of doing all this in notebooks.
 
 #!markdown
 
-## Observer-Publisher Model
+## Observer pattern
 
 We begin our journey to concurrency with a basic model that separates creating events
 to reacting to them. It doesn't have to involve multiple threads, but is a standard pattern
@@ -93,13 +93,13 @@ class Publisher : IEventSource<StringEventHandler>
 
 #!markdown
 
-Now a consumer would look like this:
+Now a subscriber would look like this:
 
 #!csharp
 
 using System.Threading;
 
-class Observer
+class Subscriber
 {
     public void Run(IEventSource<StringEventHandler> source)
     {
@@ -120,12 +120,12 @@ Putting it all together with different threads:
 using System.Threading;
 
 var publisher = new Publisher();
-var observer = new Observer();
+var subscriber = new Subscriber();
 
-var observerThread = new Thread(() => observer.Run(publisher));
+var subscriberThread = new Thread(() => subscriber.Run(publisher));
 var publisherThread = new Thread(() => publisher.Run());
 
-observerThread.Start();
+subscriberThread.Start();
 publisherThread.Start();
 
 publisherThread.Join();
@@ -215,7 +215,7 @@ can subscribe to and unsubscribe from it, using the magical `+=` and `-=` operat
 
 #nullable enable
 
-class Observer
+class Subscriber
 {
     public void Run(Publisher source)
     {
@@ -232,12 +232,12 @@ class Observer
 using System.Threading;
 
 var publisher = new Publisher();
-var observer = new Observer();
+var subscriber = new Subscriber();
 
-var observerThread = new Thread(() => observer.Run(publisher));
+var subscriberThread = new Thread(() => subscriber.Run(publisher));
 var publisherThread = new Thread(() => publisher.Run());
 
-observerThread.Start();
+subscriberThread.Start();
 publisherThread.Start();
 
 publisherThread.Join();
@@ -363,7 +363,7 @@ class Publisher
     }
 }
 
-class Consumer
+class Subscriber
 {
     private static readonly EventHandler Handler = (obj, e) => {};
 
@@ -380,7 +380,7 @@ class Consumer
 
 
 var publisher = new Publisher();
-var consumer = new Consumer();
+var subscriber = new Subscriber();
 var publisherThread = new Thread(() => 
 {
     try
@@ -396,13 +396,13 @@ var publisherThread = new Thread(() =>
         Console.WriteLine(e);
     }
 });
-var consumerThread = new Thread(() => consumer.Run(publisher));
+var subscriberThread = new Thread(() => subscriber.Run(publisher));
 
 publisherThread.Start();
-consumerThread.Start();
+subscriberThread.Start();
 
 publisherThread.Join(1000);
-consumerThread.Join(1000);
+subscriberThread.Join(1000);
 
 #!markdown
 
@@ -439,7 +439,7 @@ be creating a thin wrapper over some other delegate in a different class.
 
 ## Summary
 
-We've learnt how to declare and subscribe to events for a publisher-observer model.
+We've learnt how to declare and subscribe to events for a publisher-subscriber model.
 
 #!markdown
 
