@@ -101,8 +101,12 @@ async Task Main()
 {
     using var cancellationTokenSource = new CancellationTokenSource();
     Task timer = Task.Delay(10_000);
-    Task<Stream> slowDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.med.png"), cancellationTokenSource.Token);
-    Task<Stream> fastDownload = DownloadAsync(new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.small.png"), cancellationTokenSource.Token);
+    Task<Stream> slowDownload = DownloadAsync(
+        new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.med.png"),
+         cancellationTokenSource.Token);
+    Task<Stream> fastDownload = DownloadAsync(
+        new("http://tothemoon.ser.asu.edu/data_a70/AS17/extra/AS17-134-20387.small.png"),
+         cancellationTokenSource.Token);
     
     Task<Stream[]> allDownloads = Task.WhenAll(slowDownload, fastDownload);
     
@@ -213,8 +217,7 @@ await Main();
 
 `CancellationToken` has to be weaved through an async method,
 passed to all the basic methods used (most async BCL methods support cancellation),
-and handled near the top. It's best to wrap cancellable operations in a `try`/`catch (OperationCanceledException)`
-and then exit in a less fiery manner.
+and handled near the top.
 
 Now, when writing methods using a `CancellationToken` we need to consciously
 cooperate with it to support smooth cancellation. Here's how we'd add cancellation support
