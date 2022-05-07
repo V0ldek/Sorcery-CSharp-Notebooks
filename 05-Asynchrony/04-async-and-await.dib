@@ -258,6 +258,16 @@ bool IsPrime(long number)
 
 #!markdown
 
+### Constructing `Task`
+
+There are three ways of constructing "unit" tasks, that already have a set result.
+
+- `Task.CompletedTask` is a predefined `Task` that is already completed.
+- `Task.FromResult<T>(T result)` returns a `Task<T>` that is already completed with the given result
+- `Task.FromException<TResult>(Exception exception)` creates a `Task<TResult>` that is already faulted with the given exception. There is also a non-generic version for `Task`.
+
+#!markdown
+
 ## Automating Everything with `async`/`await`
 
 Programming asynchronously like this would be terrible. If we had to manually take care of the `Task` instances,
