@@ -1,0 +1,144 @@
+#!markdown
+
+# 6.0. Expression Trees
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/6-entity-framework/0-expression-trees.
+
+It covers topics for section [6.0. Expression Trees](https://gienieczko.com/teaching/csharp/6-entity-framework/0-expression-trees).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Lambda Expressions as `Expression`s
+
+The Expression API is the epitome of the word "meta". It represents C# syntax trees that can be evaluated at runtime. This is done via compiler magic that knows how to transform lambda expressions into _Expression trees_.
+
+A lambda expression that can be converted to a `TDelegate` also can be converted to an `Expression<TDelegate>`. An `Expression<TDelegate>` saves the syntax tree of the lambda expression into an object, that can be later passed around and executed. `Expression<TDelegate>` is a subclass of `LambdaExpression`, which is a subclass of the root of the Expression API hierarchy, `Expression`.
+
+There's a jabillion of subclasses of `Expression` that represent various operations. `BinaryExpression`, `ConditionalExpression`, `ConstantExpression`, `MethodCallExpression`, ...
+
+#!csharp
+
+using System.Linq.Expressions;
+
+Func<int, int> func = x => (x + 42) * x.ToString().Length;
+Expression<Func<int, int>> expr = x => (x + 42) * x.ToString().Length;
+
+Console.WriteLine(func);
+Console.WriteLine(expr);
+
+#!markdown
+
+An `Expression<TDelegate>` can be compiled to the delegate:
+
+#!csharp
+
+Expression<Func<int, int>> expr = x => (x + 42) * x.ToString().Length;
+Func<int, int> func = expr.Compile();
+
+Console.WriteLine(func(10));
+
+#!markdown
+
+We can even build expressions from scratch by hand!
+
+#!csharp
+
+using System.Linq.Expressions;
+
+ParameterExpression parameter = Expression.Parameter(typeof(int), "x");
+Expression<Func<int, int>> exprByHand = Expression.Lambda<Func<int, int>>(
+    Expression.Multiply(
+        Expression.Add(
+            parameter,
+            Expression.Constant(42)
+        ),
+        Expression.Property(
+            Expression.Call(
+                parameter,
+                typeof(object).GetMethod("ToString")
+            ),
+            typeof(string).GetProperty("Length")
+        )
+    ),
+    new [] { parameter }
+);
+
+Console.WriteLine(exprByHand);
+
+#!markdown
+
+And compile them!
+
+#!csharp
+
+Func<int, int> funcByHand = exprByHand.Compile();
+
+Console.WriteLine(funcByHand(10));
+
+#!markdown
+
+In reality, this by hand code is basically what the compiler generates when you write a lambda expression and pass it as an `Expression`.
+
+#!markdown
+
+## `IQueryable<T>` as a Builder
+
+We mentioned briefly in [4.6 LINQ Queries](https://gienieczko.com/teaching/csharp/4-linq/6-linq-queries) that LINQ has another interface it can work on, `IQueryable<T>`, and its non-generic counterpart `IQueryable`. It's a rather magical extension of `IEnumerable<T>`, that is tied to an `IQueryProvider` that creates the queryable and then executes queries against it.
+
+Here's the simplified interface (omitting non-generic versions):
+
+```csharp
+public interface IQueryProvider
+{
+    IQueryable<TElement> CreateQuery<TElement>(Expression expression);
+
+    TResult Execute<TResult>(Expression expression);
+}
+```
+
+On the other hand, `IQueryable<T>` exposes these properties, again, omitting non-generic stuff:
+
+```csharp
+public interface IQueryable<T> : IEnumerable<T>
+{
+    Expression Expression { get; }
+
+    IQueryProvider Provider { get; }
+}
+```
+
+This actually implements a roundabout builder pattern. An `IQueryable<T>` builds an `Expression` that represents a query against the `IQueryProvider`. We create the query from a source, then we can perform transformations on it, and at the end the built query gets evaluated (when we enumerate it) by going back to its parent `IQueryProvider` and running `Execute`.
+
+`IQueryable<T>` has extension methods representing all the basic LINQ operations mentioned in [4.6 LINQ Queries](https://gienieczko.com/teaching/csharp/4-linq/6-linq-queries), but in a special form that takes an `Expression`. For example, here's the signature of `Select`:
+
+```csharp
+public static IQueryable<TResult> Select<TSource, TResult>(
+    this IQueryable<TSource> source,
+    Expression<Func<TSource,TResult>> selector);
+```
+
+Now this leads to powers that some consider unnatural. The `IQueryProvider` is free to interpret the `Expression` given to `Execute` in whatever way it wishes to. For example, I don't know, by doing something so completely insane like translating that tree to an SQL query and executing it against a database...
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [6.1 LINQ to SQL](https://gienieczko.com/teaching/csharp/6-entity-framework/1-linq-to-sql),
+or straight to the next notebook, [`06-entity-framework.dib`](01-linq-to-sql.dib).
