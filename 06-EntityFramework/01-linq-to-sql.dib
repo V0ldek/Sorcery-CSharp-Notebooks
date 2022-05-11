@@ -1,6 +1,6 @@
 #!markdown
 
-# 6.2. LINQ to SQL
+# 6.1. LINQ to SQL
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/6-entity-framework/2-linq-to-sql.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/6-entity-framework/1-linq-to-sql.
 
-It covers topics for section [6.2. LINQ to SQL](https://gienieczko.com/teaching/csharp/6-entity-framework/2-linq-to-sql).
+It covers topics for section [6.1. LINQ to SQL](https://gienieczko.com/teaching/csharp/6-entity-framework/1-linq-to-sql).
 
 ### Notebook flow
 
@@ -35,19 +35,17 @@ To use it in the notebook we need a special spell that will load the library fro
 
 #!csharp
 
-#r "nuget:Microsoft.EntityFrameworkCore,6.0.1"
+#r "nuget:Microsoft.EntityFrameworkCore,6.0.*"
 
 #!markdown
 
 The core of the library is database-agnostic. However, to actually do anything we need a **database provider**.
 
-There are providers for all conventional databases. This notebook will use **MySQL**. We described the setup in [`6.0. Database Setup`](https://gienieczko.com/teaching/csharp/6-entity-framework/0-database-setup). Each provider is a package, so we need the MySQL provider from NuGet. For MySQL there are actually two providers, `MySQL.EntityFrameworkCore` and `Pomelo.EntityFrameworkCore.MySql`. The first one looks "official", but is generally considered to be less robust, and Pomelo's is more popular.
-
-_Might have something to do with the fact that `MySQL.EntityFrameworkCore` is maintained by Oracle_
+There are providers for all conventional databases. This notebook will use **SQLite**, since it's extremely easy to setup -- it keeps the entire database in a single file and has a minimal runtime. Each provider is a package, so we need the SQLite provider from NuGet.
 
 #!csharp
 
-#r "nuget:Pomelo.EntityFrameworkCore.MySql,6.0.1"
+#r "nuget:Microsoft.EntityFrameworkCore.SQLite,6.0.*"
 
 #!markdown
 
@@ -58,6 +56,8 @@ There are two approaches to Entity Framework -- **Code First** and **Database Fi
 Code First is what we will use. It allows us to have full control over the database from .NET. We define classes representing **entities** in our system first and generate the database schema from it. In this section we will define a very simple database with a single table.
 
 #!csharp
+
+#nullable enable
 
 public sealed class DungeonRun
 {
@@ -91,7 +91,8 @@ Use your own password for the below connection string, as described in  [`6.0. D
 #!csharp
 
 using Microsoft.EntityFrameworkCore;
-using Pomelo.EntityFrameworkCore.MySql;
+
+#nullable enable
 
 public sealed class DungeonDbContext : DbContext
 {
@@ -99,9 +100,8 @@ public sealed class DungeonDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        var connectionString = "server=sql11.freesqldatabase.com;user=sql11491290;password=<PASSWORD>;database=sql11491290";
-        var version = ServerVersion.AutoDetect(connectionString);
-        options.UseMySql(connectionString, version)
+        var connectionString = "Data Source=./data/Dungeon.db";
+        optionsBuilder.UseSqlite(connectionString)
             .LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information)
             .EnableSensitiveDataLogging()
             .EnableDetailedErrors();
@@ -109,7 +109,7 @@ public sealed class DungeonDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        var dungeonRun = model.Entity<DungeonRun>();
+        var dungeonRun = modelBuilder.Entity<DungeonRun>();
 
         dungeonRun.HasKey(d => d.Id);
         dungeonRun.ToTable("DungeonRun");
@@ -141,7 +141,6 @@ dotnet ef migrations script
 Here's what EF generates for our simple context:
 
 ```csharp
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -152,27 +151,21 @@ namespace MigrationsExample.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterDatabase()
-                .Annotation("MySql:CharSet", "utf8mb4");
-
             migrationBuilder.CreateTable(
                 name: "DungeonRun",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    HeroClass = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    DungeonName = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    RoomsCleared = table.Column<int>(type: "int", nullable: false),
-                    DamageDealt = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    HeroClass = table.Column<string>(type: "TEXT", nullable: false),
+                    DungeonName = table.Column<string>(type: "TEXT", nullable: false),
+                    RoomsCleared = table.Column<int>(type: "INTEGER", nullable: false),
+                    DamageDealt = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_DungeonRun", x => x.Id);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
+                });
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
@@ -187,27 +180,23 @@ namespace MigrationsExample.Migrations
 And the script:
 
 ```sql
-CREATE TABLE IF NOT EXISTS `__EFMigrationsHistory` (
-    `MigrationId` varchar(150) CHARACTER SET utf8mb4 NOT NULL,
-    `ProductVersion` varchar(32) CHARACTER SET utf8mb4 NOT NULL,
-    CONSTRAINT `PK___EFMigrationsHistory` PRIMARY KEY (`MigrationId`)
-) CHARACTER SET=utf8mb4;
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" TEXT NOT NULL CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY,
+    "ProductVersion" TEXT NOT NULL
+);
 
-START TRANSACTION;
+BEGIN TRANSACTION;
 
-ALTER DATABASE CHARACTER SET utf8mb4;
+CREATE TABLE "DungeonRun" (
+    "Id" INTEGER NOT NULL CONSTRAINT "PK_DungeonRun" PRIMARY KEY AUTOINCREMENT,
+    "HeroClass" TEXT NOT NULL,
+    "DungeonName" TEXT NOT NULL,
+    "RoomsCleared" INTEGER NOT NULL,
+    "DamageDealt" INTEGER NOT NULL
+);
 
-CREATE TABLE `DungeonRun` (
-    `Id` int NOT NULL AUTO_INCREMENT,
-    `HeroClass` longtext CHARACTER SET utf8mb4 NOT NULL,
-    `DungeonName` longtext CHARACTER SET utf8mb4 NOT NULL,
-    `RoomsCleared` int NOT NULL,
-    `DamageDealt` int NOT NULL,
-    CONSTRAINT `PK_DungeonRun` PRIMARY KEY (`Id`)
-) CHARACTER SET=utf8mb4;
-
-INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
-VALUES ('20220510090410_Initial', '6.0.1');
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20220511053706_Initial', '6.0.5');
 
 COMMIT;
 ```
@@ -218,8 +207,13 @@ In the notebooks we will use a less robust, but simpler approach.
 
 #!csharp
 
+using System.IO;
+
+#nullable enable
+
 async Task SetupAsync()
 {
+    Directory.CreateDirectory("./data");
     await using var db = new DungeonDbContext();
     await db.Database.EnsureDeletedAsync();
     await db.Database.EnsureCreatedAsync();
@@ -235,6 +229,8 @@ await SetupAsync();
 We query the database by accessing a `DbSet<TEntity>`. This is the root object that implements `IQueryable<TEntity>` and starts the query chain.
 
 #!csharp
+
+#nullable enable
 
 async Task ListEntitiesAsync()
 {
@@ -254,6 +250,8 @@ await ListEntitiesAsync();
 Oh, right. We never added anything, well, let's!
 
 #!csharp
+
+#nullable enable
 
 async Task SeedDatabaseAsync()
 {
@@ -278,6 +276,8 @@ Now it works. And now we can _go to town_.
 
 #!csharp
 
+#nullable enable
+
 async Task TotalDamageAsync()
 {
     await using var dbContext = new DungeonDbContext();
@@ -299,6 +299,8 @@ await TotalDamageAsync();
 
 #!csharp
 
+#nullable enable
+
 async Task LowestDamageAsync()
 {
     await using var dbContext = new DungeonDbContext();
@@ -313,6 +315,8 @@ async Task LowestDamageAsync()
 await LowestDamageAsync();
 
 #!csharp
+
+#nullable enable
 
 async Task NeverBeatenAsync()
 {
@@ -354,6 +358,8 @@ By the way, we can also examine the query that will be executed on the database 
 
 #!csharp
 
+#nullable enable
+
 async Task TotalDamageAsync()
 {
     await using var dbContext = new DungeonDbContext();
@@ -380,6 +386,8 @@ The simplest example of this limitation is just a simple user-defined function.
 
 #!csharp
 
+#nullable enable
+
 async Task FooAsync()
 {
     await using var dbContext = new DungeonDbContext();
@@ -402,6 +410,8 @@ EF has no idea how to translate this, since it's just a method call. On the othe
 
 #!csharp
 
+#nullable enable
+
 async Task FooAsync()
 {
     await using var dbContext = new DungeonDbContext();
@@ -423,6 +433,8 @@ A lot of stuff Just Works™ -- `DateTime` operations are translated to the data
 There is also [EF.Functions](https://docs.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.ef.functions?view=efcore-6.0) for advanced functions that don't have obvious counterparts in C#. 
 
 #!csharp
+
+#nullable enable
 
 async Task FooAsync()
 {
@@ -452,5 +464,5 @@ We've seen how Entity Framework uses the magic from the previous section to tran
 
 ## Next up:
 
-Continue with the next section, [6.3. Navigation Properties](https://gienieczko.com/teaching/csharp/6-entity-framework/3-navigation-properties),
-or straight to the next notebook, [`03-navigation-properties.dib`](03-navigation-properties.dib).
+Continue with the next section, [6.2. Navigation Properties](https://gienieczko.com/teaching/csharp/6-entity-framework/2-navigation-properties),
+or straight to the next notebook, [`02-navigation-properties.dib`](02-navigation-properties.dib).

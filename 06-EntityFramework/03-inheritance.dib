@@ -1,0 +1,305 @@
+#!markdown
+
+# 6.3. Inheritance
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/6-entity-framework/3-inheritance.
+
+It covers topics for section [6.3. Inheritance](https://gienieczko.com/teaching/csharp/6-entity-framework/3-inheritance).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Database Refresher
+
+When modelling inheritance in relational databases we have three schemes of table layout to choose from:
+
+- TPH, Table-per-hierarchy, where the entire hierarchy is kept in a single table with the union of all columns of all subtypes;
+- TPT, Table-per-type, where each type is kept in a separate table, and to retrieve an object we need to join the tables of all of its ancestors;
+- TPC, Table-per-concrete-type, hybrid approach, TPT where the columns of abstract types get pushed down to the first non-abstract type table.
+
+In Entity Framework Core 6.0 only TPH and TPT are supported, although support for TPC will likely come in a later version.
+
+#!markdown
+
+## Model
+
+Regardless of chosen database representation, we construct the type hierarchy in C# normally.
+
+#!csharp
+
+#nullable enable
+
+public abstract class Room
+{
+    public int Id { get; private init; }
+
+    public Room? PreviousRoom { get; private init; }
+
+    public Room? NextRoom { get; private init; }
+
+    public Room(Room? previousRoom) => PreviousRoom = previousRoom;
+}
+
+public sealed class EmptyRoom : Room
+{
+    private EmptyRoom() : base(null)
+    {
+    }
+
+    public EmptyRoom(Room? previousRoom) : base(previousRoom)
+    {
+    }
+}
+
+public sealed class CombatRoom : Room
+{
+    public string EnemyName { get; private init; }
+
+    private CombatRoom(string enemyName) : this(null, enemyName)
+    {
+    }
+
+    public CombatRoom(Room? previousRoom, string enemyName) : base(previousRoom) => 
+        EnemyName = enemyName;
+}
+
+public sealed class LootRoom : Room
+{
+    public Loot Loot { get; private init; } = null!;
+
+    private LootRoom() : base(null) { }
+
+    public LootRoom(Room? previousRoom, Loot loot) : base(previousRoom) => 
+        Loot = loot;
+}
+
+public sealed class Loot
+{
+    public int Id { get; }
+
+    public string Name { get; private set; }
+
+    public int AttackDamage { get; private set; }
+    
+    public int Armour { get; private set; }
+
+    public int BonusHealth { get; private set; }
+
+    public Loot(string name, int attackDamage, int armour, int bonusHealth) => 
+        (Name, AttackDamage, Armour, BonusHealth) = 
+            (name, attackDamage, armour, bonusHealth);
+}
+
+#!markdown
+
+## TPH
+
+By default EF will use TPH.
+
+#!csharp
+
+#r "nuget:Microsoft.EntityFrameworkCore,6.0.*"
+#r "nuget:Microsoft.EntityFrameworkCore.SQLite,6.0.*"
+
+#!csharp
+
+using Microsoft.EntityFrameworkCore;
+
+public sealed class DungeonDbContext : DbContext
+{
+    public DbSet<Room> Rooms { get; private init; } = null!;
+    public DbSet<EmptyRoom> EmptyRooms { get; private init; } = null!;
+    public DbSet<CombatRoom> CombatRooms { get; private init; } = null!;
+    public DbSet<LootRoom> LootRooms { get; private init; } = null!;
+    public DbSet<Loot> Loots { get; private init; } = null!;
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        var connectionString = "Data Source=./data/Dungeon.db";
+        optionsBuilder.UseSqlite(connectionString)
+            .LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information)
+            .EnableSensitiveDataLogging()
+            .EnableDetailedErrors();
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        var room = modelBuilder.Entity<Room>();
+        var loot = modelBuilder.Entity<Loot>();
+        var lootRoom = modelBuilder.Entity<LootRoom>();
+
+        room.HasKey(r => r.Id);
+        room.HasOne(r => r.NextRoom!)
+            .WithOne(r => r.PreviousRoom!);
+        room.HasDiscriminator<string>("RoomType")
+            .HasValue<CombatRoom>("CombatRoom")
+            .HasValue<EmptyRoom>("EmptyRoom")
+            .HasValue<LootRoom>("LootRoom");
+        room.ToTable("Room");
+        
+        loot.HasKey(l => l.Id);
+        loot.ToTable("Loot");
+
+        lootRoom.HasOne(lr => lr.Loot);
+    }
+}
+
+#!csharp
+
+using System.IO;
+
+#nullable enable
+
+async Task SetupTphAsync()
+{
+    Directory.CreateDirectory("./data");
+    await using var db = new DungeonDbContext();
+    await db.Database.EnsureDeletedAsync();
+    await db.Database.EnsureCreatedAsync();
+    await db.Database.MigrateAsync();
+}
+
+await SetupTphAsync();
+
+#!markdown
+
+## TPT
+
+To get a table-per-type hierarchy we need to explicitly specify each types table name.
+
+#!csharp
+
+using Microsoft.EntityFrameworkCore;
+
+public sealed class DungeonDbContext : DbContext
+{
+    public DbSet<Room> Rooms { get; private init; } = null!;
+    public DbSet<EmptyRoom> EmptyRooms { get; private init; } = null!;
+    public DbSet<CombatRoom> CombatRooms { get; private init; } = null!;
+    public DbSet<LootRoom> LootRooms { get; private init; } = null!;
+    public DbSet<Loot> Loots { get; private init; } = null!;
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        var connectionString = "Data Source=./data/Dungeon.db";
+        optionsBuilder.UseSqlite(connectionString)
+            .LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information)
+            .EnableSensitiveDataLogging()
+            .EnableDetailedErrors();
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        var room = modelBuilder.Entity<Room>();
+        var loot = modelBuilder.Entity<Loot>();
+        var combatRoom = modelBuilder.Entity<CombatRoom>();
+        var emptyRoom = modelBuilder.Entity<EmptyRoom>();
+        var lootRoom = modelBuilder.Entity<LootRoom>();
+
+        room.HasKey(r => r.Id);
+        room.HasOne(r => r.NextRoom)
+            .WithOne(r => r.PreviousRoom!);
+        room.ToTable("Room");
+
+        combatRoom.ToTable("CombatRoom");
+        
+        emptyRoom.ToTable("EmptyRoom");
+
+        lootRoom.HasOne(lr => lr.Loot);
+        lootRoom.ToTable("LootRoom");
+    
+        loot.HasKey(l => l.Id);
+        loot.ToTable("Loot");
+    }
+}
+
+#!csharp
+
+using System.IO;
+
+#nullable enable
+
+async Task SetupTptAsync()
+{
+    Directory.CreateDirectory("./data");
+    await using var db = new DungeonDbContext();
+    await db.Database.EnsureDeletedAsync();
+    await db.Database.EnsureCreatedAsync();
+    await db.Database.MigrateAsync();
+}
+
+await SetupTptAsync();
+
+#!markdown
+
+Keep in mind that TPH is usually the better choice, as it exhibits better performance characteristics. This has been measured by the Entity Framework team.
+
+#!markdown
+
+## Usage
+
+As with the rest of the framework, we use the feature naturally in C#, and it gets automagically translated to the underlying schema for us.
+
+#!csharp
+
+await SetupTphAsync();
+
+#!csharp
+
+async Task SeedAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    var room1 = new EmptyRoom(null);
+    var room2 = new CombatRoom(room1, "Orc");
+    var room3 = new LootRoom(room2, new Loot("Sword", 15, 0, 0));
+    var room4 = new CombatRoom(room3, "Giant");
+
+    dbContext.CombatRooms.Add(room4);
+
+    await dbContext.SaveChangesAsync();
+}
+
+async Task ListCombatRoomsAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    var combatRooms = await dbContext.Rooms.Where(r => r is CombatRoom).ToListAsync();
+
+    foreach (var room in combatRooms)
+    {
+        Console.WriteLine(((CombatRoom) room).EnemyName);
+    }
+}
+
+await SeedAsync();
+await ListCombatRoomsAsync();
+
+#!markdown
+
+## Summary
+
+We've learnt how to easily get inheritance in our database with EF.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [6.4. Transactions](https://gienieczko.com/teaching/csharp/6-entity-framework/4-transactions),
+or straight to the next notebook, [`04-transactions.dib`](04-transactions.dib).

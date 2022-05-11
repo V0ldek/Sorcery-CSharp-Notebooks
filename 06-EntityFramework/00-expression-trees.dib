@@ -1,6 +1,6 @@
 #!markdown
 
-# 6.1. Expression Trees
+# 6.0. Expression Trees
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/6-entity-framework/1-expression-trees.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/6-entity-framework/0-expression-trees.
 
-It covers topics for section [6.1. Expression Trees](https://gienieczko.com/teaching/csharp/6-entity-framework/1-expression-trees).
+It covers topics for section [6.0. Expression Trees](https://gienieczko.com/teaching/csharp/6-entity-framework/0-expression-trees).
 
 ### Notebook flow
 
@@ -146,5 +146,5 @@ We've met the API that allows us to construct and examine magical spells using h
 
 ## Next up:
 
-Continue with the next section, [6.2. LINQ to SQL](https://gienieczko.com/teaching/csharp/6-entity-framework/2-linq-to-sql),
-or straight to the next notebook, [`02-linq-to-sql.dib`](02-linq-to-sql.dib).
+Continue with the next section, [6.1. LINQ to SQL](https://gienieczko.com/teaching/csharp/6-entity-framework/1-linq-to-sql),
+or straight to the next notebook, [`01-linq-to-sql.dib`](01-linq-to-sql.dib).

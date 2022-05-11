@@ -1,0 +1,444 @@
+#!markdown
+
+# 6.2. Navigation Properties
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/6-entity-framework/2-navigation-properties.
+
+It covers topics for section [6.2. Navigation Properties](https://gienieczko.com/teaching/csharp/6-entity-framework/2-navigation-properties).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Relations
+
+The reason we have databases is that we want to model relations.
+Relations involve two things:
+
+- Foreign Keys; and
+- Joins
+
+Entity Framework helps us with both, by hiding them behind an object-oriented abstraction.
+
+Our model has two obvious entities we didn't distinguish before -- heroes and dungeons. How would we model the relationship in plain C# classes? Well, the `DungeonRun` would have references to the `Hero` and `Dungeon` it concerns.
+
+#!csharp
+
+#nullable enable
+
+public sealed class DungeonRun
+{
+    public int Id { get; private init; }
+
+    public int RoomsCleared { get; private init; }
+
+    public int DamageDealt { get; private init; }
+
+    public Dungeon Dungeon { get; private init; } = null!;
+
+    public Hero Hero { get; private init; } = null!;
+
+    private DungeonRun(int roomsCleared, int damageDealt) =>
+        (RoomsCleared, DamageDealt) = (roomsCleared, damageDealt);
+
+    public DungeonRun(Dungeon dungeon, Hero hero, int roomsCleared, int damageDealt) =>
+        (Dungeon, Hero, RoomsCleared, DamageDealt) =
+            (dungeon, hero, roomsCleared, damageDealt);
+}
+
+public sealed class Dungeon
+{
+    public int Id { get; private init; }
+
+    public string Name { get; private init; }
+
+    public int NumberOfRooms { get; private init; }
+
+    public Dungeon(string name, int numberOfRooms) =>
+        (Name, NumberOfRooms) = (name, numberOfRooms);
+}
+
+public sealed class Hero
+{
+    public int Id { get; private init; }
+
+    public string Name { get; private init; }
+
+    public Hero(string name) => Name = name;
+}
+
+#!markdown
+
+This makes sense, but there's a wrinkle. What if we want to fetch a `Hero` with all of their runs?
+We also need to model the other side of this relationship. In the case of one-to-many we have a reference
+on the many side, and a list on the one side.
+
+#!csharp
+
+#nullable enable
+
+public sealed class DungeonRun
+{
+    public int Id { get; private init; }
+
+    public int RoomsCleared { get; private init; }
+
+    public int DamageDealt { get; private init; }
+
+    public Dungeon Dungeon { get; private init; } = null!;
+
+    public Hero Hero { get; private init; } = null!;
+
+    private DungeonRun(int roomsCleared, int damageDealt) =>
+        (RoomsCleared, DamageDealt) = (roomsCleared, damageDealt);
+
+    public DungeonRun(Dungeon dungeon, Hero hero, int roomsCleared, int damageDealt) =>
+        (Dungeon, Hero, RoomsCleared, DamageDealt) =
+            (dungeon, hero, roomsCleared, damageDealt);
+}
+
+public sealed class Dungeon
+{
+    public int Id { get; private init; }
+
+    public string Name { get; private init; }
+
+    public int NumberOfRooms { get; private init; }
+
+    public IReadOnlyCollection<DungeonRun> Runs { get; private init; } = new HashSet<DungeonRun>();
+
+    public Dungeon(string name, int numberOfRooms) =>
+        (Name, NumberOfRooms) = (name, numberOfRooms);
+}
+
+public sealed class Hero
+{
+    public int Id { get; private init; }
+
+    public string Name { get; private init; }
+    
+    public IReadOnlyCollection<DungeonRun> Runs { get; private init; } = new HashSet<DungeonRun>();
+
+    public Hero(string name) => Name = name;
+}
+
+#!markdown
+
+These references are called _navigation properties_. We use them to configure the relationship in our model:
+
+#!csharp
+
+#r "nuget:Microsoft.EntityFrameworkCore,6.0.*"
+#r "nuget:Microsoft.EntityFrameworkCore.SQLite,6.0.*"
+
+#!csharp
+
+using Microsoft.EntityFrameworkCore;
+
+#nullable enable
+
+public sealed class DungeonDbContext : DbContext
+{
+    public DbSet<DungeonRun> DungeonRuns { get; private init; } = null!;
+    public DbSet<Dungeon> Dungeons { get; private init; } = null!;
+    public DbSet<Hero> Heroes { get; private init; } = null!;
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        var connectionString = "Data Source=./data/Dungeon.db";
+        optionsBuilder.UseSqlite(connectionString)
+            .LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information)
+            .EnableSensitiveDataLogging()
+            .EnableDetailedErrors();
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        var dungeonRun = modelBuilder.Entity<DungeonRun>();
+        var dungeon = modelBuilder.Entity<Dungeon>();
+        var hero = modelBuilder.Entity<Hero>();
+
+        dungeonRun.HasKey(d => d.Id);
+
+        dungeonRun.HasOne(dr => dr.Dungeon)
+            .WithMany(d => d.Runs);
+        dungeonRun.HasOne(dr => dr.Hero)
+            .WithMany(h => h.Runs);
+
+        dungeonRun.ToTable("DungeonRun");
+
+        dungeon.HasKey(d => d.Id);
+        dungeon.ToTable("Dungeon");
+
+        hero.HasKey(d => d.Id);
+        hero.ToTable("Hero");
+    }
+}
+
+#!csharp
+
+using System.IO;
+
+#nullable enable
+
+async Task SetupAsync()
+{
+    Directory.CreateDirectory("./data");
+    await using var db = new DungeonDbContext();
+    await db.Database.EnsureDeletedAsync();
+    await db.Database.EnsureCreatedAsync();
+    await db.Database.MigrateAsync();
+}
+
+await SetupAsync();
+
+#!markdown
+
+You can see the generated migration in the Migrations folder of the companion project `MigrationsExample`.
+
+Now we can recreate our seed:
+
+#!csharp
+
+#nullable enable
+
+async Task SeedDatabaseAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    var warrior = new Hero("Warrior");
+    var rogue = new Hero("Rogue");
+    var wizard = new Hero("Wizard");
+
+    var magicalMaze = new Dungeon("Magical Maze", 16);
+    var adventure = new Dungeon("Adventure", 16);
+
+    dbContext.DungeonRuns.Add(new(magicalMaze, warrior, 16, 180));
+    dbContext.DungeonRuns.Add(new(magicalMaze, rogue, 14, 130));
+    dbContext.DungeonRuns.Add(new(magicalMaze, wizard, 15, 150));
+    dbContext.DungeonRuns.Add(new(adventure, warrior, 10, 120));
+    dbContext.DungeonRuns.Add(new(adventure, rogue, 7, 69));
+    dbContext.DungeonRuns.Add(new(adventure, wizard, 7, 73));
+
+    await dbContext.SaveChangesAsync();
+}
+
+await SeedDatabaseAsync();
+
+#!markdown
+
+As we can see we don't have to individually add all entities, EF is smart enough to see that we've set the navigation properties of `DungeonRun` to objects that don't exist yet and create them. Moreover, testing by referential equality, it sees that they share the same `Hero` and `Dungeon` entities. So in the end the table sizes are:
+
+#!csharp
+
+#nullable enable
+
+async Task TableCountsAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    Console.WriteLine($"DungeonRun: {await dbContext.DungeonRuns.CountAsync()}");
+    Console.WriteLine($"Dungeon: {await dbContext.Dungeons.CountAsync()}");
+    Console.WriteLine($"Hero: {await dbContext.Heroes.CountAsync()}");
+}
+
+await TableCountsAsync();
+
+#!markdown
+
+_Note: Many-to-many relations can be configured with two collections on both ends of the relation. EF automatically creates the usual intermediary table for us and routes all joins through it._
+
+#!markdown
+
+## Joining
+
+To join on foreign keys we can do two things.
+
+Firstly, if we explicitly query stuff from our relations, EF will automatically do a `JOIN` for us.
+
+#!csharp
+
+async Task AdventuresAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+    
+    var sums = dbContext.DungeonRuns.Select(dr => new
+    {
+        Dungeon = dr.Dungeon.Name,
+        Hero = dr.Hero.Name,
+    });
+
+    foreach (var entry in await sums.ToListAsync())
+    {
+        Console.WriteLine($"{entry.Dungeon}, {entry.Hero}");
+    }
+}
+
+await AdventuresAsync();
+
+#!csharp
+
+async Task SumOfDamageAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+    
+    var sums = dbContext.Dungeons.Select(d => new
+    {
+        Dungeon = d.Name,
+        Sum = d.Runs.Sum(dr => dr.DamageDealt),
+    });
+
+    foreach (var entry in await sums.ToListAsync())
+    {
+        Console.WriteLine($"{entry.Dungeon}: {entry.Sum}");
+    }
+}
+
+await SumOfDamageAsync();
+
+#!markdown
+
+However, if we simply ask for a `DungeonRun`, the navigational properties will be `null` by default:
+
+#!csharp
+
+async Task AllRunsAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+    
+    var all = await dbContext.DungeonRuns.ToListAsync();
+
+    foreach (var entry in all)
+    {
+        Console.WriteLine($"{entry.Dungeon?.Name ?? "NULL"}, {entry.Hero?.Name ?? "NULL"}");
+    }
+}
+
+await AllRunsAsync();
+
+#!markdown
+
+To get the other tables in this case we need to explicitly ask for a `JOIN` with the special `Include` method, provided for `IQueryable<T>` by Entity Framework.
+
+#!csharp
+
+async Task AllRunsAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+    
+    var all = await dbContext.DungeonRuns
+        .Include(dr => dr.Dungeon)
+        .Include(dr => dr.Hero)
+        .ToListAsync();
+
+    foreach (var entry in all)
+    {
+        Console.WriteLine($"{entry.Dungeon?.Name ?? "NULL"}, {entry.Hero?.Name ?? "NULL"}");
+    }
+}
+
+await AllRunsAsync();
+
+#!markdown
+
+And... that's it, really. If you want to ensure a join, use `Include`.
+
+#!markdown
+
+## Nullable Analysis
+
+We're cheating nullable analysis here. There's nothing stopping us from writing incorrect code like this:
+
+#!csharp
+
+#nullable enable
+
+async Task AllRunsAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+    
+    var all = await dbContext.DungeonRuns.ToListAsync();
+
+    foreach (var entry in all)
+    {
+        Console.WriteLine($"{entry.Dungeon.Name}, {entry.Hero.Name}");
+    }
+}
+
+await AllRunsAsync();
+
+#!markdown
+
+There's not much that can be done here. A standard practice is to configure the properties as so:
+
+#!csharp
+
+#nullable enable
+
+public sealed class DungeonRun
+{
+    public int Id { get; private init; }
+
+    public int RoomsCleared { get; private init; }
+
+    public int DamageDealt { get; private init; }
+
+    private Dungeon? _dungeon;
+
+    private Hero? _hero;
+
+    public Dungeon Dungeon 
+    {
+        get => _dungeon 
+            ?? throw new InvalidOperationException("Uninitialized property: " + nameof(Dungeon));
+        private init => _dungeon = value;
+    }
+
+    public Hero Hero 
+    {
+        get => _hero 
+            ?? throw new InvalidOperationException("Uninitialized property: " + nameof(Hero));
+        private init => _hero = value;
+    }
+
+    private DungeonRun(int roomsCleared, int damageDealt) =>
+        (RoomsCleared, DamageDealt) = (roomsCleared, damageDealt);
+
+    public DungeonRun(Dungeon dungeon, Hero hero, int roomsCleared, int damageDealt) =>
+        (Dungeon, Hero, RoomsCleared, DamageDealt) =
+            (dungeon, hero, roomsCleared, damageDealt);
+}
+
+#!markdown
+
+No other changes are required. EF is smart enough to map `_propertyName` to `PropertyName` automatically.
+One can also configure a backing field for a given property manually with the `ModelBuilder`.
+
+#!markdown
+
+## Summary
+
+We've learnt how to get the relational part of RDBMS with Entity Framework by configuring navigation properties
+and using `Include`.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [6.3. Inheritance](https://gienieczko.com/teaching/csharp/6-entity-framework/3-inheritance),
+or straight to the next notebook, [`03-inheritance.dib`](03-inheritance.dib).

@@ -1,0 +1,193 @@
+#!markdown
+
+# 6.4. Tracking
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/6-entity-framework/4-tracking.
+
+It covers topics for section [6.4. Tracking](https://gienieczko.com/teaching/csharp/6-entity-framework/4-tracking).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Change tracking
+
+Each `DbContext` _tracks_ all entities that it gives out to the user. Every change to the entity in .NET memory will be reflected as a database operation when `SaveChangesAsync` is called. So this Just Works™. 
+
+#!csharp
+
+#r "nuget:Microsoft.EntityFrameworkCore,6.0.*"
+#r "nuget:Microsoft.EntityFrameworkCore.SQLite,6.0.*"
+
+#!csharp
+
+public sealed class Account
+{
+    public int Id { get; private init; }
+
+    public string Owner { get; private init; }
+
+    public decimal Balance { get; private set; }
+
+    public Account(string owner, decimal balance) =>
+        (Owner, Balance) = (owner, balance);
+
+    public void Transfer(decimal balance)
+    {
+        var newBalance = Balance + balance;
+
+        if (newBalance < 0)
+        {
+            throw new InvalidOperationException();
+        }
+
+        Balance = newBalance;
+    }
+}
+
+#!csharp
+
+using Microsoft.EntityFrameworkCore;
+
+#nullable enable
+
+public sealed class ApplicationDbContext : DbContext
+{
+    public DbSet<Account> Accounts { get; private init; } = null!;
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        var connectionString = "Data Source=./data/Dungeon.db";
+        optionsBuilder.UseSqlite(connectionString)
+            .LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information)
+            .EnableSensitiveDataLogging()
+            .EnableDetailedErrors();
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        var account = modelBuilder.Entity<Account>();
+
+        account.HasKey(d => d.Id);
+        account.ToTable("Account");
+    }
+}
+
+#!csharp
+
+using System.IO;
+
+#nullable enable
+
+async Task SetupAsync()
+{
+    Directory.CreateDirectory("./data");
+    await using var db = new ApplicationDbContext();
+    await db.Database.EnsureDeletedAsync();
+    await db.Database.EnsureCreatedAsync();
+    await db.Database.MigrateAsync();
+}
+
+await SetupAsync();
+
+#!csharp
+
+async Task SeedAsync()
+{
+    await using var dbContext = new ApplicationDbContext();
+
+    dbContext.Accounts.Add(new ("Johny", 1_000_000M));
+
+    await dbContext.SaveChangesAsync();
+}
+
+await SeedAsync();
+
+#!csharp
+
+async Task UpdateAsync()
+{
+    await using var dbContext = new ApplicationDbContext();
+
+    Account account = await dbContext.Accounts.SingleAsync(a => a.Owner == "Johny");
+    
+    account.Transfer(-500_000M);
+
+    await dbContext.SaveChangesAsync();
+}
+
+async Task ListBalancesAsync()
+{
+    await using var dbContext = new ApplicationDbContext();
+
+    foreach (var account in dbContext.Accounts)
+    {
+        Console.WriteLine($"{account.Owner}: ${account.Balance}");
+    }
+}
+
+await ListBalancesAsync();
+await UpdateAsync();
+await ListBalancesAsync();
+
+#!markdown
+
+## Lifetime of `DbContext` -- Unit of Work
+
+`DbContext` implements the [unit of work pattern](https://www.martinfowler.com/eaaCatalog/unitOfWork.html). It is meant to represent a cohesive business operation on the database entities. The `DbContext` tracks all entities that pass through it during its lifetime, or ones explicitly registered with the `Attach` method. It can therefore correctly determine the operations needed to bring the state of the system to the one resembling the final state of the entities when `SaveChangesAsync` is called.
+
+`DbContext` is meant to be a short-lived object. It is idiomatic usage to create `DbContext`s for small units of work, like single API request or a single action represented by a user's button push, and then `DisposeAsync` of it.
+
+The tracking mechanism works by reference equality. Reference equality is the source of truth for the `DbContext`. If you ask a `DbContext` for the same object twice in a different manner, you will receive the same reference.
+
+#!csharp
+
+async Task ReferenceEqualityDemoAsync()
+{
+    await using var dbContext = new ApplicationDbContext();
+
+    Account johnysAccount = await dbContext.Accounts.SingleAsync(a => a.Owner == "Johny");
+    Account lowestBalanceAccount = await dbContext.Accounts.FirstAsync(a => dbContext.Accounts.All(b => b.Balance >= a.Balance));
+
+    Console.WriteLine(object.ReferenceEquals(johnysAccount, lowestBalanceAccount));
+}
+
+await ReferenceEqualityDemoAsync();
+
+#!markdown
+
+It is an invalid operation to add two different objects with the same primary key. Tracking takes care of all the tricky stuff, like determining which child objects are new, updated, or deleted.
+
+#!markdown
+
+## Disabling tracking
+
+Tracking is primarily useful for performing modifications on the system. If you're a good developer following [Command Query Responsibility Segregation](https://www.martinfowler.com/bliki/CQRS.html), you will have clear places in the code where you're specifically querying stuff to display it to the user and perform no operations on it. In that case the tracking machinery is an unnecessary overhead. Therefore queries that are likely to return many results and incur a large maintenance overhead for the `DbContext` should be called with `AsNoTracking()`, to treat the results as plain data instead of domain objects.
+
+#!markdown
+
+## Summary
+
+We've learnt how EF handles the object-relational mapping with tracking entities.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [6.5. Transactions](https://gienieczko.com/teaching/csharp/6-entity-framework/5-transactions),
+or straight to the next notebook, [`05-transactions.dib`](05-transactions.dib).
