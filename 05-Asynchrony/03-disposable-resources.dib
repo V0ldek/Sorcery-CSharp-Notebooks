@@ -391,6 +391,61 @@ object, then it's owned by it.
 
 #!markdown
 
+## Memory leaks
+
+There is a way to get a memory leak in C#!
+
+The most common way of achieving this feat is by forgetting to unsubscribe from events.
+When the last outside reference to a subscriber goes out of scope, there is still a reference
+hidden in the event subscription. So in the following code:
+
+```csharp
+class Source
+{
+    public event EventHandler<EventArgs>? Event;
+}
+
+class Subscriber
+{
+    public Subscriber(Source source) => source.Event += Handle;
+
+    private void Handle(object? source, EventArgs e) { }
+}
+
+void HandleForASecond(Source source)
+{
+    var subscriber = new Subscriber();
+    Thread.Sleep(1000);
+}
+```
+
+After every call to `HandleForASecond` a new `Subscriber` is created, and they will _not_ be garbage collected,
+at least until the outside `source` is. So, if an object is expected to subscribe to events of objects
+more long-lived than itself then it should be `IDisposable` and unsubscribe in the `Dispose`.
+
+```csharp
+sealed class Subscriber : IDisposable
+{
+    private Source? _source;
+
+    public Subscriber(Source source)
+    {
+        _source = source;
+        _source.Event += Handle;
+    }
+
+    private void Handle(object? source, EventArgs e) { }
+
+    public void Dispose()
+    {
+        _source?.Dispose();
+        _source = null;
+    }
+}
+```
+
+#!markdown
+
 ## Dragons and finalizers
 
 We will cover the disastrous necessity that finalizers are later, because it's a very advanced topic.

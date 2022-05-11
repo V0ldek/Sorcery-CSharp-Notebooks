@@ -1,0 +1,240 @@
+#!markdown
+
+# 5.7. Async Interfaces and `ValueTask`
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/5-asynchrony.
+
+It covers topics for section [5.7. Async Interfaces and `ValueTask`](https://gienieczko.com/teaching/csharp/5-asynchrony/7-async-interfaces-and-valuetask).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## `IAsyncDisposable`
+
+Sometimes the dispose logic of an object can be asynchronous. For example, disconnecting from a database
+is probably best done asynchronously, as a graceful shutdown involves exchanging a bunch of TCP packets.
+
+For that we have the `IAsyncDisposable` interface. As you might guess, it contains a single `DisposeAsync`
+method. It can be called directly, but there is also an async `using` counterpart... `async using`.
+
+#!csharp
+
+using System.IO;
+
+async Task Foo()
+{
+    FileStream stream = File.OpenRead("./data/csharp-spec-introduction.txt");
+    StreamReader reader = new StreamReader(stream);
+
+    string line = reader.ReadLine();
+    
+    await stream.DisposeAsync();
+    reader.Dispose();
+    
+    Console.WriteLine(line);
+}
+
+await Foo();
+
+#!csharp
+
+using System.IO;
+
+async Task Foo()
+{
+    await using FileStream stream = File.OpenRead("./data/csharp-spec-introduction.txt");
+    using StreamReader reader = new StreamReader(stream);
+
+    string line = reader.ReadLine();
+    
+    Console.WriteLine(line);
+}
+
+await Foo();
+
+#!markdown
+
+## `IAsyncEnumerable<T>`
+
+A common scenario when working with online data sources are asynchronous streams,
+where advancing to the next element is a potentially long-running IO-bound operation.
+For that we have `IAsyncEnumerable<T>` and `IAsyncEnumerator<T>`. The former returns the latter
+with `GetEnumeratorAsync`, and the enumerator has a `MoveNextAsync()` method instead of `MoveNext` 
+(it also extends `IAsyncDisposable` as opposed to `IDisposable` like `IEnumerator<T>` does).
+We also get async versions of other enumerable facilities -- `async` iterators, `await foreach`, and yes, async LINQ.
+
+#!csharp
+
+static class Input
+{
+    public static IReadOnlyList<Uri> Pages => new Uri[]
+    {
+        new("https://en.wikipedia.org/wiki/C_Sharp_(programming_language)"),
+        new("https://en.wikipedia.org/wiki/.NET"),
+        new("https://en.wikipedia.org/wiki/F_Sharp_(programming_language)"),
+        new("https://en.wikipedia.org/wiki/Type_system"),
+        new("https://en.wikipedia.org/wiki/Asynchronous_I/O"),
+        new("https://en.wikipedia.org/wiki/Thread_(computing)"),
+        new("https://en.wikipedia.org/wiki/Concurrent_computing"),
+        new("https://en.wikipedia.org/wiki/Async/await"),
+        new("https://en.wikipedia.org/wiki/Coroutine"),
+        new("https://en.wikipedia.org/wiki/Thread_pool"),
+    };
+}
+
+#!csharp
+
+using System.Diagnostics;
+using System.IO;
+using System.Net.Http;
+
+var httpClient = new HttpClient();
+
+public async IAsyncEnumerable<string> ExecuteAsync(IReadOnlyList<Uri> pages, Action<string> logger)
+{
+    logger("Iterator start.");
+    foreach (var page in pages)
+    {
+        logger($"Fetching {page}...");
+        var content = await FetchOneAsync(page);
+        logger($"Received {page}.");
+        yield return content;
+    }
+}
+
+private async Task<string> FetchOneAsync(Uri page)
+{
+    var request = new HttpRequestMessage(HttpMethod.Get, page);
+    HttpResponseMessage response = await httpClient.SendAsync(request);
+
+    response.EnsureSuccessStatusCode();
+
+    using var content = response.Content.ReadAsStream();
+    using var textStream = new StreamReader(content, Encoding.UTF8); 
+
+    return await textStream.ReadToEndAsync();
+}
+
+#!csharp
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+
+IAsyncEnumerable<string> contents = ExecuteAsync(Input.Pages, Log);
+
+Log("Iterating...");
+
+await foreach (var content in ExecuteAsync(Input.Pages, Log))
+{
+    Log($"Length: {content.Length}");
+}
+
+#!markdown
+
+To use async LINQ we need a package, `System.Linq.Async`. Here's how you load packages in a notebook:
+
+#!csharp
+
+#r "nuget:System.Linq.Async,6.0.*"
+
+#!markdown
+
+It works as you might presume, it's just LINQ on `IAsyncEnumerable<T>` instead of regular `Enumerable<T>`, and the extraction methods that materialize results return an awaitable, so `ToListAsync`, `MaxAsync`, etc.
+
+#!csharp
+
+using System.Linq;
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+
+IAsyncEnumerable<string> contents = ExecuteAsync(Input.Pages, _ => {});
+
+IAsyncEnumerable<(string content, Uri name)> contentsAndNames = 
+    contents.Zip(Input.Pages.ToAsyncEnumerable());
+
+IAsyncEnumerable<(Uri name, int lines)> longPages =
+    from x in contentsAndNames
+    let lines = x.content.Count(x => x == '\n') + 1
+    where lines > 1000
+    select (x.name, lines);
+
+Log("Query created, enumerating...");
+
+await foreach (var (name, lines) in longPages)
+{
+    Log($"{name}: {lines}");
+}
+
+#!markdown
+
+## `ValueTask` for Mostly Synchronous Returns
+
+I never mentioned the method signatures, so you probably didn't even notice that both `IAsyncDisposable` and `IAsyncEnumerator<T>`, as well as async LINQ, have methods that return a different task-like type: `ValueTask` (or `ValueTask<TResult>`).
+
+```csharp
+interface IAsyncDisposable
+{
+    ValueTask DisposeAsync();
+}
+
+interface IAsyncEnumerator<T>
+{
+    T Current { get; }
+    ValueTask<bool> MoveNextAsync();
+}
+```
+
+#!markdown
+
+The best explanation of why this is needed is an asynchronous stream with buffering. When we get data over the web we get packets of bytes, so when enumerating over that with `IAsyncEnumerator` most of the `MoveNextAsync` calls will have completed without any waiting. Even when getting more complex objects, like entities from some API, it is common to utilise paging, where items come to us in batches and getting the next batch is the costly operation.
+
+In all of those cases a `Task` is an overkill. It's a reference type that exposes a lot of machinery to enable multiple awaits, concurrent access, synchronous blocking... A `ValueTask` is, as advertised, a value type. It is optimised for the successful synchronous completion case, where it can simply wrap over a result and get returned. If the operation doesn't complete synchronously then the `ValueTask` allocates a "real" underlying `Task` and just delegates to it.
+
+But this is great -- it means that reading from a stream asynchronously can be _very_ fast and doesn't allocate most of the time. The usage on the consuming side is basically the same, as we can just `await` it normally. Perfect!
+
+Well, nothing in software is perfect. `ValueTask` has a number of shooting-yourself-in-the-foot scenarios:
+
+- You must NEVER `await` a `ValueTask`/`ValueTask<TResult>` more than once.
+- You must NEVER block on `ValueTask`/`ValueTask<TResult>`, so you must not access `GetAwaiter().GetResult()` if the task is not completed.
+
+If you ever need to do any of that, you must call `ToTask()`, transforming the `ValueTask`/`ValueTask<TResult>` into a full `Task`/`Task<TResult>`.
+
+Most of the time, however, you don't need to care. Usually we just `await` the task in-place and we're fine. When designing an API where the synchronous completion case is very common you should consider using `ValueTask`/`ValueTask<T>` as the return type. But `Task`/`Task<T>` is still the go-to default.
+
+Consult the resources [linked on the course page](https://gienieczko.com/teaching/csharp/5-asynchrony/7-async-interfaces-and-valuetask) to learn more about advanced `ValueTask` scenarios.
+
+#!markdown
+
+## Summary
+
+We now know that some resources can be disposed asynchronously, which is preferable to blocking. We know how to implement asynchronous streams. We've met the `ValueTask`/`ValueTask<TResult>` types, which are the other task-like type commonly used in .NET.
+
+#!markdown
+
+## Next up:
+
+This is the end of the module, next up is the Assignment!
+Click here to go there: [Assignment 5. - Persisted Pathways](https://gienieczko.com/teaching/csharp/5-asynchronous/assignment/5-persisted-pathways).

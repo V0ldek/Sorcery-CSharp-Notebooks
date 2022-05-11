@@ -1,0 +1,456 @@
+#!markdown
+
+# 6.2. LINQ to SQL
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/6-entity-framework/2-linq-to-sql.
+
+It covers topics for section [6.2. LINQ to SQL](https://gienieczko.com/teaching/csharp/6-entity-framework/2-linq-to-sql).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Setup
+
+`IQueryProvider` is just an interface. We need something to actually provide the query capabilities. For LINQ-to-SQL we need **Entity Framework**.
+
+Entity Framework is the flagship .NET ORM (object-relational-mapper). It's versioning is a bit confusing, the current version is `Entity Framework Core 6.0`. There is also `Entity Framework 6.0`, which is a completely different version for .NET Framework. We only care about Core versions.
+
+To use it in the notebook we need a special spell that will load the library from NuGet.
+
+#!csharp
+
+#r "nuget:Microsoft.EntityFrameworkCore,6.0.1"
+
+#!markdown
+
+The core of the library is database-agnostic. However, to actually do anything we need a **database provider**.
+
+There are providers for all conventional databases. This notebook will use **MySQL**. We described the setup in [`6.0. Database Setup`](https://gienieczko.com/teaching/csharp/6-entity-framework/0-database-setup). Each provider is a package, so we need the MySQL provider from NuGet. For MySQL there are actually two providers, `MySQL.EntityFrameworkCore` and `Pomelo.EntityFrameworkCore.MySql`. The first one looks "official", but is generally considered to be less robust, and Pomelo's is more popular.
+
+_Might have something to do with the fact that `MySQL.EntityFrameworkCore` is maintained by Oracle_
+
+#!csharp
+
+#r "nuget:Pomelo.EntityFrameworkCore.MySql,6.0.1"
+
+#!markdown
+
+## Code First
+
+There are two approaches to Entity Framework -- **Code First** and **Database First**. The latter is used when we want the database code to be the single-source-of-truth for our system. This is usually used when there already is a database that we want to build stuff on top, or if the database is the most important part of the system that will have many applications connecting to it. In that approach we tell EF where the database is and it creates a C# model for us from it.
+
+Code First is what we will use. It allows us to have full control over the database from .NET. We define classes representing **entities** in our system first and generate the database schema from it. In this section we will define a very simple database with a single table.
+
+#!csharp
+
+public sealed class DungeonRun
+{
+    public int Id { get; private init; }
+
+    public string HeroClass { get; private init; }
+
+    public string DungeonName { get; private init; }
+
+    public int RoomsCleared { get; private init; }
+
+    public int DamageDealt { get; private init; }
+
+    public DungeonRun(string heroClass, string dungeonName, int roomsCleared, int damageDealt) =>
+        (HeroClass, DungeonName, RoomsCleared, DamageDealt) =
+            (heroClass, dungeonName, roomsCleared, damageDealt);
+}
+
+#!markdown
+
+The `private init` accessors are required for EF. It uses black magic to access these setters and assign values when mapping from the database to the class.
+
+Now we need to define a model. This is done by defining a **database context**, which is a class extending the EF's `DbContext` base class. There are three important parts of a db context:
+
+- The `DbSet`s, which define what sets of entities are available in the database; these map to individual tables in the database.
+- `OnConfiguring`, which is used to configure the provider -- what provider to use, how to connect to the database, any database specific options to configure.
+- `OnModelCreating`, which defines the model.
+
+Use your own password for the below connection string, as described in  [`6.0. Database Setup`](https://gienieczko.com/teaching/csharp/6-entity-framework/0-database-setup).
+
+#!csharp
+
+using Microsoft.EntityFrameworkCore;
+using Pomelo.EntityFrameworkCore.MySql;
+
+public sealed class DungeonDbContext : DbContext
+{
+    public DbSet<DungeonRun> DungeonRuns { get; private init; } = null!;
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        var connectionString = "server=sql11.freesqldatabase.com;user=sql11491290;password=<PASSWORD>;database=sql11491290";
+        var version = ServerVersion.AutoDetect(connectionString);
+        options.UseMySql(connectionString, version)
+            .LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information)
+            .EnableSensitiveDataLogging()
+            .EnableDetailedErrors();
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        var dungeonRun = model.Entity<DungeonRun>();
+
+        dungeonRun.HasKey(d => d.Id);
+        dungeonRun.ToTable("DungeonRun");
+    }
+}
+
+#!markdown
+
+### Migrations
+
+Code First uses a concept called **migrations** to generate the database.
+The schema of the database depends on the sequence of migrations, $\mu_1, \mu_2, \ldots, \mu_n$. Each migration
+$\mu_i$ tells us how to bring the database from state $i$ **up** to state $i + 1$, and how to revert it to $i - 1$, with state $0$ being empty.
+
+Generating migrations generally happens outside of code, via a CLI tool. One first needs to install the `dotnet-ef` tool and then run it to produce a `.cs` file with a migration:
+
+```bash
+dotnet tool install --global dotnet-ef
+
+dotnet ef migrations add Initial
+```
+
+Then we can update the database either by generating an SQL script (or by directly connecting to the database via `dotnet ef database update`).
+
+```bash
+dotnet ef migrations script
+```
+
+Here's what EF generates for our simple context:
+
+```csharp
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace MigrationsExample.Migrations
+{
+    public partial class Initial : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AlterDatabase()
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "DungeonRun",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    HeroClass = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    DungeonName = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    RoomsCleared = table.Column<int>(type: "int", nullable: false),
+                    DamageDealt = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DungeonRun", x => x.Id);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+        }
+
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "DungeonRun");
+        }
+    }
+}
+```
+
+And the script:
+
+```sql
+CREATE TABLE IF NOT EXISTS `__EFMigrationsHistory` (
+    `MigrationId` varchar(150) CHARACTER SET utf8mb4 NOT NULL,
+    `ProductVersion` varchar(32) CHARACTER SET utf8mb4 NOT NULL,
+    CONSTRAINT `PK___EFMigrationsHistory` PRIMARY KEY (`MigrationId`)
+) CHARACTER SET=utf8mb4;
+
+START TRANSACTION;
+
+ALTER DATABASE CHARACTER SET utf8mb4;
+
+CREATE TABLE `DungeonRun` (
+    `Id` int NOT NULL AUTO_INCREMENT,
+    `HeroClass` longtext CHARACTER SET utf8mb4 NOT NULL,
+    `DungeonName` longtext CHARACTER SET utf8mb4 NOT NULL,
+    `RoomsCleared` int NOT NULL,
+    `DamageDealt` int NOT NULL,
+    CONSTRAINT `PK_DungeonRun` PRIMARY KEY (`Id`)
+) CHARACTER SET=utf8mb4;
+
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20220510090410_Initial', '6.0.1');
+
+COMMIT;
+```
+
+#!markdown
+
+In the notebooks we will use a less robust, but simpler approach.
+
+#!csharp
+
+async Task SetupAsync()
+{
+    await using var db = new DungeonDbContext();
+    await db.Database.EnsureDeletedAsync();
+    await db.Database.EnsureCreatedAsync();
+    await db.Database.MigrateAsync();
+}
+
+await SetupAsync();
+
+#!markdown
+
+## Querying
+
+We query the database by accessing a `DbSet<TEntity>`. This is the root object that implements `IQueryable<TEntity>` and starts the query chain.
+
+#!csharp
+
+async Task ListEntitiesAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    Console.WriteLine("Entities:");
+    foreach (var entity in await dbContext.DungeonRuns.ToListAsync())
+    {
+        Console.WriteLine($"[{entity.Id}]. {entity.HeroClass}, {entity.DungeonName}, 🚪 {entity.RoomsCleared} ⚔️ {entity.DamageDealt}");
+    }
+}
+
+await ListEntitiesAsync();
+
+#!markdown
+
+Oh, right. We never added anything, well, let's!
+
+#!csharp
+
+async Task SeedDatabaseAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    dbContext.DungeonRuns.Add(new("Warrior", "Magical Maze", 16, 180));
+    dbContext.DungeonRuns.Add(new("Rogue", "Magical Maze", 14, 130));
+    dbContext.DungeonRuns.Add(new("Wizard", "Magical Maze", 15, 150));
+    dbContext.DungeonRuns.Add(new("Warrior", "Adventure", 10, 120));
+    dbContext.DungeonRuns.Add(new("Rogue", "Adventure", 7, 69));
+    dbContext.DungeonRuns.Add(new("Wizard", "Adventure", 7, 73));
+
+    await dbContext.SaveChangesAsync();
+}
+
+await SeedDatabaseAsync();
+await ListEntitiesAsync();
+
+#!markdown
+
+Now it works. And now we can _go to town_.
+
+#!csharp
+
+async Task TotalDamageAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    Console.WriteLine("Total damage dealt, by hero:");
+
+    var totalDamageDealtByHero = dbContext.DungeonRuns
+        .GroupBy(r => r.HeroClass)
+        .Select(g => new { Hero = g.Key, Damage = g.Sum(r => r.DamageDealt) })
+        .OrderByDescending(x => x.Damage);
+
+    foreach (var entry in await totalDamageDealtByHero.ToListAsync())
+    {
+        Console.WriteLine($"{entry.Hero}: ⚔️ {entry.Damage}");
+    }
+}
+
+await TotalDamageAsync();
+
+#!csharp
+
+async Task LowestDamageAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    Console.WriteLine("Lowest damage dealt in a run:");
+
+    var lowestDamage = await dbContext.DungeonRuns.MinAsync(r => r.DamageDealt);
+
+    Console.WriteLine($"⚔️ {lowestDamage}");
+}
+
+await LowestDamageAsync();
+
+#!csharp
+
+async Task NeverBeatenAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    var heroes = dbContext.DungeonRuns.Select(r => r.HeroClass).Distinct();
+    
+    var betterThan = 
+        from run1 in dbContext.DungeonRuns
+        from run2 in dbContext.DungeonRuns
+        where run1.DungeonName == run2.DungeonName
+           && run1.RoomsCleared > run2.RoomsCleared
+        select new 
+        { 
+            Hero = run1.HeroClass,
+            Beats = run2.HeroClass,
+            InDungeon = run1.DungeonName
+        };
+    
+    var neverBeatenBy = 
+        from hero in heroes
+        from contender in heroes
+        where !betterThan.Any(x => x.Hero == contender && x.Beats == hero)
+        select new { Hero = hero, WasNeverBeatenBy = contender };
+
+    Console.WriteLine("Never beaten by:");
+
+    foreach (var entry in await neverBeatenBy.ToListAsync())
+    {
+        Console.WriteLine(entry);
+    }
+}
+
+await NeverBeatenAsync();
+
+#!markdown
+
+By the way, we can also examine the query that will be executed on the database with the `ToQueryString()` extension method.
+
+#!csharp
+
+async Task TotalDamageAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    Console.WriteLine("Total damage dealt, by hero:");
+
+    var totalDamageDealtByHero = dbContext.DungeonRuns
+        .GroupBy(r => r.HeroClass)
+        .Select(g => new { Hero = g.Key, Damage = g.Sum(r => r.DamageDealt) })
+        .OrderByDescending(x => x.Damage);
+
+    Console.WriteLine(totalDamageDealtByHero.ToQueryString());
+}
+
+await TotalDamageAsync();
+
+#!markdown
+
+Underneath all this there is the SQLite provider that transforms C# Expression Trees into SQL valid specifically for SQLite. It's the `DbContext` configuration that governs this translation. Theoretically, switching the database provider amounts to simply switching the EF package and the configuration.
+
+Not all C# code can be translated to expressions. And, since the translation is provider-specific, not all queries that work on a given database will work on a different one.
+
+The simplest example of this limitation is just a simple user-defined function.
+
+#!csharp
+
+async Task FooAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    var names = dbContext.DungeonRuns
+        .Where(d => GetLength(d.HeroClass) < 7)
+        .Select(d => d.HeroClass)
+        .Distinct();
+
+    Console.WriteLine(string.Join(", ", names));
+}
+
+static int GetLength(string s) => s.Length;
+
+await FooAsync();
+
+#!markdown
+
+EF has no idea how to translate this, since it's just a method call. On the other hand, `string.Length` is a standard method recognised by the translation machinery, so this does work:
+
+#!csharp
+
+async Task FooAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    var names = dbContext.DungeonRuns
+        .Where(d => d.HeroClass.Length < 7)
+        .Select(d => d.HeroClass)
+        .Distinct();
+
+    Console.WriteLine(string.Join(", ", names));
+}
+
+await FooAsync();
+
+#!markdown
+
+A lot of stuff Just Works™ -- `DateTime` operations are translated to the database's datetime types, most string operations, arithmetic... As long as the underlying provider implements the thing, there's a good chance EF knows how to translate it. For example, the Npgsql provider has no issue with translating LINQ queries on JSON tables in Postgres.
+
+There is also [EF.Functions](https://docs.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.ef.functions?view=efcore-6.0) for advanced functions that don't have obvious counterparts in C#. 
+
+#!csharp
+
+async Task FooAsync()
+{
+    await using var dbContext = new DungeonDbContext();
+
+    var names = dbContext.DungeonRuns
+        .Where(d => EF.Functions.Like(d.HeroClass, "W%"))
+        .Select(d => d.HeroClass)
+        .Distinct();
+
+    Console.WriteLine(string.Join(", ", names));
+}
+
+await FooAsync();
+
+#!markdown
+
+As the error message unhelpfully hints at, there is also a way to map a database function to a C# method using EF. Check out the section resources at [6.2. LINQ to SQL](https://gienieczko.com/teaching/csharp/6-entity-framework/2-linq-to-sql).
+
+#!markdown
+
+## Summary
+
+We've seen how Entity Framework uses the magic from the previous section to translate C# into SQL queries and execute them on the database server.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [6.3. Navigation Properties](https://gienieczko.com/teaching/csharp/6-entity-framework/3-navigation-properties),
+or straight to the next notebook, [`03-navigation-properties.dib`](03-navigation-properties.dib).

@@ -248,7 +248,7 @@ publisherThread.Join();
 
 Beware, there's magic afoot.
 
-There's a detail we skipped over in [`4.4. Delegates`](TODO). All delegate instances
+There's a detail we skipped over in [`4.4. Delegates`](https://gienieczko.com/teaching/csharp/04-linq/04-delegates). All delegate instances
 support _multicast_, which means that it can trigger more than one method, and they can
 be combined together. This is done with the overloaded `+` and `-` operators.
 
