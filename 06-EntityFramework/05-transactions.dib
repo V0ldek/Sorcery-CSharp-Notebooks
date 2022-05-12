@@ -25,6 +25,104 @@ That's kind of the point of doing all this in notebooks.
 
 #!markdown
 
+## Setup
+
+Let's setup a simple database with accounts.
+
+#!csharp
+
+#r "nuget:Microsoft.EntityFrameworkCore,6.0.*"
+#r "nuget:Microsoft.EntityFrameworkCore.Relational,6.0.*"
+#r "nuget:Microsoft.EntityFrameworkCore.SQLite,6.0.*"
+
+#!csharp
+
+public sealed class Account
+{
+    public int Id { get; private init; }
+
+    public string Owner { get; private init; }
+
+    public decimal Balance { get; private set; }
+
+    public Account(string owner, decimal balance) =>
+        (Owner, Balance) = (owner, balance);
+
+    public void Transfer(decimal balance)
+    {
+        var newBalance = Balance + balance;
+
+        if (newBalance < 0)
+        {
+            throw new InvalidOperationException();
+        }
+
+        Balance = newBalance;
+    }
+}
+
+#!csharp
+
+using Microsoft.EntityFrameworkCore;
+
+#nullable enable
+
+public sealed class ApplicationDbContext : DbContext
+{
+    public DbSet<Account> Accounts { get; private init; } = null!;
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        var connectionString = "Data Source=./data/Dungeon.db";
+        optionsBuilder.UseSqlite(connectionString)
+            .LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information)
+            .EnableSensitiveDataLogging()
+            .EnableDetailedErrors();
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        var account = modelBuilder.Entity<Account>();
+
+        account.HasKey(d => d.Id);
+        account.HasIndex(d => d.Owner).IsUnique();
+        account.ToTable("Account");
+    }
+}
+
+#!csharp
+
+using System.IO;
+
+#nullable enable
+
+async Task SetupAsync()
+{
+    Directory.CreateDirectory("./data");
+    await using var db = new ApplicationDbContext();
+    await db.Database.EnsureDeletedAsync();
+    await db.Database.EnsureCreatedAsync();
+    await db.Database.MigrateAsync();
+}
+
+await SetupAsync();
+
+#!csharp
+
+async Task SeedAsync()
+{
+    await using var db = new ApplicationDbContext();
+
+    db.Accounts.Add(new("Johny", 1_000_000M));
+    db.Accounts.Add(new("Peter", 500_000M));
+
+    await db.SaveChangesAsync();
+}
+
+await SeedAsync();
+
+#!markdown
+
 ## Single `SaveChangesAsync`
 
 Implicitly, all operations on the `DbContext` happen in a transaction. Every `SaveChangesAsync` performs all the operations from the previous `SaveChangesAsync` (or the instantiation of the `DbContext`) inside a transaction. However, queries are not transactional.
@@ -33,17 +131,176 @@ Implicitly, all operations on the `DbContext` happen in a transaction. Every `Sa
 
 ## Complex transactions
 
-We can start a transaction by calling `dbContext.Database.BeginTransaction()`, with an optional argument specifying the isolation level. The resulting disposable object is used to control the scope of the transaction. We can call `.Commit()` and `.Rollback()` on the transaction object.
+Transaction stuff resides in the `Microsoft.EntityFrameworkCore.Relational` package. We can start a transaction by calling `dbContext.Database.BeginTransaction(IsolationLevel)`. The resulting disposable object is used to control the scope of the transaction. We can call `.Commit()` and `.Rollback()` on the transaction object.
+
+#!csharp
+
+using Microsoft.EntityFrameworkCore;
+
+async Task RollbackTransactionAsync()
+{
+    await using var db = new ApplicationDbContext();
+    await using (var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted))
+    {
+        var johny = await db.Accounts.SingleAsync(a => a.Owner == "Johny");
+        var peter = await db.Accounts.SingleAsync(a => a.Owner == "Peter");
+
+        johny.Transfer(-500_000M);
+        await db.SaveChangesAsync();
+
+        peter.Transfer(500_000M);
+        await db.SaveChangesAsync();
+
+        await transaction.RollbackAsync();
+    }
+}
+
+async Task PrintBalanceAsync()
+{
+    await using var db = new ApplicationDbContext();
+
+    await foreach (var account in db.Accounts)
+    {
+        Console.WriteLine($"{account.Owner}: {account.Balance:C}");
+    }
+}
+
+await RollbackTransactionAsync();
+await PrintBalanceAsync();
+
+#!csharp
+
+async Task CommitTransactionAsync()
+{
+    await using var db = new ApplicationDbContext();
+    await using (var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted))
+    {
+        var johny = await db.Accounts.SingleAsync(a => a.Owner == "Johny");
+        var peter = await db.Accounts.SingleAsync(a => a.Owner == "Peter");
+
+        johny.Transfer(-500_000M);
+        await db.SaveChangesAsync();
+
+        peter.Transfer(500_000M);
+        await db.SaveChangesAsync();
+
+        await transaction.CommitAsync();
+    }
+}
+
+await CommitTransactionAsync();
+await PrintBalanceAsync();
+
+#!markdown
+
+Disposing of a transaction without committing automatically triggers a rollback. This is good, because it means that holding the transaction in a `using` statement means any failures during execution of our operations resulting in an exception will automatically rollback the transaction, due to the `using` statement's `finally` block.
+
+#!csharp
+
+async Task ErroneusTransactionAsync()
+{
+    await using var db = new ApplicationDbContext();
+    await using (var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted))
+    {
+        var johny = await db.Accounts.SingleAsync(a => a.Owner == "Johny");
+        var peter = await db.Accounts.SingleAsync(a => a.Owner == "Peter");
+
+        peter.Transfer(1_000_000M);
+        await db.SaveChangesAsync();
+        
+        johny.Transfer(-1_000_000M);
+        await db.SaveChangesAsync();
+
+        await transaction.CommitAsync();
+    }
+}
+
+try
+{
+    await ErroneusTransactionAsync();
+}
+catch (Exception exception)
+{
+    Console.WriteLine($"Exception: {exception}");
+}
+
+await PrintBalanceAsync();
+
+#!markdown
+
+## Even More Complex Transactions
+
+There are scenarios where we would like to coordinate multiple operations in a transaction that use _different_ `DbContext` instances. This is usually when we have some isolated code that implements its operations, and we're working from the outside without access to the `DbContext` and the actual database connections.
+
+The `System.Transactions` namespace gives us tools to work with that with _ambient_ transactions, also called _transient_ or _implicit_. Not all providers support ambient transactions, and unfortunately SQLite does not. Therefore, the following code is given as an example, but to run it you'd need an actual database. I don't know all the providers, but all the most popular ones support ambient transactions, including (but not limited to):
+
+- [`Npgsql`](https://www.nuget.org/packages/Npgsql) for PostgreSQL
+- [`Microsoft.EntityFrameworkCore.SqlServer`](https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.SqlServer) for SQLServer
+- [`Pomelo.EntityFrameworkCore.MySql`](https://www.nuget.org/packages/Pomelo.EntityFrameworkCore.MySql/) for MySQL
+- [`Oracle.EntityFrameworkCore`](https://www.nuget.org/packages/Oracle.EntityFrameworkCore/) for Oracle _(at least they claim to, I didn't test that)_
+
+
+```csharp
+using System.Transactions;
+
+async Task DeductAsync(string owner, decimal amount)
+{
+    if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
+
+    await using var db = new ApplicationDbContext();
+
+    var account = await db.Accounts.SingleAsync(a => a.Owner == owner);
+
+    account.Transfer(-amount);
+
+    await db.SaveChangesAsync();
+}
+
+async Task AddAsync(string owner, decimal amount)
+{
+    if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
+
+    await using var db = new ApplicationDbContext();
+
+    var account = await db.Accounts.SingleAsync(a => a.Owner == owner);
+
+    account.Transfer(amount);
+
+    await db.SaveChangesAsync();
+}
+
+async Task TransferBetweenAsync(string from, string to, decimal amount)
+{
+    // This is absolutely required for the transactions to work with async code! The default is disabled.
+    //                                      vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+    using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+    {
+        await DeductAsync(from, amount);
+        await AddAsync(to, amount);
+
+        scope.Complete();
+    }
+}
+
+await TransferBetweenAsync("Johny", "Peter", 50M);
+```
+
+#!markdown
+
+Note that this is a last resort solution. The global `TransactionScope` is a very ugly solution, but it's sometimes necessary. Most of the time we
+
+- don't use explicit transactions at all, simply relying on `SaveChangesAsync` to perform the transaction;
+- use `Database.BeginTransaction(IsolationLevel)` to perform the changes with a stricter-than-default isolation level.
 
 #!markdown
 
 ## Summary
 
-We've learnt how EF handles the object-relational mapping with tracking entities.
+We've learnt how to enable more complex relational scenarios with transactions and EF.
 
 #!markdown
 
 ## Next up:
 
 This is the end of the module, next up is the Assignment!
-Click here to go there: [Assignment 6. - TODO](https://gienieczko.com/teaching/csharp/6-entity-framework/assignment/6-TODO).
+Click here to go there: [Assignment 6. - Eldritch Entities](https://gienieczko.com/teaching/csharp/6-entity-framework/assignment/6-eldritch-entities).

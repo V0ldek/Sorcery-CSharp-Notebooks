@@ -344,7 +344,7 @@ async Task NeverBeatenAsync()
 
     Console.WriteLine("Never beaten by:");
 
-    foreach (var entry in await neverBeatenBy.ToListAsync())
+    await foreach (var entry in neverBeatenBy)
     {
         Console.WriteLine(entry);
     }
@@ -397,7 +397,7 @@ async Task FooAsync()
         .Select(d => d.HeroClass)
         .Distinct();
 
-    Console.WriteLine(string.Join(", ", names));
+    Console.WriteLine(string.Join(", ", await names.ToListAsync()));
 }
 
 static int GetLength(string s) => s.Length;

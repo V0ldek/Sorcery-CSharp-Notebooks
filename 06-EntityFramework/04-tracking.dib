@@ -84,6 +84,7 @@ public sealed class ApplicationDbContext : DbContext
         var account = modelBuilder.Entity<Account>();
 
         account.HasKey(d => d.Id);
+        account.HasIndex(d => d.Owner).IsUnique();
         account.ToTable("Account");
     }
 }
@@ -135,7 +136,7 @@ async Task ListBalancesAsync()
 {
     await using var dbContext = new ApplicationDbContext();
 
-    foreach (var account in dbContext.Accounts)
+    await foreach (var account in dbContext.Accounts)
     {
         Console.WriteLine($"{account.Owner}: ${account.Balance}");
     }

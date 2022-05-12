@@ -283,7 +283,7 @@ async Task AdventuresAsync()
         Hero = dr.Hero.Name,
     });
 
-    foreach (var entry in await sums.ToListAsync())
+    await foreach (var entry in sums)
     {
         Console.WriteLine($"{entry.Dungeon}, {entry.Hero}");
     }
@@ -303,7 +303,7 @@ async Task SumOfDamageAsync()
         Sum = d.Runs.Sum(dr => dr.DamageDealt),
     });
 
-    foreach (var entry in await sums.ToListAsync())
+    await foreach (var entry in sums)
     {
         Console.WriteLine($"{entry.Dungeon}: {entry.Sum}");
     }
@@ -321,9 +321,9 @@ async Task AllRunsAsync()
 {
     await using var dbContext = new DungeonDbContext();
     
-    var all = await dbContext.DungeonRuns.ToListAsync();
+    var all = dbContext.DungeonRuns;
 
-    foreach (var entry in all)
+    await foreach (var entry in all)
     {
         Console.WriteLine($"{entry.Dungeon?.Name ?? "NULL"}, {entry.Hero?.Name ?? "NULL"}");
     }
@@ -341,12 +341,11 @@ async Task AllRunsAsync()
 {
     await using var dbContext = new DungeonDbContext();
     
-    var all = await dbContext.DungeonRuns
+    var all = dbContext.DungeonRuns
         .Include(dr => dr.Dungeon)
-        .Include(dr => dr.Hero)
-        .ToListAsync();
+        .Include(dr => dr.Hero);
 
-    foreach (var entry in all)
+    await foreach (var entry in all)
     {
         Console.WriteLine($"{entry.Dungeon?.Name ?? "NULL"}, {entry.Hero?.Name ?? "NULL"}");
     }
@@ -372,9 +371,7 @@ async Task AllRunsAsync()
 {
     await using var dbContext = new DungeonDbContext();
     
-    var all = await dbContext.DungeonRuns.ToListAsync();
-
-    foreach (var entry in all)
+    await foreach (var entry in dbContext.DungeonRuns)
     {
         Console.WriteLine($"{entry.Dungeon.Name}, {entry.Hero.Name}");
     }
