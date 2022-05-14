@@ -100,7 +100,6 @@ async Task SetupAsync()
     Directory.CreateDirectory("./data");
     await using var db = new ApplicationDbContext();
     await db.Database.EnsureDeletedAsync();
-    await db.Database.EnsureCreatedAsync();
     await db.Database.MigrateAsync();
 }
 
@@ -148,7 +147,7 @@ await ListBalancesAsync();
 
 #!markdown
 
-## Lifetime of `DbContext` -- Unit of Work
+## Lifetime of `DbContext` – Unit of Work
 
 `DbContext` implements the [unit of work pattern](https://www.martinfowler.com/eaaCatalog/unitOfWork.html). It is meant to represent a cohesive business operation on the database entities. The `DbContext` tracks all entities that pass through it during its lifetime, or ones explicitly registered with the `Attach` method. It can therefore correctly determine the operations needed to bring the state of the system to the one resembling the final state of the entities when `SaveChangesAsync` is called.
 

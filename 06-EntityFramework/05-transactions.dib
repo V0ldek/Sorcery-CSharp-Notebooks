@@ -101,7 +101,6 @@ async Task SetupAsync()
     Directory.CreateDirectory("./data");
     await using var db = new ApplicationDbContext();
     await db.Database.EnsureDeletedAsync();
-    await db.Database.EnsureCreatedAsync();
     await db.Database.MigrateAsync();
 }
 

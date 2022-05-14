@@ -41,7 +41,7 @@ To use it in the notebook we need a special spell that will load the library fro
 
 The core of the library is database-agnostic. However, to actually do anything we need a **database provider**.
 
-There are providers for all conventional databases. This notebook will use **SQLite**, since it's extremely easy to setup -- it keeps the entire database in a single file and has a minimal runtime. Each provider is a package, so we need the SQLite provider from NuGet.
+There are providers for all conventional databases. This notebook will use **SQLite**, since it's extremely easy to setup – it keeps the entire database in a single file and has a minimal runtime. Each provider is a package, so we need the SQLite provider from NuGet.
 
 #!csharp
 
@@ -51,7 +51,7 @@ There are providers for all conventional databases. This notebook will use **SQL
 
 ## Code First
 
-There are two approaches to Entity Framework -- **Code First** and **Database First**. The latter is used when we want the database code to be the single-source-of-truth for our system. This is usually used when there already is a database that we want to build stuff on top, or if the database is the most important part of the system that will have many applications connecting to it. In that approach we tell EF where the database is and it creates a C# model for us from it.
+There are two approaches to Entity Framework – **Code First** and **Database First**. The latter is used when we want the database code to be the single-source-of-truth for our system. This is usually used when there already is a database that we want to build stuff on top, or if the database is the most important part of the system that will have many applications connecting to it. In that approach we tell EF where the database is and it creates a C# model for us from it.
 
 Code First is what we will use. It allows us to have full control over the database from .NET. We define classes representing **entities** in our system first and generate the database schema from it. In this section we will define a very simple database with a single table.
 
@@ -83,7 +83,7 @@ The `private init` accessors are required for EF. It uses black magic to access 
 Now we need to define a model. This is done by defining a **database context**, which is a class extending the EF's `DbContext` base class. There are three important parts of a db context:
 
 - The `DbSet`s, which define what sets of entities are available in the database; these map to individual tables in the database.
-- `OnConfiguring`, which is used to configure the provider -- what provider to use, how to connect to the database, any database specific options to configure.
+- `OnConfiguring`, which is used to configure the provider – what provider to use, how to connect to the database, any database specific options to configure.
 - `OnModelCreating`, which defines the model.
 
 Use your own password for the below connection string, as described in  [`6.0. Database Setup`](https://gienieczko.com/teaching/csharp/6-entity-framework/0-database-setup).
@@ -216,7 +216,6 @@ async Task SetupAsync()
     Directory.CreateDirectory("./data");
     await using var db = new DungeonDbContext();
     await db.Database.EnsureDeletedAsync();
-    await db.Database.EnsureCreatedAsync();
     await db.Database.MigrateAsync();
 }
 
@@ -428,7 +427,7 @@ await FooAsync();
 
 #!markdown
 
-A lot of stuff Just Works™ -- `DateTime` operations are translated to the database's datetime types, most string operations, arithmetic... As long as the underlying provider implements the thing, there's a good chance EF knows how to translate it. For example, the Npgsql provider has no issue with translating LINQ queries on JSON tables in Postgres.
+A lot of stuff Just Works™ – `DateTime` operations are translated to the database's datetime types, most string operations, arithmetic... As long as the underlying provider implements the thing, there's a good chance EF knows how to translate it. For example, the Npgsql provider has no issue with translating LINQ queries on JSON tables in Postgres.
 
 There is also [EF.Functions](https://docs.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.ef.functions?view=efcore-6.0) for advanced functions that don't have obvious counterparts in C#. 
 

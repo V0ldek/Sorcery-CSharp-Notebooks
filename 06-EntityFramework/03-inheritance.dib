@@ -171,7 +171,6 @@ async Task SetupTphAsync()
     Directory.CreateDirectory("./data");
     await using var db = new DungeonDbContext();
     await db.Database.EnsureDeletedAsync();
-    await db.Database.EnsureCreatedAsync();
     await db.Database.MigrateAsync();
 }
 
@@ -240,7 +239,6 @@ async Task SetupTptAsync()
     Directory.CreateDirectory("./data");
     await using var db = new DungeonDbContext();
     await db.Database.EnsureDeletedAsync();
-    await db.Database.EnsureCreatedAsync();
     await db.Database.MigrateAsync();
 }
 
@@ -301,5 +299,5 @@ We've learnt how to easily get inheritance in our database with EF.
 
 ## Next up:
 
-Continue with the next section, [6.4. Transactions](https://gienieczko.com/teaching/csharp/6-entity-framework/4-transactions),
-or straight to the next notebook, [`04-transactions.dib`](04-transactions.dib).
+Continue with the next section, [6.4. Tracking](https://gienieczko.com/teaching/csharp/6-entity-framework/4-tracking),
+or straight to the next notebook, [`04-tracking.dib`](04-tracking.dib).

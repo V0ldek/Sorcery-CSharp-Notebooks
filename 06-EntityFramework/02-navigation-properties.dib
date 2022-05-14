@@ -35,7 +35,7 @@ Relations involve two things:
 
 Entity Framework helps us with both, by hiding them behind an object-oriented abstraction.
 
-Our model has two obvious entities we didn't distinguish before -- heroes and dungeons. How would we model the relationship in plain C# classes? Well, the `DungeonRun` would have references to the `Hero` and `Dungeon` it concerns.
+Our model has two obvious entities we didn't distinguish before – heroes and dungeons. How would we model the relationship in plain C# classes? Well, the `DungeonRun` would have references to the `Hero` and `Dungeon` it concerns.
 
 #!csharp
 
@@ -201,7 +201,6 @@ async Task SetupAsync()
     Directory.CreateDirectory("./data");
     await using var db = new DungeonDbContext();
     await db.Database.EnsureDeletedAsync();
-    await db.Database.EnsureCreatedAsync();
     await db.Database.MigrateAsync();
 }
 

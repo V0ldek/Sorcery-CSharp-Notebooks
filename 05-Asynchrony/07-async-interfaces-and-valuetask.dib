@@ -77,7 +77,7 @@ where advancing to the next element is a potentially long-running IO-bound opera
 For that we have `IAsyncEnumerable<T>` and `IAsyncEnumerator<T>`. The former returns the latter
 with `GetEnumeratorAsync`, and the enumerator has a `MoveNextAsync()` method instead of `MoveNext` 
 (it also extends `IAsyncDisposable` as opposed to `IDisposable` like `IEnumerator<T>` does).
-We also get async versions of other enumerable facilities -- `async` iterators, `await foreach`, and yes, async LINQ.
+We also get async versions of other enumerable facilities – `async` iterators, `await foreach`, and yes, async LINQ.
 
 #!csharp
 
@@ -213,7 +213,7 @@ The best explanation of why this is needed is an asynchronous stream with buffer
 
 In all of those cases a `Task` is an overkill. It's a reference type that exposes a lot of machinery to enable multiple awaits, concurrent access, synchronous blocking... A `ValueTask` is, as advertised, a value type. It is optimised for the successful synchronous completion case, where it can simply wrap over a result and get returned. If the operation doesn't complete synchronously then the `ValueTask` allocates a "real" underlying `Task` and just delegates to it.
 
-But this is great -- it means that reading from a stream asynchronously can be _very_ fast and doesn't allocate most of the time. The usage on the consuming side is basically the same, as we can just `await` it normally. Perfect!
+But this is great – it means that reading from a stream asynchronously can be _very_ fast and doesn't allocate most of the time. The usage on the consuming side is basically the same, as we can just `await` it normally. Perfect!
 
 Well, nothing in software is perfect. `ValueTask` has a number of shooting-yourself-in-the-foot scenarios:
 
