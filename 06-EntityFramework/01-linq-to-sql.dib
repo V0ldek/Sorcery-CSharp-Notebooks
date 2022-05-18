@@ -86,8 +86,6 @@ Now we need to define a model. This is done by defining a **database context**, 
 - `OnConfiguring`, which is used to configure the provider – what provider to use, how to connect to the database, any database specific options to configure.
 - `OnModelCreating`, which defines the model.
 
-Use your own password for the below connection string, as described in  [`6.0. Database Setup`](https://gienieczko.com/teaching/csharp/6-entity-framework/0-database-setup).
-
 #!csharp
 
 using Microsoft.EntityFrameworkCore;
