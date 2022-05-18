@@ -1,3 +1,4 @@
+using CSharpFunctionalExtensions;
 using DungeonWalker.DataLayer.Model;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +10,14 @@ public sealed class DungeonRepository : IDungeonRepository
 
     public DungeonRepository(DungeonDbContext dbContext) => _dbContext = dbContext;
 
-    public Task<Dungeon?> GetDungeonAsync(int id) => _dbContext.Dungeons.SingleOrDefaultAsync(d => d.Id == id);
+    public Task<Dungeon?> GetDungeonAsync(int id) =>
+        _dbContext.Dungeons.SingleOrDefaultAsync(d => d.Id == id);
+
+    public Task<DungeonRun?> GetDungeonRunAsync(int id) =>
+        _dbContext.DungeonRuns
+            .Include(r => r.Dungeon)
+            .Include(r => r.Hero)
+            .SingleOrDefaultAsync(r => r.Id == id);
 
     public async Task<IReadOnlyCollection<DungeonRun>> QueryRunsAsync(DungeonRunQueryParameters parameters)
     {
@@ -30,6 +38,36 @@ public sealed class DungeonRepository : IDungeonRepository
         }
 
         return await result.ToListAsync();
+    }
+
+    public async Task<Result<int, ApiError>> CreateDungeonRunAsync(DungeonRunPost dungeonRun)
+    {
+        ArgumentNullException.ThrowIfNull(dungeonRun);
+
+        Dungeon? dungeon = await
+            _dbContext.Dungeons.SingleOrDefaultAsync(d => d.Name == dungeonRun.DungeonName);
+
+        if (dungeon is null)
+        {
+            return Fail(new($"Dungeon {dungeonRun.DungeonName} does not exist."));
+        }
+
+        Hero? hero = await
+            _dbContext.Heroes.SingleOrDefaultAsync(h => h.Name == dungeonRun.HeroClass);
+
+        if (hero is null)
+        {
+            return Fail(new($"Hero class {dungeonRun.HeroClass} does not exist."));
+        }
+
+        DungeonRun run = new(dungeon, hero, dungeonRun.RoomsCleared, dungeonRun.DamageDealt);
+        _dbContext.DungeonRuns.Add(run);
+
+        await _dbContext.SaveChangesAsync();
+
+        return Result.Success<int, ApiError>(run.Id);
+
+        static Result<int, ApiError> Fail(ApiError error) => Result.Failure<int, ApiError>(error);
     }
 
     public async Task SeedDatabaseAsync()

@@ -1,5 +1,6 @@
 using DungeonWalker.Api.Model;
 using DungeonWalker.DataLayer;
+using DungeonWalker.DataLayer.Model;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DungeonWalker.Api.Controllers;
@@ -30,8 +31,11 @@ public class DungeonController : ControllerBase
     /// <returns>
     ///     Task representing the asynchronous GET operation.
     /// </returns>
+    /// <response code="404">If the Dungeon with given ID does not exist.</response>
     [HttpGet]
     [Route("/dungeons/{id}")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
     public async Task<ActionResult<DungeonView>> GetDungeonAsync(int id)
     {
         _logger.LogInformation("Fetching Dungeon {Id}...", id);
@@ -56,7 +60,7 @@ public class DungeonController : ControllerBase
     /// <param name="heroClass">
     ///     Return only DungeonRuns of this Hero class.
     /// </param>
-    /// <returns></returns>
+    /// <returns>Task representing the asynchronous query operation.</returns>
     [HttpGet]
     [Route("/runs")]
     public async Task<ActionResult<IEnumerable<DungeonRunView>>> QueryRunsAsync(
@@ -72,6 +76,33 @@ public class DungeonController : ControllerBase
     }
 
     /// <summary>
+    ///     Get a DungeonRun by ID.
+    /// </summary>
+    /// <param name="id">ID to query by.</param>
+    /// <returns>
+    ///     Task representing the asynchronous GET operation.
+    /// </returns>
+    /// <response code="404">If the DungeonRun with given ID does not exist.</response>
+    [HttpGet]
+    [Route("/runs/{id}")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
+    public async Task<ActionResult<DungeonRunView>> GetDungeonRunAsync(int id)
+    {
+        _logger.LogInformation("Fetching DungeonRun {Id}...", id);
+
+        var run = await _repository.GetDungeonRunAsync(id);
+
+        if (run is null)
+        {
+            _logger.LogInformation("DungeonRun {Id} not found.", id);
+            return NotFound();
+        }
+
+        return run.ToView();
+    }
+
+    /// <summary>
     ///     Seed the database with example data.
     /// </summary>
     /// <remarks>
@@ -81,10 +112,36 @@ public class DungeonController : ControllerBase
     ///     Task representing the asynchronous seed operation.
     /// </returns>
     [HttpPost]
-    [Route("[action]")]
+    [Route("seed")]
     public async Task SeedAsync()
     {
         _logger.LogInformation("Reseeding the database.");
         await _repository.SeedDatabaseAsync();
+    }
+
+    /// <summary>
+    ///     Record a DungeonRun in the system.
+    /// </summary>
+    /// <param name="dungeonRun">Data of the Run.</param>
+    /// <returns>
+    ///     Task representing the asynchronous POST operation.
+    /// </returns>
+    /// <response code="400">If a Dungeon with the given name or used Hero class do not exist.</response>
+    [HttpPost]
+    [Route("runs")]
+    [ProducesResponseType(201)]
+    [ProducesResponseType(400)]
+    public async Task<ActionResult> PostAsync([FromBody] DungeonRunPost dungeonRun)
+    {
+        var result = await _repository.CreateDungeonRunAsync(dungeonRun);
+
+        if (result.IsSuccess)
+        {
+            return CreatedAtAction("GetDungeonRun", new { id = result.Value }, null);
+        }
+        else
+        {
+            return Problem(result.Error.Message, statusCode: (int)result.Error.Code);
+        }
     }
 }
