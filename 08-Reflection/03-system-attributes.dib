@@ -1,0 +1,633 @@
+#!markdown
+
+# 8.3. System Attributes
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/8-reflection/3-system-attributes.
+
+It covers topics for section [8.3. System Attributes](https://gienieczko.com/teaching/csharp/8-reflection/3-system-attributes).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Caller Info Attributes
+
+There is a number of special built-in attributes that are interpreted by the compiler
+at callsites during code generation. These are useful for debugging purposes.
+
+All of them can be visualised in a single snippet:
+
+#!csharp
+
+#nullable enable
+
+using System.Runtime.CompilerServices;
+
+public void TraceMessage(string message,
+    [CallerMemberName] string memberName = "",
+    [CallerFilePath] string sourceFilePath = "",
+    [CallerLineNumber] int sourceLineNumber = 0,
+    [CallerArgumentExpression("message")] string expression = "")
+{
+    Console.WriteLine("message: " + message);
+    Console.WriteLine("member name: " + memberName);
+    Console.WriteLine("source file path: " + sourceFilePath);
+    Console.WriteLine("source line number: " + sourceLineNumber);
+    Console.WriteLine("expression: " + expression);
+}
+
+void Foo()
+{
+    TraceMessage("constant message");
+    TraceMessage(string.Join(' ', new [] { "complex", "expression" }));
+}
+
+Foo();
+
+#!markdown
+
+File path does not work with scripts, but the rest do.
+
+The compiler examines the call sites to such methods and fills in the optional arguments with constant values
+representing the requested metadata. The arguments with the attributes have to be optional.
+
+By the way, `CallerArgumentExpressionAttribute` is the reason why `ArgumentNullException.ThrowIfNull` works
+how it works and magically has the name of the argument being validated attached.
+
+#!csharp
+
+#nullable enable
+
+string? myFancyName = null;
+ArgumentNullException.ThrowIfNull(myFancyName);
+
+#!markdown
+
+## Special System Attributes
+
+Some BCL attributes influence codegen or analysis in predefined ways.
+We've seen one of them -- the `ObsoleteAttribute` triggers an analysis warning
+when a given member is used.
+
+#!csharp
+
+public class MyClass
+{
+    [Obsolete("Use Bar instead.")]
+    public void Foo() {}
+
+    public void Bar() {}
+}
+
+var instance = new MyClass();
+instance.Foo();
+
+#!markdown
+
+### `InternalsVisibleToAttribute`
+
+By slapping this attribute onto our assembly we can make its `internal` symbols
+visible to another assembly. This is especially useful for testing.
+
+```csharp
+[assembly: InternalsVisibleTo("My.OtherAssembly")]
+```
+
+#!markdown
+
+### `MethodImplAttribute`
+
+We can influence how the JIT compiler handles methods with this attribute,
+by passing special flags changing the default behaviour.
+
+```csharp
+[MethodImpl(MethodImplOptions.AggressiveInlining)]
+void Foo() {}
+```
+
+This shouldn't be used lightly, only when we can measure that there is a performance problem
+that is meaningfully addressed by a MethodImpl.
+
+#!markdown
+
+## Nullable static analysis attributes
+
+In addition to the `?` type annotation, a number of attributes were introduced
+to enable more complex analysis of null-state. These live in `System.Diagnostics.CodeAnalysis`.
+
+### `AllowNullAttribute` and `DisallowNullAttribute`
+
+Imagine you have a property that is never null, but it's sensible for users to provide a `null` value
+in its setter – in that case a default value gets generated to uphold the non-null guarantee.
+
+#!csharp
+
+#nullable enable
+
+public class User
+{
+    private string _displayName = "Anonymous";
+
+    public string DisplayName
+    {
+        get => _displayName;
+        set => _displayName = value ?? "Anonymous";
+    }
+}
+
+var user = new User();
+
+Console.WriteLine(user.DisplayName);
+
+#!markdown
+
+Now this is a warning:
+
+#!csharp
+
+#nullable enable
+
+user.DisplayName = null;
+
+Console.WriteLine(user.DisplayName);
+
+#!markdown
+
+But it's clearly a correct usage of our API. Making the property nullable is prohibitively restrictive:
+
+#!csharp
+
+#nullable enable
+
+public class User
+{
+    private string _displayName = "Anonymous";
+
+    public string? DisplayName
+    {
+        get => _displayName;
+        set => _displayName = value ?? "Anonymous";
+    }
+}
+
+var user = new User();
+
+Console.WriteLine(user.DisplayName);
+Console.WriteLine(user.DisplayName.Length);
+
+#!markdown
+
+To make this work, we can leave the property as non-nullable, but annotate it with the `AllowNullAttribute`:
+
+#!csharp
+
+#nullable enable
+
+using System.Diagnostics.CodeAnalysis;
+
+public class User
+{
+    private string _displayName = "Anonymous";
+
+    [AllowNull]
+    public string DisplayName
+    {
+        get => _displayName;
+        set => _displayName = value ?? "Anonymous";
+    }
+}
+
+var user = new User();
+
+Console.WriteLine(user.DisplayName);
+Console.WriteLine(user.DisplayName.Length);
+
+user.DisplayName = null;
+
+Console.WriteLine(user.DisplayName);
+Console.WriteLine(user.DisplayName.Length);
+
+#!markdown
+
+You can do the reverse with `DisallowNullAttribute`:
+
+#!csharp
+
+#nullable enable
+
+using System.Diagnostics.CodeAnalysis;
+
+public class User
+{
+    private string? _displayName = null;
+
+    [DisallowNull]
+    public string? DisplayName
+    {
+        get => _displayName;
+        set => _displayName = value ?? throw new ArgumentNullException(nameof(value));
+    }
+}
+
+var user = new User();
+
+Console.WriteLine(user.DisplayName);
+Console.WriteLine(user.DisplayName?.Length);
+
+user.DisplayName = null;
+
+#!markdown
+
+### `NotNullAttribute`
+
+Because nullability with generics is a bit all over the place,
+you sometimes might want to say that a method never returns `null` even if someone provides
+a nullable type as the type parameter. For example:
+
+#!csharp
+
+#nullable enable
+
+public class AlwaysNotNull<T>
+{
+    private T? _value;
+
+    public T ValueOrThrow => _value ?? throw new InvalidOperationException("Must not be null");
+
+    public AlwaysNotNull(T? value) => _value = value;
+}
+
+var notnull = new AlwaysNotNull<string?>("value");
+
+Console.WriteLine(notnull.ValueOrThrow.Length);
+
+#!markdown
+
+You can note this with the `NotNullAttribute`:
+
+#!csharp
+
+#nullable enable
+
+using System.Diagnostics.CodeAnalysis;
+
+public class AlwaysNotNull<T>
+{
+    private T? _value;
+
+    [return: NotNull]
+    public T ValueOrThrow() => _value ?? throw new InvalidOperationException("Must not be null");
+
+    public AlwaysNotNull(T? value) => _value = value;
+}
+
+var notnull = new AlwaysNotNull<string?>("value");
+
+Console.WriteLine(notnull.ValueOrThrow().Length);
+
+#!markdown
+
+That's some magical annotation for the attribute, but it should be obvious what it means:
+we want to note that the return values from this method are never null.
+
+This attribute has a slightly different meaning for input arguments.
+It specifies that if the method ever returns, then it had to be non null.
+This is nice for helper methods like these:
+
+#!csharp
+
+#nullable enable
+
+public static void ThrowWhenNull(object? value)
+{
+    if (value == null) 
+    {
+        throw new ArgumentNullException(nameof(value));
+    }
+}
+
+void Foo(string? nullable)
+{
+    ThrowWhenNull(nullable);
+
+    Console.WriteLine(nullable.Length);
+}
+
+Foo("test value");
+
+#!markdown
+
+We want users to be able to pass an `object?` since its only purpose is to validate such values, but we know that when it returns the argument must no longer be `null`.
+
+#!csharp
+
+#nullable enable
+
+using System.Diagnostics.CodeAnalysis;
+
+public static void ThrowWhenNull([NotNull] object? value)
+{
+    if (value == null) 
+    {
+        throw new ArgumentNullException(nameof(value));
+    }
+}
+
+void Foo(string? nullable)
+{
+    ThrowWhenNull(nullable);
+
+    Console.WriteLine(nullable.Length);
+}
+
+Foo("test value");
+
+#!markdown
+
+### `NotNullWhenAttribute`
+
+There's a helper method on `string`: `string.IsNullOrEmpty(string?)`, which does exactly what you think it does.
+Writing it naively doesn't really have the desired effect:
+
+#!csharp
+
+#nullable enable
+
+bool IsNullOrEmpty(string? value) => value == null || value == "";
+
+int Foo(string? value)
+{
+    if (IsNullOrEmpty(value))
+    {
+        return 0;
+    }
+
+    return value.Length;
+}
+
+Console.WriteLine(Foo("test"));
+
+#!markdown
+
+We know that if `IsNullOrEmpty` returned `false` then `value` must not be `null`. We can annotate that
+with the `NotNullWhenAttribute` that ties this fact to the return value of the method:
+
+#!csharp
+
+#nullable enable
+
+using System.Diagnostics.CodeAnalysis;
+
+bool IsNullOrEmpty([NotNullWhen(false)] string? value) => value == null || value == "";
+
+int Foo(string? value)
+{
+    if (IsNullOrEmpty(value))
+    {
+        return 0;
+    }
+
+    return value.Length;
+}
+
+Console.WriteLine(Foo("test"));
+
+#!markdown
+
+This also very useful for the `TryX` pattern, for example if we had a collection that we could query by index:
+
+#!csharp
+
+#nullable enable
+
+class Collection<T> where T : notnull
+{
+    private T[] _array = new T[1000];
+
+    public void Insert(int index, T value) => _array[index] = value;
+
+    public bool TryGetAt(int index, out T? value)
+    {
+        if (index < 0 || index >= _array.Length)
+        {
+            value = default;
+            return false;
+        }
+
+        value = _array[index];
+        return true;
+    }
+}
+
+var collection = new Collection<string>();
+
+if (collection.TryGetAt(0, out var value))
+{
+    Console.WriteLine(value.Length);
+}
+
+#!markdown
+
+Obviously, if the `TryGetAt` method returns `true` then we can be sure that the `out` value is not null.
+
+#!csharp
+
+#nullable enable
+
+using System.Diagnostics.CodeAnalysis;
+
+class Collection<T> where T : notnull
+{
+    private T[] _array = new T[1000];
+
+    public void Insert(int index, T value) => _array[index] = value;
+
+    public bool TryGetAt(int index, [NotNullWhen(true)] out T? value)
+    {
+        if (index < 0 || index >= _array.Length || _array[index] == null)
+        {
+            value = default;
+            return false;
+        }
+
+        value = _array[index];
+        return true;
+    }
+}
+
+var collection = new Collection<string>();
+
+if (collection.TryGetAt(0, out var value))
+{
+    Console.WriteLine(value.Length);
+}
+
+#!markdown
+
+### `NotNullIfNotNullAttribute`
+
+Sometimes nullabilities of returns are tied to nullabilities of arguments.
+For example, a null-safe `ToUpper` method:
+
+#!csharp
+
+#nullable enable
+
+string? ToUpper(string? value) => value?.ToUpper();
+
+Console.WriteLine(ToUpper("value").Length);
+
+#!markdown
+
+Clearly, if the input parameter is not null, then the return value also is.
+We can tie them together with the `NotNullIfNotNullAttribute`.
+
+#!csharp
+
+#nullable enable
+
+using System.Diagnostics.CodeAnalysis;
+
+[return: NotNullIfNotNull("value")]
+string? ToUpper(string? value) => value?.ToUpper();
+
+Console.WriteLine(ToUpper("value").Length);
+
+#!markdown
+
+Unfortunately, `nameof` doesn't work here (yet).
+
+#!markdown
+
+### `MemberNotNullAttribute` and `MemberNotNullWhenAttribute`
+
+#!markdown
+
+Sometimes we want to move initialisation of values to a helper,
+but the compiler only analyses field initialisers and constructor body directly
+for initialisation. So this is a warning, even though it's certainly correct:
+
+#!csharp
+
+#nullable enable
+
+class User
+{
+    public string Name { get; private set; }
+
+    public User()
+    {
+        InitialiseName();
+    }
+
+    private void InitialiseName()
+    {
+        var value = "some complex logic would go here";
+        Name = value;
+    }
+}
+
+#!markdown
+
+We can mark the helper with `MemberNotNullAttribute` to say that when it returns it has initialised some of the members:
+
+#!csharp
+
+#nullable enable
+
+using System.Diagnostics.CodeAnalysis;
+
+class User
+{
+    public string Name { get; private set; }
+
+    public User()
+    {
+        InitialiseName();
+    }
+
+    [MemberNotNull(nameof(Name))]
+    private void InitialiseName()
+    {
+        var value = "some complex logic would go here";
+        Name = value;
+    }
+}
+
+#!markdown
+
+A more complex case is when a condition is tied to whether we can consider something not null.
+Here's a snippet from a [real use case in the wild](https://stackoverflow.com/questions/59018601/can-i-tell-c-sharp-nullable-references-that-a-method-is-effectively-a-null-check).
+
+#!csharp
+
+#nullable enable
+
+class Foo
+{
+    public string? Name { get; set; }
+
+    public bool HasName => Name != null;
+
+    public void NameToUpperCase()
+    {
+        if (HasName)
+        {
+            Name = Name.ToUpper();
+        }
+    }
+}
+
+#!markdown
+
+Clearly, if `HasName` is true then `Name` is not null. The `MemberNotNullWhenAttribute` fixes this:
+
+#!csharp
+
+#nullable enable
+
+class Foo
+{
+    public string? Name { get; set; }
+
+    [MemberNotNullWhen(true, nameof(Name))]
+    public bool HasName => Name != null;
+  
+    public void NameToUpperCase()
+    {
+        if (HasName)
+        {
+            Name = Name.ToUpper();
+        }
+    }
+}
+
+#!markdown
+
+## Summary
+
+We've learnt how to retrieve debug metadata with Caller Info Attributes.
+We know how the nullability features interact with generics and that we can use a variety of attributes
+to help the compiler give us the best static analysis possible.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [8.4. Dynamic](https://gienieczko.com/teaching/csharp/8-reflection/4-dynamic),
+or straight to the next notebook, [`04-dynamic.dib`](04-dynamic.dib).

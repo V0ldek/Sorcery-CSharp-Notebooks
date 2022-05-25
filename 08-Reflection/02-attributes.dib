@@ -176,7 +176,7 @@ There is a small wrinkle in the above code. We explicitly cast the asynchronous 
 though we know there are many different types that can be awaited, `ValueTask<T>` being one of them.
 If we try to resolve a service with a `ValueTask<T>` factory method we will get a nasty runtime exception.
 
-Unfortunately, the various task-like types don't share an interface -- `await` relies on them having
+Unfortunately, the various task-like types don't share an interface – `await` relies on them having
 a certain shape, with a `GetAwaiter` method, etc. There is, however, one ultimate trick that we have at our disposal.
 
 We can break free of the type system.
@@ -191,5 +191,5 @@ We've learnt how to retrieve attribute metadata and how to define our own custom
 
 ## Next up:
 
-Continue with the next section, [8.3. Dynamic](https://gienieczko.com/teaching/csharp/8-reflection/3-dynamic),
-or straight to the next notebook, [`03-dynamic.dib`](03-dynamic.dib).
+Continue with the next section, [8.3. System Attributes](https://gienieczko.com/teaching/csharp/8-reflection/3-system-attributes),
+or straight to the next notebook, [`03-system-attributes.dib`](03-system-attributes.dib).

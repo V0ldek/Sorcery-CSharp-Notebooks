@@ -76,7 +76,7 @@ properties outside the positional ones, etc. At runtime, there is no way to tell
 #!markdown
 
 The constructor generated from positional property parameters is called the _primary constructor_. A record can have
-custom constructors, but they must always call the primary constructor as well -- a record guarantees that the primary
+custom constructors, but they must always call the primary constructor as well – a record guarantees that the primary
 properties are always properly initialised. This is explained better than I could do it in [this StackOverflow answer](https://stackoverflow.com/a/65275929/4646738).
 
 #!csharp

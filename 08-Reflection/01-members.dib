@@ -25,7 +25,7 @@ That's kind of the point of doing all this in notebooks.
 
 #!markdown
 
-## Retrieving Members -- `BindingFlags`
+## Retrieving Members – `BindingFlags`
 
 The `Type` type has a lot of `GetX` methods that allow us to fetch various `MemberInfo` objects. `MemberInfo` is a base
 class of a hierarchy of reflection types that give us handles to particular members of a type.
@@ -243,8 +243,8 @@ As we can see, even `readonly` isn't an issue for reflection.
 
 ## Other Stuff
 
-There's a lot of cases for reflection to cover -- interfaces, generics, ref parameters, events... Digging into all the details
-wouldn't really be useful -- just experiment by yourself! The remaining important part is attributes.
+There's a lot of cases for reflection to cover – interfaces, generics, ref parameters, events... Digging into all the details
+wouldn't really be useful – just experiment by yourself! The remaining important part is attributes.
 
 #!markdown
 

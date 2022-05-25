@@ -1,6 +1,6 @@
 #!markdown
 
-# 8.3. Dynamic
+# 8.4. Dynamic
 
 <small>Copyright (c) Mateusz Gienieczko 2022</small>
 
@@ -8,9 +8,9 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/8-reflection/3-dynamic.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/8-reflection/4-dynamic.
 
-It covers topics for section [8.3. Dynamic](https://gienieczko.com/teaching/csharp/8-reflection/3-dynamic).
+It covers topics for section [8.4. Dynamic](https://gienieczko.com/teaching/csharp/8-reflection/4-dynamic).
 
 ### Notebook flow
 
@@ -56,7 +56,7 @@ PrintLength(new StringBuilder("Of a string builder"));
 #!markdown
 
 `dynamic` is like a virus, spreading through all the code that touches it.
-In the above code the type of `x.Length` is also `dynamic` -- whenever we call
+In the above code the type of `x.Length` is also `dynamic` – whenever we call
 some member on a `dynamic` value, or pass it to a method and retrieve a result,
 the compiler just assumes we know what we're doing and labels it as `dynamic`.
 There are a few exceptions, for example calling `new T` always results in a `T`.
@@ -284,11 +284,167 @@ APIs or some other hellish library. This is actually why `dynamic` was introduce
 
 Mostly this boils down to "this would be easier to write in a dynamic language, let's".
 
+For an example of test application, think of testing ASP.NET Core API controllers.
+They may return a lot of different subtypes
+of `ActionResult` depending on what exact way we return from
+an action. But usually what we care about is that `result.StatusCode` is equal
+to 200 and the `result.Value` is set to our expected object, or something along these lines.
+Instead of casting and having tests that will break as soon as we decide to return a slightly different
+object from the API, we can just `dynamic` the result and ask for these properties directly.
+
+For an example of reflection code, let's fix the `Resolver` class from the previous section,
+so that the `Await` option works on anything awaitable:
+
+#!csharp
+
+[AttributeUsage(AttributeTargets.Method, Inherited = false)]
+public sealed class FactoryMethodAttribute : Attribute
+{
+    public bool Await { get; init; }
+}
+
+public class Service
+{
+    public void SayHello() => Console.WriteLine("Hello from the Service!");
+
+    [FactoryMethod]
+    public static Service Create()
+    {
+        Console.WriteLine("Creating a Service...");
+        // Complex logic here.
+        return new Service();
+    }
+}
+
+public class AsyncService
+{
+    public void SayHello() => Console.WriteLine("Hello from the AsyncService!");
+
+    [FactoryMethod(Await = true)]
+    public static async Task<AsyncService> CreateAsync()
+    {
+        Console.WriteLine("Creating an AsyncService...");
+        // Complex logic here.
+        await Task.Delay(1000);
+        return new AsyncService();
+    }
+}
+
+public class ValueTaskAsyncService
+{
+    public void SayHello() => Console.WriteLine("Hello from the ValueTaskAsyncService!");
+
+    [FactoryMethod(Await = true)]
+    public static async ValueTask<ValueTaskAsyncService> CreateAsync()
+    {
+        Console.WriteLine("Creating a ValueTaskAsyncService...");
+        // Complex logic here.
+        await Task.Delay(10);
+        return new ValueTaskAsyncService();
+    }
+}
+
+#!csharp
+
+using System.Reflection;
+
+public sealed class Resolver
+{
+    public static async ValueTask<T> ResolveAsync<T>()
+    {
+        Type type = typeof(T);
+        var factoryMethods = 
+            from method in type.GetMethods(BindingFlags.Public | BindingFlags.Static)
+            let attribute = method.GetCustomAttribute<FactoryMethodAttribute>()
+            where attribute is not null
+            select new
+            {
+                Method = method,
+                Await = attribute.Await
+            };
+
+        var onlyMethod = factoryMethods.Single();
+
+        var result = onlyMethod.Method.Invoke(null, null);
+        if (onlyMethod.Await)
+        {
+            // Dynamically bind await methods.
+            //           vvvvvvvvv
+            return await (dynamic) result;
+        }
+        else
+        {
+            return (T) result;
+        }
+    }
+}
+
+#!csharp
+
+var service = await Resolver.ResolveAsync<Service>();
+var asyncService = await Resolver.ResolveAsync<AsyncService>();
+var valueTaskAsyncService = await Resolver.ResolveAsync<ValueTaskAsyncService>();
+
+service.SayHello();
+asyncService.SayHello();
+valueTaskAsyncService.SayHello();
+
+#!markdown
+
+## Limitations
+
+There a few things that don't play well with `dynamic`. First of all,
+extension methods are magical syntactical sugar that doesn't exist at runtime, so
+the dynamic binder does not resolve extension methods.
+
+#!csharp
+
+public class MyType {}
+
+public static void Extension(this MyType my)
+{
+    Console.WriteLine("Extension!");
+}
+
+var instance = new MyType();
+
+instance.Extension(); // This is ok, resolves to Extension(instance).
+((dynamic) instance).Extension(); // This fails.
+
+#!markdown
+
+I am fairly convince that using additional reflection magic and manually implementing
+`IDynamicMetaObjectProvider` one _could_ force the dynamic binder to recognise extensions.
+
+#!markdown
+
+Two, tuple names are also fake, so they don't work.
+
+#!csharp
+
+(int a, int b) tup = (4, 7);
+dynamic dyn = tup;
+
+Console.WriteLine(tup.a);
+Console.WriteLine(dyn.a);
+
+#!markdown
+
+And finally, a fascinating wrinkle that I am obliged to mention every time I talk about
+dynamic is that anonymous types are `internal`. Therefore, if you get access to an object
+that has an underlying anonymous type from a different assembly, dynamic dispatch on it
+will not work at all, because the binder only looks at public members. There's no way
+to visualise this in a notebook, though.
+
+This is mostly useless trivia, but understanding the interactions between DLR and the
+rest of C# is useful and make us more aware of the language as a whole.
+
 #!markdown
 
 ## Summary
 
-We've learnt how to retrieve attribute metadata and how to define our own custom attributes.
+We've met the DLR and the `dynamic` type that allows us to defer type
+soundness checks until runtime.
 
 #!markdown
 
