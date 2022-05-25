@@ -8,7 +8,7 @@ public class Service
 
     public Service(IRepository repository) => _repository = repository;
 
-    public async Task<Result<Item?, Exception>> Query(string id)
+    public async Task<Result<Item?, Exception>> QueryAsync(string id)
     {
         ArgumentNullException.ThrowIfNull(id);
 
