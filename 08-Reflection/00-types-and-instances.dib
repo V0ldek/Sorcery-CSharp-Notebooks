@@ -1,0 +1,246 @@
+#!markdown
+
+# 8.0. Types and Instances
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/8-reflection/0-types-and-instances.
+
+It covers topics for section [8.0. Types and Instances](https://gienieczko.com/teaching/csharp/8-reflection/0-types-and-instances).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## What Is Reflection?
+
+Reflection is a mechanism available in high level languages where a program can examine its own structure at runtime
+(reflect upon its existence, so to speak). Technically, [6.0. Expression Trees](https://gienieczko.com/teaching/csharp/6-entity-framework/0-expression-trees)
+are a kind of reflection. Even checking a type of a value at runtime can be considered reflection.
+
+In practice, when we talk about reflection we mean more involved operations, like examining a types attributes,
+dynamically invoking a method defined on a type, and even more magical operations. The key property of reflection
+is that it's useful for some specific cases, and it's _stupidly_ powerful. It's basically a gigantic
+hack built into the language to allow us to do crazy yet cool stuff.
+
+#!markdown
+
+## `typeof` and `GetType`
+
+Reflection data about a type is located in objects of the `Type` class. There are three common ways of obtaining a `Type`
+
+1. statically, if the type is known at compile time, one can use `typeof`,
+2. dynamically, invoking Type `object.GetType()`,
+3. dynamically, by inspecting the assembly of the type and finding it by name
+
+#!csharp
+
+using System.Reflection;
+
+public record class MyType();
+
+void PrintType(object obj)
+{
+    Type t = obj.GetType();
+    Console.WriteLine(t.Name);
+}
+
+PrintType(3);
+PrintType("three");
+
+Type staticType = typeof(DateTime);
+Console.WriteLine(staticType);
+
+#!markdown
+
+## `Type`
+
+#!markdown
+
+The `Type` object contains a lot of metadata, including the type name, data of the assembly it comes from,
+as well as information on all of its members.
+
+#!csharp
+
+Type staticType = typeof(DateTime);
+
+Console.WriteLine(staticType.Name);
+Console.WriteLine(staticType.FullName);
+Console.WriteLine(staticType.AssemblyQualifiedName);
+Console.WriteLine(staticType.BaseType.Name);
+Console.WriteLine(staticType.IsClass);
+Console.WriteLine(staticType.IsValueType);
+Console.WriteLine(staticType.IsGenericType);
+
+#!markdown
+
+A lot of the methods and properties are related to generics, since these are tricky.
+
+#!markdown
+
+## Generics
+
+When writing regular code we only ever interact with fully specified generic types, called _closed_ types.
+On the other hand, a type that has some unspecified type parameters is called an _open_ type. We can
+get an open type only through reflection, and there is no way to instantiate such a type:
+
+#!csharp
+
+void PrintTypes(IEnumerable<Type> types) =>
+    Console.WriteLine(string.Join(",", types));
+
+#!csharp
+
+Type closedList = typeof(List<int>);
+Console.WriteLine(closedList.IsGenericType);
+Console.WriteLine(closedList.IsGenericTypeDefinition);
+Console.WriteLine(closedList.ContainsGenericParameters);
+PrintTypes(closedList.GenericTypeArguments);
+
+Type openList = typeof(List<>);
+Console.WriteLine(openList.IsGenericType);
+Console.WriteLine(openList.IsGenericTypeDefinition);
+Console.WriteLine(openList.ContainsGenericParameters);
+PrintTypes(openList.GenericTypeArguments);
+
+#!markdown
+
+We can close an open type by giving it type parameters, or vice versa, open a type by getting its definition.
+
+#!csharp
+
+Type closedList = typeof(List<int>);
+Type openList = typeof(List<>);
+
+Type constructedList = openList.MakeGenericType(new []{ typeof(int) });
+Console.WriteLine(constructedList == closedList);
+
+Console.WriteLine(closedList.GetGenericTypeDefinition() == openList);
+
+#!markdown
+
+## Instantiating Types
+
+When we have a closed type in hand we can instantiate it. The easiest way is via the `Activator` static class.
+
+#!csharp
+
+Type closedList = typeof(List<int>);
+
+var list = (List<int>)(Activator.CreateInstance(closedList));
+
+list.Add(42);
+list.Add(17);
+
+Console.WriteLine(string.Join(", ", list));
+
+#!markdown
+
+An open type cannot be instantiated.
+
+#!csharp
+
+Type closedList = typeof(List<>);
+
+var list = (List<int>)(Activator.CreateInstance(closedList));
+
+list.Add(42);
+list.Add(17);
+
+Console.WriteLine(string.Join(", ", list));
+
+#!markdown
+
+We can also call parametrised constructors. For example, the following code wraps an `IEnumerable<int>`
+in a collection whose type is given to it as an argument.
+
+#!csharp
+
+object Wrap(IEnumerable values, Type type)
+{
+    object collection = Activator.CreateInstance(type, values);
+    return collection;
+}
+
+var source = new[] { 47, 2, 3, 3, 18 };
+
+var list = (List<int>)Wrap(source, typeof(List<int>));
+var set = (HashSet<int>)Wrap(source, typeof(HashSet<int>));
+var sortedSet = (SortedSet<int>)Wrap(source, typeof(SortedSet<int>));
+
+Console.WriteLine($"list: {string.Join(", ", list)}");
+Console.WriteLine($"set: {string.Join(", ", set)}");
+Console.WriteLine($"sorted set: {string.Join(", ", sortedSet)}");
+
+#!markdown
+
+This can even be generic to be more ergonomic!
+
+#!csharp
+
+TCollection Wrap<TCollection>(IEnumerable values)
+{
+    Type type = typeof(TCollection);
+    TCollection collection = (TCollection)Activator.CreateInstance(type, values);
+    return collection;
+}
+
+var source = new[] { 47, 2, 3, 3, 18 };
+
+var list = Wrap<List<int>>(source);
+var set = Wrap<HashSet<int>>(source);
+var sortedSet = Wrap<SortedSet<int>>(source);
+
+Console.WriteLine($"list: {string.Join(", ", list)}");
+Console.WriteLine($"set: {string.Join(", ", set)}");
+Console.WriteLine($"sorted set: {string.Join(", ", sortedSet)}");
+
+#!markdown
+
+Recall that the generic types are known at compile time, so `typeof(T)` for some generic type parameter will
+always evaluate to the actual type substituted for `T`.
+
+Of course, with such code we are laughing ~~god~~ the type system in the face. No one stops us from doing something
+completely nonsensical:
+
+#!csharp
+
+var list = Wrap<DateTime>(source);
+
+#!markdown
+
+Another way of instantiating objects is via the constructor method, which we will see in the next section.
+
+#!markdown
+
+## When to Use `typeof`/`GetType`
+
+In general, if it the type is known _always_ use `typeof`. It clarifies the intent better, and is also orders of magnitude faster,
+since the compiler can substitute that operator for the type directly, whereas calling `GetType` actually requires reading the object's
+metadata. Moreover, `GetType` is an instance method, so it only works if the value is not null.
+
+#!markdown
+
+## Summary
+
+We've met the API that allows us to construct and examine magical spells using higher-level magical language.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [8.1. Members](https://gienieczko.com/teaching/csharp/8-reflection/1-members),
+or straight to the next notebook, [`01-members.dib`](01-members.dib).

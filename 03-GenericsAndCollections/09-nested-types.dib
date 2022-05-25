@@ -307,4 +307,4 @@ We've learnt of two general categories of nested types and a few examples of idi
 ## Next up:
 
 Continue with the next section, [3.10. HashCode as a Mutable Struct](https://gienieczko.com/teaching/csharp/3-generics/10-hashcode-as-a-mutable-struct),
-or straight to the next notebook, `10-tuples.dib`.
+or straight to the next notebook, [`10-hashcode-as-a-mutable-struct`](/03-GenericsAndCollections/10-hashcode-as-a-mutable-struct.dib).

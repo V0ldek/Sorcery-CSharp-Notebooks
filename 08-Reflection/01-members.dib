@@ -1,0 +1,261 @@
+#!markdown
+
+# 8.1. Members
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/8-reflection/1-members.
+
+It covers topics for section [8.1. Members](https://gienieczko.com/teaching/csharp/8-reflection/1-members).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Retrieving Members -- `BindingFlags`
+
+The `Type` type has a lot of `GetX` methods that allow us to fetch various `MemberInfo` objects. `MemberInfo` is a base
+class of a hierarchy of reflection types that give us handles to particular members of a type.
+There's `FieldInfo`, `PropertyInfo`, `MethodInfo`, `ConstructorInfo`, `EventInfo`... and `Type` itself. 
+
+Looking up members is defined by a flags enum `BindingFlags`. It tells the runtime what kind of types we want to be
+returned. The default value for most invocations is `BindingFlags.Public | BindingFlags.Instance`. The opposite
+of those two are `BindingFlags.NonPublic` and `BindingFlags.Static`, respectively. They do what you might think,
+limiting us to `public` and non-`static` members, or the other way around. We can also get all members with
+`BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static`.
+
+#!csharp
+
+using System.Reflection;
+
+public class MyType
+{
+    public void PublicInstance() {}
+    public static void PublicStatic() {}
+    protected void ProtectedInstance() {}
+    protected static void ProtectedStatic() {}
+    private void PrivateInstance() {}
+    private static void PrivateStatic() {}
+}
+
+void LookupAndPrint(BindingFlags flags)
+{
+    MethodInfo[] methods = typeof(MyType).GetMethods(flags);
+
+    Console.WriteLine($"{flags}: [ {string.Join(", ", methods.AsEnumerable())} ]");
+}
+
+LookupAndPrint(BindingFlags.Public | BindingFlags.Instance);
+LookupAndPrint(BindingFlags.NonPublic | BindingFlags.Instance);
+LookupAndPrint(BindingFlags.Public | BindingFlags.Static);
+LookupAndPrint(BindingFlags.NonPublic | BindingFlags.Static);
+LookupAndPrint(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+
+#!markdown
+
+## Invoking Methods
+
+When we have a `MethodInfo` in hand we can invoke it:
+
+#!csharp
+
+#nullable enable
+
+public class MyType
+{
+    public static void Print(int x) => Console.WriteLine($"Printing from MyType: {x}");
+}
+
+Type type = typeof(MyType);
+// We can get a method by name, but in case of multiple overloads it'd be an error.
+// A more robust way is to specify the types of all parameters to disambiguate the method.
+//                                           vvvvvvvvvvvvvvvvvvvvvv
+MethodInfo? method = type.GetMethod("Print", new [] { typeof(int) });
+
+// The first argument is the instance on which to call the method.
+// For static methods we pass in null.
+//             vvvv
+method!.Invoke(null, new object?[] { 42 });
+//                   ^^^^^^^^^^^^^^^^^^^^
+// The second argument is the list of paramaters passed to the method.
+// The value must be assignable to the actual parameter type or an
+// exception is thrown.
+
+#!markdown
+
+And here's how we call an instance method:
+
+#!csharp
+
+#nullable enable
+
+public record class MyType(int Value)
+{
+    public void Print(int x) => Console.WriteLine($"Printing from MyType: {x + Value}");
+}
+
+void InvokePrint<T>(T instance, int arg)
+{
+    Type type = typeof(T);
+    MethodInfo? method = type.GetMethod("Print", new [] { typeof(int) });
+    
+    method!.Invoke(instance, new object?[] { arg });
+}
+
+var myType = new MyType(10);
+
+InvokePrint(myType, 42);
+
+#!markdown
+
+Invoking methods this way is obviously slow. On my machine it's TWO HUNDRED AND TWENTY TIMES slower than regular.
+And that's without counting the `GetMethod` call, _just_ the `Invoke` on the method info!
+
+There are, rare but still, cases where we need to be invoking a method obtained by reflection a lot.
+Thankfully, there is a way to compile a `MethodInfo` into a statically typed delegate instance,
+which makes it considerably faster (and more ergonomic to use).
+
+#!csharp
+
+#nullable enable
+
+public record class MyType(int Value)
+{
+    public void Print(int x) => Console.WriteLine($"Printing from MyType: {x + Value}");
+}
+
+void InvokePrint<T>(T instance, int arg)
+{
+    Type type = typeof(T);
+    MethodInfo? method = type.GetMethod("Print", new [] { typeof(int) });
+
+    Action<T, int> action = method!.CreateDelegate<Action<T, int>>();
+    
+    action(instance, arg);
+}
+
+var myType = new MyType(10);
+
+InvokePrint(myType, 42);
+
+#!markdown
+
+This one is only $3\times$ slower than a regular call on my machine, again measuring only the call.
+In other words, around $80\times$ faster than only calling `MethodInfo.Invoke`.
+If we need to invoke a method many times through reflection, this is a freebie optimisation, and a _huge_ one if there are a lot of calls.
+
+#!markdown
+
+## Accessing Properties
+
+Properties are more complicated, since there might be two accessors.
+
+#!csharp
+
+#nullable enable
+
+public class MyType
+{
+    public int Value { get; private set; }
+
+    public MyType(int value) => Value = value;
+}
+
+Type type = typeof(MyType);
+PropertyInfo? prop = type.GetProperty("Value");
+MethodInfo? getter = prop!.GetMethod;
+MethodInfo? setter = prop.SetMethod;
+
+var instance = new MyType(42);
+
+Console.WriteLine(getter!.Invoke(instance, Array.Empty<object>()));
+setter!.Invoke(instance, new object[] { 10 });
+Console.WriteLine(getter.Invoke(instance, Array.Empty<object>()));
+
+#!markdown
+
+Reflection is not omnipotent, we cannot call an accessor that doesn't exist.
+
+#!csharp
+
+#nullable enable
+
+public class MyType
+{
+    public int Value { get; }
+
+    public MyType(int value) => Value = value;
+}
+
+Type type = typeof(MyType);
+PropertyInfo? prop = type.GetProperty("Value");
+MethodInfo? setter = prop!.SetMethod;
+
+Console.WriteLine(setter is null);
+
+#!markdown
+
+## Fields
+
+Accessing fields is similar to properties, only there aren't separate `MethodInfo`s for setting or getting,
+rather methods on `FieldInfo` to facilitate that.
+
+#!csharp
+
+#nullable enable
+
+public class MyType
+{
+    private readonly int _value;
+
+    public MyType(int value) => _value = value;
+}
+
+Type type = typeof(MyType);
+// Field is private, so we need to pass custom binding flags to find it.
+//                                         vvvvvvvvvvvvvvvvvvvvvv
+FieldInfo? field = type.GetField("_value", BindingFlags.NonPublic | BindingFlags.Instance);
+
+var instance = new MyType(42);
+
+Console.WriteLine(field!.GetValue(instance));
+field!.SetValue(instance, 10);
+Console.WriteLine(field.GetValue(instance));
+
+#!markdown
+
+As we can see, even `readonly` isn't an issue for reflection.
+
+#!markdown
+
+## Other Stuff
+
+There's a lot of cases for reflection to cover -- interfaces, generics, ref parameters, events... Digging into all the details
+wouldn't really be useful -- just experiment by yourself! The remaining important part is attributes.
+
+#!markdown
+
+## Summary
+
+We've met the `System.Reflection` API that gives us powers to break the universe with just a few
+calls and casts.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [8.2. Attributes](https://gienieczko.com/teaching/csharp/8-reflection/2-attributes),
+or straight to the next notebook, [`02-attributes.dib`](02-attributes.dib).

@@ -1,0 +1,298 @@
+#!markdown
+
+# 8.3. Dynamic
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/8-reflection/3-dynamic.
+
+It covers topics for section [8.3. Dynamic](https://gienieczko.com/teaching/csharp/8-reflection/3-dynamic).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## The `dynamic` Type
+
+There are two keywords that I have purposefully avoided mentioning throughout this course, as they both
+are bound to bring unspeakable horrors onto the world. Today's hero, `dynamic`, is the less dangerous of the two,
+but it still fundamentally alters the way program execution flows.
+
+The `dynamic` type is a compiler annotation to stop statically checking our code whenever we interact
+with a given value. In reality, it is represented as the `object` type underneath, but the compiler
+generates completely different code for interacting with it. It just says "not my job" and ignores
+whatever insanity we're about to commit.
+
+#!markdown
+
+<img src="img/immapretendididntseethat.png" alt="The compiler, probably" width="400"/>
+
+The compiler when you use `dynamic`.
+
+#!csharp
+
+void PrintLength(dynamic x)
+{
+    Console.WriteLine(x.Length);
+}
+
+PrintLength("Of a string");
+PrintLength(new [] { "of", "an", "array" });
+PrintLength(new StringBuilder("Of a string builder"));
+
+#!markdown
+
+`dynamic` is like a virus, spreading through all the code that touches it.
+In the above code the type of `x.Length` is also `dynamic` -- whenever we call
+some member on a `dynamic` value, or pass it to a method and retrieve a result,
+the compiler just assumes we know what we're doing and labels it as `dynamic`.
+There are a few exceptions, for example calling `new T` always results in a `T`.
+
+Whenever we try to assign `dynamic` to a statically typed variable
+or just cast it to something else, that's when the compiler resumes its work.
+
+Since compiler doesn't check what we're doing it's entire possible we'll screw up.
+In that case, the type system will slap our hands at runtime
+
+#!csharp
+
+void PrintLength(dynamic x)
+{
+    Console.WriteLine(x.Length);
+}
+
+PrintLength(new List<int> { 1, 2, 3 });
+
+#!csharp
+
+void Add3(dynamic x)
+{
+    int y = x + 3;
+    Console.WriteLine(y);
+}
+
+Add3(5);
+Add3(5.0);
+
+#!markdown
+
+## Dynamic Overload Resolution
+
+One of the implications of dynamic binding is that it makes multiple dynamic dispatch
+possible.
+
+#!csharp
+
+void Foo(string x) => Console.WriteLine("Foo(string)");
+void Foo(int x) => Console.WriteLine("Foo(int)");
+void Foo(double x) => Console.WriteLine("Foo(double)");
+void Foo(List<int> x) => Console.WriteLine("Foo(List<int>)");
+
+void Call(dynamic x) => Foo(x);
+
+Call(3);
+Call("3");
+Call(3.0);
+Call(new List<int> { 3 });
+Call(new int[] { 3 });
+
+#!markdown
+
+Since even static methods are bound dynamically, this applies to overloaded operators as well.
+
+#!markdown
+
+## `ExpandoObject`
+
+The DLR allows customising how dynamic dispatch works on a type with the `IDynamicMetaObjectProvider`.
+The possibilities are basically endless, you could configure dynamic dispatch on a type to contact your coffee machine
+and brew you an espresso every time a property is resolved.
+
+There is a magical object implemented with custom behaviour in the standard library, the `ExpandoObject`.
+
+#!csharp
+
+using System.Dynamic;
+
+void Print(ExpandoObject expando)
+{
+    Console.WriteLine("Expando:");
+    foreach (var (key, value) in expando)
+    {
+        Console.WriteLine($"{key}: {value}");
+    }
+}
+
+dynamic expando = new ExpandoObject();
+
+Print(expando);
+
+expando.MyProperty = "my value";
+expando.MyIntProperty = 42;
+
+Print(expando);
+
+Console.WriteLine(10 * expando.MyIntProperty);
+
+#!markdown
+
+## Dynamic Language Runtime
+
+Underneath all this there is the DLR. It is a .NET library tightly bound
+to the CLR that allows all of this sorcery to happen. Going into the details would be fascinating,
+but very time consuming.
+
+The system uses only the runtime value's type and the name of the member we're trying to invoke
+to bind a method. It has a number of optimisations that make dynamic code really fast due to caching
+(it performs the resolution only once for a given runtime type).
+
+The fun part I've left for the end. The DLR is not specific to C#. It allows us to add dynamic
+binding to anything running on the CLR. Or, for example, to construct a whole language based on dynamic
+on top of the .NET runtime.
+
+Meet IronPython.
+
+#!csharp
+
+#r "nuget:IronPython,3.4.0-beta1"
+
+#!csharp
+
+var engine = IronPython.Hosting.Python.CreateEngine();
+var scope = engine.CreateScope();
+
+engine.Execute(@"
+def hello(name):
+  return 'Hello ' + name.title() + '!'
+", scope);
+
+dynamic hello = scope.GetVariable("hello");
+string message = hello("world");
+
+Console.WriteLine(message);
+
+#!markdown
+
+The interop is very tight, one can use .NET types from within IronPython:
+
+#!csharp
+
+var engine = IronPython.Hosting.Python.CreateEngine();
+var scope = engine.CreateScope();
+
+engine.Execute(@"
+def append_five(list):
+  list.Add(5)
+", scope);
+
+List<int> list = new() { 1, 2, 3, 4 };
+dynamic append_five = scope.GetVariable("append_five");
+append_five(list);
+
+Console.WriteLine(string.Join(", ", list));
+
+#!csharp
+
+using System.Dynamic;
+
+void Print(ExpandoObject expando)
+{
+    Console.WriteLine("Expando:");
+    foreach (var (key, value) in expando)
+    {
+        Console.WriteLine($"{key}: {value}");
+    }
+}
+
+dynamic expando = new ExpandoObject();
+
+expando.MyProperty = "my value";
+expando.MyIntProperty = 42;
+
+var engine = IronPython.Hosting.Python.CreateEngine();
+var scope = engine.CreateScope();
+
+engine.Execute(@"
+def multiply_value(x):
+  return x.MyIntProperty * 10
+
+def set_property(x):
+  x.MyPythonValue = ""IronPython best Python""
+", scope);
+
+dynamic multiply_value = scope.GetVariable("multiply_value");
+dynamic set_property = scope.GetVariable("set_property");
+
+Console.WriteLine(multiply_value(expando));
+
+set_property(expando);
+
+Console.WriteLine(expando.MyPythonValue);
+
+#!markdown
+
+The support for Python 3 is still in beta. IronPython 2 is more stable.
+There also was IronRuby, but I don't think enough people cared about Ruby at all
+to sustain the project.
+
+#!markdown
+
+## Performance?
+
+No.
+
+Well, `dynamic` isn't _that_ bad. It's actually much faster than regular reflection,
+because the DLR is optimised _the hell_ out of this world. Going back to that rudimentary benchmark
+we had before it is about $20\times$ slower than regular calls, but that still makes it over $10\times$
+faster than just `MethodInfo.Invoke`.
+
+#!markdown
+
+## Use Cases
+
+When to use `dynamic` is another thing entirely.
+
+First of all, remember that C# is a statically typed language first and foremost.
+Dynamic binding wasn't introduced so that we stopped caring and used it everywhere.
+It is most useful in localised cases where
+
+1. We need to interact with outside types that are badly design and don't have common interface/base class
+in the regular type system, but they are used very similarly and we don't want to duplicate code.
+2. Prototyping/experimenting, where we don't really care about longevity and robustness and just
+want to run something.
+3. Working with outside data that is schemaless by design, but we want simple syntax to use it.
+For example, one could read a JSON document deserializing it to `ExpandoObject` and then use
+it as one would in JavaScript, without defining a schema type. Useful if the JSON was generated
+by a JavaScript developer who could not care less about things like "consistency" or "making sense".
+4. To aid in reflection-based code.
+5. In tests to reduce code.
+6. If, Odin forbid, you ever need to do COM interop and operate on objects returned by Microsoft Office
+APIs or some other hellish library. This is actually why `dynamic` was introduced in the first place.
+
+Mostly this boils down to "this would be easier to write in a dynamic language, let's".
+
+#!markdown
+
+## Summary
+
+We've learnt how to retrieve attribute metadata and how to define our own custom attributes.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [6.1. LINQ to SQL](https://gienieczko.com/teaching/csharp/6-entity-framework/1-linq-to-sql),
+or straight to the next notebook, [`01-linq-to-sql.dib`](01-linq-to-sql.dib).

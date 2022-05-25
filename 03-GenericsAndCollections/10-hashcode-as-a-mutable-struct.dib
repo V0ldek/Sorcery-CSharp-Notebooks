@@ -247,5 +247,5 @@ hashes using it.
 
 ## Next up:
 
-This is the end of the module, next up is the Assignment!
-Click here to go there: [Assignment 3. - Diverging Dungeons](https://gienieczko.com/teaching/csharp/3-generics-and-collections/assignment/3-diverging-dungeons).
+Continue with the next section, [3.11. Records](https://gienieczko.com/teaching/csharp/3-generics/11-records),
+or straight to the next notebook, [`11-records.dib`](/03-GenericsAndCollections/11-records.dib).

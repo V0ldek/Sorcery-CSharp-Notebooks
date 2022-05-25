@@ -1,0 +1,300 @@
+#!markdown
+
+# 3.12. Pattern Matching
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
+
+It covers topics for section [3.12. Pattern Matching](https://gienieczko.com/teaching/csharp/3-generics-and-collections/12-pattern-matching).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Places Enabling Pattern Matching
+
+As of this writing, in C# 10, there are 3 places where
+pattern matching is enabled:
+
+- `is` expressions
+- `switch` expressions
+- `switch` statements
+
+Statements are kind of passé, it's all about them expressions. We've been using pattern matching for quite a while now,
+this is a pattern match:
+
+```csharp
+if (x is string)
+{
+    ...
+}
+```
+
+And so are all of these:
+```csharp
+x is null
+x is not null
+x is CombatRoom room
+```
+
+We can also match with the `switch`:
+
+#!csharp
+
+string Print(object x) => x switch
+{
+    string s => $"x is a string: '{s}'",
+    int n => $"x is an int: '{n}'",
+    null => "x is null",
+    not null => "x is something else"
+};
+
+Console.WriteLine(Print("abc"));
+Console.WriteLine(Print(4));
+Console.WriteLine(Print(null));
+Console.WriteLine(Print(DateTime.Now));
+
+#!markdown
+
+We've seen all of these before. Time to learn all the other patterns!
+
+#!markdown
+
+## `var` pattern
+
+By far the simplest pattern is the `var` pattern. It matches anything and assigns it to a variable.
+That's it.
+
+#!csharp
+
+var x = 4;
+
+if (x is var y)
+{
+    Console.WriteLine(y);
+}
+
+#!markdown
+
+It's useless on its own, but will be useful later.
+
+#!markdown
+
+## Constant Pattern
+
+We can match against a constant value. This is in fact what the `null` check
+is, it matches the value against the constant `null`.
+
+#!csharp
+
+string Match(object x) => x switch
+{
+    3 => $"x is the int '3'",
+    'a' => $"x is the char 'a'",
+    "Monkey" => "x is the string \"Monkey\"",
+    null => "x is null",
+    _ => "x is something else"
+};
+
+Console.WriteLine(Match(3));
+Console.WriteLine(Match(4));
+Console.WriteLine(Match('a'));
+Console.WriteLine(Match(null));
+Console.WriteLine(Match("Monkey"));
+Console.WriteLine(Match("Donkey"));
+Console.WriteLine(Match(3.0));
+
+#!markdown
+
+As we can see, types matter! `3.0` _is not_ `3`, because the first is a `double` and the other is an `int`.
+
+#!markdown
+
+## Type Patterns
+
+These we're familiar with, they check whether a value is of a given type and allow us to declare
+a variable of that type.
+
+#!csharp
+
+string Match(object x) => x switch
+{
+    int n => $"x is an int and its square is {n * n}",
+    char c => $"x is a char",
+    string s => $"x is a string, scream it with me: {s.ToUpper()}!",
+    _ => "x is something else"
+};
+
+Console.WriteLine(Match(42));
+Console.WriteLine(Match('a'));
+Console.WriteLine(Match("Monkey"));
+Console.WriteLine(Match(42.0));
+
+#!markdown
+
+## Positional Patterns
+
+These are patterns that match deconstructible types:
+
+#!csharp
+
+readonly record struct Point2D(double X, double Y);
+readonly record struct Point3D(double X, double Y, double Z);
+
+#!csharp
+
+string Match(Point2D obj) => obj switch
+{
+    (1.0, 1.0) => "2D unit vector",
+    (double x, double y) => $"2D vector: {x}, {y}",
+};
+
+Console.WriteLine(Match(new Point2D(1.0, 1.0)));
+Console.WriteLine(Match(new Point2D(2.0, 3.0)));
+
+#!markdown
+
+This also works with tuples, since they are deconstructible.
+
+#!markdown
+
+## Relational Patterns
+
+We can use the relational operators in patterns as well. As with regular operators, they are
+statically bound.
+
+#!csharp
+
+string Match(int x) => x switch
+{
+    < 5 => "Low",
+    > 30 => "High",
+    _ => "Medium"
+};
+
+Console.WriteLine(Match(2));
+Console.WriteLine(Match(5));
+Console.WriteLine(Match(30));
+Console.WriteLine(Match(31));
+
+#!markdown
+
+## Pattern Combinators
+
+Okay, all of that would be pretty weak if we could only match those atomic patterns.
+Fortunately, we have _pattern combinators_ `and`, `or`, and `not`. We've already seen
+`not`, in tests like this:
+
+```csharp
+if (x is not null)
+{
+    ...
+}
+```
+
+It matches only if the following pattern does not match. The `and` matches if both patterns match,
+while `or` matches when either of them does.
+
+#!csharp
+
+string Match(int x) => x switch
+{
+    < 10 or > 50 => "Outside of accepted range",
+    30 => "Optimal",
+    >= 25 and <= 35 => "Almost optimal",
+    _ => "Ok"
+};
+
+Console.WriteLine(Match(0));
+Console.WriteLine(Match(10));
+Console.WriteLine(Match(30));
+Console.WriteLine(Match(27));
+Console.WriteLine(Match(33));
+Console.WriteLine(Match(51));
+
+#!markdown
+
+## Property Patterns
+
+Finally, we can destructure a values properties. This is easiest to describe with code:
+
+#!csharp
+
+record class Duck(string Color, string Name);
+
+#!csharp
+
+string Match(Duck duck) => duck switch
+{
+    { Color: "Yellow" } => "Yellow ducks are allowed.",
+    { Color: "Blue", Name: "Peter" } => "Peter is blue, but they're cool.",
+    _ => "Sorry, we don't serve your kind here"
+};
+
+Console.WriteLine(Match(new Duck("Yellow", "Mark")));
+Console.WriteLine(Match(new Duck("Yellow", "Johny")));
+Console.WriteLine(Match(new Duck("Blue", "Jack")));
+Console.WriteLine(Match(new Duck("Blue", "Peter")));
+Console.WriteLine(Match(new Duck("Green", "Peter")));
+
+#!csharp
+
+string Match(string password) => password switch
+{
+    { Length: < 8 } => "Too short",
+    { Length: 8 } and not ("12345678" or "password") => "Weak, but valid",
+    { Length: > 8 and < 16 } => "Okay",
+    { Length: >= 16 } => "Strong",
+    _ => "Invalid"
+};
+
+Console.WriteLine(Match("short"));
+Console.WriteLine(Match("12345678"));
+Console.WriteLine(Match("password"));
+Console.WriteLine(Match("abcdefgh"));
+Console.WriteLine(Match("Xv&&123A"));
+Console.WriteLine(Match("Xv&&123AV00()"));
+Console.WriteLine(Match("correcthorsebatterystaple"));
+
+#!markdown
+
+Notabene, `{}` is also a valid pattern. It will match any _non null_ object.
+
+#!csharp
+
+Console.WriteLine(3 is {});
+Console.WriteLine(((object) null) is {});
+
+#!markdown
+
+## Combining It All
+
+Let's write down an example pattern match that will combine all of the possible patterns into something useful.
+
+#!markdown
+
+## Summary
+
+We've familiarised ourselves with pattern matching, which makes writing concise code much easier.
+We know how to combine patterns with `and`, `or`, and `not`, how to match types and properties, and where to use patterns.
+
+#!markdown
+
+## Next up:
+
+This is the end of the module, next up is the Assignment!
+Click here to go there: [Assignment 3. - Diverging Dungeons](https://gienieczko.com/teaching/csharp/3-generics-and-collections/assignment/3-diverging-dungeons).

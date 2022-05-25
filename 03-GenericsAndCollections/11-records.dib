@@ -1,0 +1,249 @@
+#!markdown
+
+# 3.11. Records
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/3-generics-and-collections.
+
+It covers topics for section [3.11. Records](https://gienieczko.com/teaching/csharp/3-generics-and-collections/11-records).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Builtin Data Encapsulation
+
+Creating domain models takes a lot of code if we want to do it properly.
+We need to create properties for all the data, make them init-only, expose a constructor,
+overload equality, overload `ToString`...
+
+Records do all of that for us and allow _nondestructive mutation_ with the `with` keyword. Here's a record class:
+
+#!csharp
+
+public record Person(string FirstName, string LastName);
+
+#!csharp
+
+// Positional properties become arguments to the constructor...
+var alice = new Person("Alice", "Alisson");
+
+// ... and init-only properties.
+Console.WriteLine(alice.FirstName);
+Console.WriteLine(alice.LastName);
+
+// ToString gets overloaded:
+Console.WriteLine(alice);
+
+// Equality through Equals and == is overloaded to value equality,
+// obviously including GetHashCode. IEquatable<T> is implemented.
+Console.WriteLine($"Is IEquatable<Person>: {alice is IEquatable<Person>}");
+var otherAlice = new Person("Alice", "Alisson");
+
+Console.WriteLine($"alice == otherAlice: {alice == otherAlice}");
+Console.WriteLine($"ReferenceEquals(alice, otherAlice): {object.ReferenceEquals(alice, otherAlice)}");
+Console.WriteLine($"alice.GetHashCode(): {alice.GetHashCode()}");
+Console.WriteLine($"otherAlice.GetHashCode(): {otherAlice.GetHashCode()}");
+
+// Positional properties are deconstructible:
+var (firstName, lastName) = alice;
+Console.WriteLine($"({firstName}, {lastName})");
+
+// Nondestructive mutation with `with`
+var afterTransition = alice with { FirstName = "Alex" };
+Console.WriteLine(afterTransition);
+
+#!markdown
+
+A record is a regular type, but with a bunch of stuff already synthesised by the compiler.
+Other than that, they are regular classes. They can participate in inheritance, we can add members onto them,
+properties outside the positional ones, etc. At runtime, there is no way to tell a record class from a class outside of metadata.
+
+#!markdown
+
+The constructor generated from positional property parameters is called the _primary constructor_. A record can have
+custom constructors, but they must always call the primary constructor as well -- a record guarantees that the primary
+properties are always properly initialised. This is explained better than I could do it in [this StackOverflow answer](https://stackoverflow.com/a/65275929/4646738).
+
+#!csharp
+
+#nullable enable
+
+record Person(string FirstName, string LastName)
+{
+    public string? PhoneNumber { get; init; }
+
+    public bool HasPhoneNumber => PhoneNumber is not null;
+
+    public Person(string firstName, string lastName, string phoneNumber) 
+        : this(firstName, lastName) // <-- This is mandatory! You can try to comment this line to witness the error.
+    {
+        PhoneNumber = phoneNumber;
+    }
+
+    public void SayHello()
+    {
+        Console.WriteLine($"Hello, I'm {FirstName}!");
+    }
+}
+
+#!csharp
+
+var bob = new Person("Bob", "Bobinsky")
+{
+    PhoneNumber = "123-44-567"
+};
+
+bob.SayHello();
+
+Console.WriteLine(bob.PhoneNumber);
+
+Console.WriteLine(bob with { PhoneNumber = null });
+
+#!markdown
+
+## Record Value Types
+
+A `struct` can also be a record. Actually, the `record RecordName` syntax is just a short-hand for `record class RecordName`. If we put `struct`
+we get slightly different behaviour. A `record struct` has mutable properties.
+
+#!csharp
+
+record struct RunningAverage(int Count, int Total)
+{
+    public double Average => (double)Total / Count;
+
+    public void Add(int value)
+    {
+        Count += 1;
+        Total += value;
+    }
+}
+
+#!csharp
+
+var average = new RunningAverage(10, 10);
+Console.WriteLine(average);
+
+average.Add(34);
+Console.WriteLine(average);
+
+#!markdown
+
+By making the declaration `readonly record struct` we get an immutable type.
+
+#!csharp
+
+readonly record struct TemperatureMeasurement(DateTime Timestamp, double Kelwins);
+
+#!csharp
+
+// Intentionally does not compile.
+var measurement = new TemperatureMeasurement(DateTime.Now, 47.13);
+
+measurement.Kelwins = 50;
+
+#!markdown
+
+## Modifying Equality
+
+Unlike with regular objects, we _cannot_ override the `Equals` method in a record.
+
+#!csharp
+
+//Intentionally does not compile.
+#nullable enable
+
+record TemperatureMeasurement(DateTime Timestamp, double Kelwins)
+{
+    public override bool Equals(object? other) => throw new NotImplementedException();
+}
+
+#!markdown
+
+Equality machinery on records is quite complicated, because it has to take inheritance into account.
+To modify equality, we have to declare a method roughly corresponding to the `IEquatable` contract:
+
+#!csharp
+
+//Intentionally does not compile.
+#nullable enable
+
+record TemperatureMeasurement(DateTime Timestamp, double Kelwins)
+{
+    public bool Equals(TemperatureMeasurement other) => throw new NotImplementedException();
+}
+
+#!markdown
+
+Well, more or less. It has to be `virtual`, or the record has to be sealed.
+
+#!csharp
+
+#nullable enable
+
+record TemperatureMeasurement(DateTime Timestamp, double Kelwins)
+{
+    public virtual bool Equals(TemperatureMeasurement? other) => Kelwins == other?.Kelwins;
+}
+
+#!markdown
+
+Hash code is done normally:
+
+#!csharp
+
+#nullable enable
+
+record TemperatureMeasurement(DateTime Timestamp, double Kelwins)
+{
+    public virtual bool Equals(TemperatureMeasurement? other) => Kelwins == other?.Kelwins;
+    public override int GetHashCode() => Kelwins.GetHashCode();
+}
+
+#!csharp
+
+var today = new TemperatureMeasurement(DateTime.Now, 49.73);
+var yesterday = today with { Timestamp = DateTime.Now.AddDays(-1) };
+
+Console.WriteLine(today);
+Console.WriteLine(yesterday);
+Console.WriteLine(today == yesterday);
+
+#!markdown
+
+## Usage
+
+Use records when you need simple data containers with value equality. The `record` feature greatly
+cuts down on the amount of code one needs to write for such types. The decision between `record class`
+and `readonly record struct` is the same as between reference and value types in the first place.
+
+Mutable record structs are even more rare than regular mutable structs.
+
+#!markdown
+
+## Summary
+
+We've learnt how to cut down on boilerplate related to equality and immutability
+using the `record` feature.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [3.12. Pattern Matching](https://gienieczko.com/teaching/csharp/3-generics/12-pattern-matching),
+or straight to the next notebook, [`12-pattern-matching.dib`](/03-GenericsAndCollections/12-pattern-matching.dib).
