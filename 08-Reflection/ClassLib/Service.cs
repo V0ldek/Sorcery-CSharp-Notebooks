@@ -10,6 +10,8 @@ public class Service
 
     public async Task<Result<Item?, Exception>> Query(string id)
     {
+        ArgumentNullException.ThrowIfNull(id);
+
         try
         {
             var result = await _repository.GetByIdAsync(id);
