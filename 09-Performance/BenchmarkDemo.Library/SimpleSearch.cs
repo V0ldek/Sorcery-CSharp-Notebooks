@@ -6,19 +6,19 @@ public static class SimpleSearch
     {
         ArgumentNullException.ThrowIfNull(needle);
 
-        if (needle == "")
+        for (var length = needle.Length; length > 0; length -= 1)
         {
-            return "";
+            for (var start = 0; start <= needle.Length - length; start += 1)
+            {
+                var substring = needle.Substring(start, length);
+
+                if (haystack.Contains(substring))
+                {
+                    return substring;
+                }
+            }
         }
 
-        if (haystack.Contains(needle))
-        {
-            return needle;
-        }
-
-        var substring1 = FindLongestSubstring(needle[1..], haystack);
-        var substring2 = FindLongestSubstring(needle[..^1], haystack);
-
-        return substring1.Length >= substring2.Length ? substring1 : substring2;
+        return "";
     }
 }

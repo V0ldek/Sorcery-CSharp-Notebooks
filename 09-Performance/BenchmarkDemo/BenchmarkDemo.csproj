@@ -15,4 +15,9 @@
     <ProjectReference Include="..\BenchmarkDemo.Library\BenchmarkDemo.Library.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+      <None Update="./data/words.txt">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+  </ItemGroup>
 </Project>
