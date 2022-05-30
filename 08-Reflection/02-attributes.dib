@@ -138,7 +138,7 @@ public sealed class Resolver
         var onlyMethod = factoryMethods.Single();
 
         //                      Static method vvvv
-        var result = onlyMethod.Method.Invoke(null, null);
+        object result = onlyMethod.Method.Invoke(null, null);
         //                            No parameters ^^^^
         
         if (onlyMethod.Await)
