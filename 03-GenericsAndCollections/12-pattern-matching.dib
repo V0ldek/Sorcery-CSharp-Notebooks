@@ -124,6 +124,14 @@ As we can see, types matter! `3.0` _is not_ `3`, because the first is a `double`
 
 #!markdown
 
+## Discard pattern
+
+Another simple pattern is a discard. It matches anything and does nothing with it. Usually we use it as
+the catch-all case at the end of a `switch` expression to handle everything not matched thus far, and we've just
+used it in the snippet above!
+
+#!markdown
+
 ## Type Patterns
 
 These we're familiar with, they check whether a value is of a given type and allow us to declare
