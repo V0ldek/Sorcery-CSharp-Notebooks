@@ -79,4 +79,13 @@ public class FindSubstringTests
 
         Assert.Equal(expected, actual);
     }
+
+    [Theory]
+    [MemberData(nameof(FindSubstringData))]
+    public void FromShortestWithEliminationSearchCorrectness(string needle, string haystack, string expected)
+    {
+        var actual = FromShortestWithEliminationSearch.FindLongestSubstring(needle, haystack);
+
+        Assert.Equal(expected, actual);
+    }
 }

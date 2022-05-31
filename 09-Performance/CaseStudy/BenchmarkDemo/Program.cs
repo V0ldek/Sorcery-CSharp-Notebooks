@@ -13,53 +13,34 @@ BenchmarkRunner.Run<Benches>();
 [MarkdownExporter]
 [RPlotExporter]
 [MemoryDiagnoser]
-[StatisticalTestColumn(StatisticalTestKind.MannWhitney, ThresholdUnit.Ratio, 0.05, true)]
+[StatisticalTestColumn(StatisticalTestKind.MannWhitney, ThresholdUnit.Ratio, 0.03, true)]
 public class Benches
 {
-    [Params(RemoveMode.All, RemoveMode.AllLong, RemoveMode.OnlyLongest, RemoveMode.None)]
-    public RemoveMode RemoveMode { get; set; }
+    [Params(0.0, 0.5, 0.75, 1.0)]
+    public double ResultSize { get; set; }
 
     public string Haystack { get; private set; } = null!;
 
     public static string Needle => "interrelationships";
 
-    [Benchmark(Baseline = true)]
     public string FromLongestSearch() =>
         BenchmarkDemo.Library.FromLongestSearch.FindLongestSubstring(Needle, Haystack);
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public string FromShortestSearch() =>
         BenchmarkDemo.Library.FromShortestSearch.FindLongestSubstring(Needle, Haystack);
+
+
+    [Benchmark]
+    public string FromShortestWithEliminationSearch() =>
+        BenchmarkDemo.Library.FromShortestWithEliminationSearch.FindLongestSubstring(Needle, Haystack);
 
     [GlobalSetup]
     public async Task SetupAsync()
     {
-        Haystack = await File.ReadAllTextAsync("./data/words.txt");
-
-        Haystack = RemoveMode switch
-        {
-            RemoveMode.None => Haystack,
-            RemoveMode.OnlyLongest => OnlyLongestRegex.Replace(Haystack, ReplaceWithXs),
-            RemoveMode.AllLong => AllLongRegex.Replace(Haystack, ReplaceWithXs),
-            RemoveMode.All => AllSubstringsRegex.Replace(Haystack, ReplaceWithXs),
-            _ => throw new ArgumentOutOfRangeException(nameof(RemoveMode))
-        };
-
-        static string ReplaceWithXs(Match match) => string.Concat(Enumerable.Repeat('x', match.Length));
-    }
-
-    private static readonly Regex AllLongRegex =
-        new("(relationship)|(relationships)|(interrelation)|(interrelations)|(interrelationship)|(interrelationships)|(interrelationship's)");
-
-    private static readonly Regex OnlyLongestRegex =
-        new("(interrelationship)|(interrelationships)|(interrelationship's)");
-
-    private static readonly Regex AllSubstringsRegex;
-
-    static Benches()
-    {
         StringBuilder regexBuilder = new();
-        for (var length = 1; length <= Needle.Length; length += 1)
+
+        for (var length = Needle.Length; length > ResultSize * Needle.Length; length -= 1)
         {
             for (var start = 0; start + length <= Needle.Length; start += 1)
             {
@@ -68,15 +49,15 @@ public class Benches
             }
         }
 
-        regexBuilder.Length -= 1;
-        AllSubstringsRegex = new(regexBuilder.ToString());
-    }
-}
+        Haystack = await File.ReadAllTextAsync("./data/words.txt");
 
-public enum RemoveMode
-{
-    All,
-    AllLong,
-    OnlyLongest,
-    None
+        if (regexBuilder.Length > 0)
+        {
+            regexBuilder.Length -= 1;
+            var regex = new Regex(regexBuilder.ToString());
+            Haystack = regex.Replace(Haystack, ReplaceWithXs);
+        }
+
+        static string ReplaceWithXs(Match match) => string.Concat(Enumerable.Repeat('x', match.Length));
+    }
 }

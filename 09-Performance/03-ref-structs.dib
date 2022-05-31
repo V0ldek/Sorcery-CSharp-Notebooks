@@ -25,6 +25,133 @@ That's kind of the point of doing all this in notebooks.
 
 #!markdown
 
+## Slices
+
+In many languages there is an abstraction over an array called a _slice_.
+While an array is a container of fixed size, keeping a contiguous collection
+of elements of a given type, a slice is a view into that array without any ownership
+attached. Slices allow us to talk about portions of an array without copying it around.
+
+#!markdown
+
+Consider the following snippets. They both do the same thing: calculate the sum of products of subarrays of an array limited to some size. One of them uses `IReadOnlyList` as an interface,
+which requires copying a portion of the array. The other uses the `ReadOnlyMemory<T>` struct,
+which is a read-only slice to a contiguous portion of memory.
+
+#!csharp
+
+static class AllocatingImpl
+{
+    public static long Calculate(int[] array, int length)
+    {
+        long result = 0;
+
+        for (var i = 0; i + length < array.Length; i += 1)
+        {
+            for (var j = i + 1; j <= i + length; j += 1)
+            {
+                int[] subarray = array[i..j];
+                result += Product(subarray);
+            }
+        }
+
+        return result;
+    }
+
+    private static long Product(int[] subarray)
+    {
+        long result = 1;
+
+        foreach (var x in subarray)
+        {
+            result *= x;
+        }
+
+        return result;
+    }
+}
+
+#!csharp
+
+static class NonallocatingImpl
+{
+    public static long Calculate(int[] array, int length)
+    {
+        long result = 0;
+
+        for (var i = 0; i + length < array.Length; i += 1)
+        {
+            for (var j = i + 1; j <= i + length; j += 1)
+            {
+                Memory<int> subarray = array.AsMemory()[i..j];
+                result += Product(subarray);
+            }
+        }
+
+        return result;
+    }
+
+    
+    private static long Product(ReadOnlyMemory<int> subslice)
+    {
+        long result = 1;
+
+        foreach (var x in subslice.Span)
+        {
+            result *= x;
+        }
+
+        return result;
+    }
+}
+
+#!csharp
+
+var random = new Random(2137);
+int[] array = Enumerable.Range(0, 10_000).Select(_ => random.Next(1, 100)).ToArray();
+
+Console.WriteLine(AllocatingImpl.Calculate(array, 5));
+Console.WriteLine(NonallocatingImpl.Calculate(array, 5));
+
+#!markdown
+
+The difference is that `AsMemory` allocates nothing on the heap. It just creates a `Memory` struct
+pointing to the source array. Slicing `Memory` just changes a few integers inside. Running a benchmark out of these
+gives us:
+
+#!markdown
+
+```ini
+BenchmarkDotNet=v0.13.1, OS=Windows 10.0.22000
+AMD Ryzen 7 4800H with Radeon Graphics, 1 CPU, 16 logical and 8 physical cores
+.NET SDK=6.0.300
+  [Host]   : .NET 6.0.5 (6.0.522.21309), X64 RyuJIT
+  .NET 6.0 : .NET 6.0.5 (6.0.522.21309), X64 RyuJIT
+
+Job=.NET 6.0  Runtime=.NET 6.0
+```
+
+|            Method | ArraySize | SliceSize |       Mean |    Error |   StdDev | Ratio |     Gen 0 |   Allocated |
+|------------------ |---------- |---------- |-----------:|---------:|---------:|------:|----------:|------------:|
+|    AllocatingImpl |     10000 |        10 | 1,842.4 us | 28.45 us | 26.61 us |  1.00 | 2292.9688 | 4,795,202 B |
+| NonallocatingImpl |     10000 |        10 |   552.8 us | 11.00 us | 24.37 us |  0.29 |         - |           - |
+
+#!markdown
+
+_(benchmarks can be found in the `RefStructs` directory for this notebook module)_
+
+#!markdown
+
+`Memory<T>` is actually a more specific type than we need. The ultimate abstraction over "some contiguous memory" is `Span<T>`, which is a _ref struct_.
+
+#!markdown
+
+## `ref struct`
+
+A ref struct is 
+
+#!markdown
+
 ## Summary
 
 We've met the API that allows us to construct and examine magical spells using higher-level magical language.
