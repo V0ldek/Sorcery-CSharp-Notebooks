@@ -17,6 +17,7 @@ public class FindSubstringTests
                 { "a", "bcdea", "a" },
                 { "ala", "ma kota ala", "ala" },
                 { "alan", "ma kota ala", "ala" },
+                { "alakot", "ma kota ala", "ala" },
                 { "cumulative sum", "lorem ipsum dolor sit amet", "sum" },
                 { "aaaaaaaaaaaa", "a aa aaa aaaa aaaaa aaaaaa aaaaaaa", "aaaaaaa" },
                 { "aaaaaaaaaa", "abaabaaabaaaabaaaaabaaaaaab", "aaaaaa"}
@@ -65,7 +66,7 @@ public class FindSubstringTests
     [MemberData(nameof(FindSubstringData))]
     public void SimpleSearchCorrectness(string needle, string haystack, string expected)
     {
-        var actual = SimpleSearch.FindLongestSubstring(needle, haystack);
+        var actual = FromLongestSearch.FindLongestSubstring(needle, haystack);
 
         Assert.Equal(expected, actual);
     }

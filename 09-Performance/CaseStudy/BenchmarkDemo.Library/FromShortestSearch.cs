@@ -13,7 +13,7 @@ public static class FromShortestSearch
     {
         ArgumentNullException.ThrowIfNull(needle);
 
-        for (var start = 0; start <= needle.Length - length; start += 1)
+        for (var start = 0; start + length <= needle.Length; start += 1)
         {
             var substring = needle.Substring(start, length);
 
