@@ -3,6 +3,8 @@ using System.Text.RegularExpressions;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
+using Perfolizer.Mathematics.SignificanceTesting;
+using Perfolizer.Mathematics.Thresholds;
 
 BenchmarkRunner.Run<Benches>();
 
@@ -11,6 +13,7 @@ BenchmarkRunner.Run<Benches>();
 [MarkdownExporter]
 [RPlotExporter]
 [MemoryDiagnoser]
+[StatisticalTestColumn(StatisticalTestKind.MannWhitney, ThresholdUnit.Ratio, 0.05, true)]
 public class Benches
 {
     [Params(RemoveMode.All, RemoveMode.AllLong, RemoveMode.OnlyLongest, RemoveMode.None)]
