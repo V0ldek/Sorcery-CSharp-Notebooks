@@ -142,13 +142,288 @@ _(benchmarks can be found in the `RefStructs` directory for this notebook module
 
 #!markdown
 
-`Memory<T>` is actually a more specific type than we need. The ultimate abstraction over "some contiguous memory" is `Span<T>`, which is a _ref struct_.
+`Memory<T>` is actually a more specific type than we need. The ultimate abstraction over "some contiguous memory" is `Span<T>`, which is a _`ref` struct_.
 
 #!markdown
 
-## `ref struct`
+## `ref` struct
 
-A ref struct is 
+A `ref` struct is a struct that has restrictions on its location on memory -- it can never be stored on the heap.
+That's the rule number zero that governs and implies all other rules:
+
+1. A `ref` struct can't be the element type of an array. An array is basically always stored on the heap.
+2. A `ref` struct can't be a declared type of a field of a class or a non-`ref` struct. Pretty natural,
+only-on-stackness has to be compositional.
+3. A `ref` struct can't be boxed to `System.ValueType` or `System.Object`. Boxing is literally just "putting on the heap".
+4. A `ref` struct can't be a generic type argument. This one is a bit overly prohibitive -- there could be a modifier on a
+generic parameter that says "I promise to use this according to all these rules so it'd be safe to pass a `ref` struct here".
+However, it is clear that it cannot be passed to a method without any constraints, as we can do pretty much whatever
+with such a type.
+5. A `ref` struct can't implement interfaces. There's no way to use them anyway,
+as per the two above rules. 
+6. A `ref` struct variable can't be captured by a lambda expression or a local function. Closures may need to allocate a heap-based object
+to keep their state.
+7. A `ref` struct variable can't be used in iterators, and ...
+8. A `ref` struct variable can't be used in an `async` method. Both of these for the same reason -- the state machine might be heap allocated.
+
+There is a special provision that allows `ref` structs to be disposable by simply having a `void Dispose()` method.
+
+Why all this hassle? So that we can represent _any_ kind of memory as a `Span`, even stack allocated memory.
+
+#!csharp
+
+void Foo()
+{
+    var random = new Random(2137);
+    // Magic spell that allocates memory straight in the stack frame
+    // of the current method.
+    //               vvvvvvvvvv
+    Span<int> span = stackalloc int[10_000];
+
+    // Span's enumerator returns `ref T`, which are references to the
+    // elements in the underlying memory instead of copies.
+    //       vvvvvvvvv
+    foreach (ref var x in span)
+    {
+        x = random.Next(1, 100);
+    }
+
+    Console.WriteLine(AllocatingImpl.Calculate(array, 5));
+    Console.WriteLine(NonallocatingImpl.Calculate(array, 5));
+}
+
+Foo();
+
+#!markdown
+
+Hey, look, we're basically doing manual memory management, but thanks to the `ref` struct rules this is all safe!
+Because the `Span<T>` can be stored only on the stack, it is guaranteed that the reference to the `stackalloc`
+memory never escapes to the heap. And since the stack is, you know, a stack, all possible references to it
+will be gone from the stack before the `stackalloc`ed memory gets destroyed.
+
+Whenever we don't care about the concrete type of memory we work on, we can use the `Span<T>` or `ReadOnlySpan<T>` types
+to allow callers to pass their stuff without allocations. This is especially useful for library methods that might
+be used in many different places that we don't control.
+
+#!markdown
+
+## Reimplementing `FindLongestSubstring` With Spans
+
+The BCL methods very often have overloads that accepts `Span<T>` or `ReadOnlySpan<T>` for high performance scenarios. We can rewrite
+our search thusly:
+
+```csharp
+public static string SpanBasedFindLongestSubstring(string needle, string haystack)
+{
+    ArgumentNullException.ThrowIfNull(needle);
+    ArgumentNullException.ThrowIfNull(haystack);
+
+    return SpanBasedFindLongestSubstring(needle, 1, 0, haystack) ?? "";
+}
+
+public static string? SpanBasedFindLongestSubstring(
+    ReadOnlySpan<char> needle,
+    int length,
+    int startFrom,
+    ReadOnlySpan<char> haystack)
+{
+    for (var start = startFrom; start + length <= needle.Length; start += 1)
+    {
+        ReadOnlySpan<char> substring = needle.Slice(start, length);
+
+        if (haystack.Contains(substring, StringComparison.Ordinal))
+        {
+            var tryLarger = SpanBasedFindLongestSubstring(needle, length + 1, start, haystack);
+
+            return tryLarger ?? new string(substring);
+        }
+    }
+
+    return null;
+}
+```
+
+You can try and run benches for these implementations, although you won't see too big gains, as we'll explain the the next section.
+
+#!markdown
+
+## Custom `ref` structs
+
+Obviously, we can declare our own `ref` structs (or `readonly ref` structs). They will follow the same rules.
+Usually it is done to wrap over some other `ref` struct, like `Span`.
+
+#!csharp
+
+readonly ref struct MyStruct
+{
+    public Span<char> Span { get; }
+
+    public MyStruct(Span<char> span) => Span = span;
+}
+
+#!csharp
+
+//Intentionally does not compile.
+readonly struct NotRef
+{
+    public MyStruct MyStruct { get; }
+}
+
+#!markdown
+
+## `ref` Locals and `ref` Returns
+
+Following up on `ref`-ness, we can declare `ref` locals and return by-ref values.
+Locals follow similar rules to `ref` structs -- we must ensure that the reference to an on-stack
+value remains valid, so a `ref` local cannot escape to the heap. We can `ref` return
+things that live on the heap, and even build `ref` enumerables, as we've seen with `Span<T>`.
+
+#!csharp
+
+void Foo()
+{
+    int x = 42;
+    ref int y = ref x;
+
+    y += 1;
+    Increment(ref y);
+
+    Console.WriteLine(x);
+    Console.WriteLine(y);
+}
+
+void Increment(ref int someInt) => someInt += 1;
+
+Foo();
+
+#!csharp
+
+class Box<T>
+{
+    private T _value;
+
+    public ref T Value => ref _value;
+
+    public override string ToString() => _value.ToString();
+}
+
+void Foo()
+{
+    var box = new Box<int>();
+    
+    Console.WriteLine(box);
+    box.Value = 42;
+    Console.WriteLine(box);
+    box.Value++;
+    Console.WriteLine(box);
+    
+    ref int value = ref box.Value;
+
+    value = 37;
+    Console.WriteLine(box);
+}
+
+Foo();
+
+#!markdown
+
+A more useful application is returning big values via a `ref readonly`
+to avoid copying. Consider a large struct:
+
+#!csharp
+
+struct QuiteBig
+{
+    decimal Value1 { get; init; }
+    decimal Value2 { get; init; }
+    decimal Value3 { get; init; }
+    decimal Value4 { get; init; }
+    decimal Value5 { get; init; }
+    decimal Value6 { get; init; }
+    decimal Value7 { get; init; }
+    decimal Value8 { get; init; }
+    decimal Value9 { get; init; }
+    decimal Value10 { get; init; }
+    decimal Value11 { get; init; }
+    decimal Value12 { get; init; }
+    decimal Value13 { get; init; }
+    decimal Value14 { get; init; }
+    decimal Value15 { get; init; }
+    decimal Value16 { get; init; }
+}
+
+#!markdown
+
+That's $256$ bytes ($16$ decimals which are $16$-byte). That's not the large one yet:
+
+#!csharp
+
+public struct Large
+{
+    QuiteBig Value1 { get; init; }
+    QuiteBig Value2 { get; init; }
+    QuiteBig Value3 { get; init; }
+    QuiteBig Value4 { get; init; }
+    QuiteBig Value5 { get; init; }
+    QuiteBig Value6 { get; init; }
+    QuiteBig Value7 { get; init; }
+    QuiteBig Value8 { get; init; }
+    QuiteBig Value9 { get; init; }
+    QuiteBig Value10 { get; init; }
+    QuiteBig Value11 { get; init; }
+    QuiteBig Value12 { get; init; }
+    QuiteBig Value13 { get; init; }
+    QuiteBig Value14 { get; init; }
+    QuiteBig Value15 { get; init; }
+    QuiteBig Value16 { get; init; }
+}
+
+#!markdown
+
+This one has 4096 bytes. As we'll see in the next section there are easier ways of creating large structs
+that are actually useful. Consider the following two types:
+
+#!csharp
+
+class Box
+{
+    private readonly Large _large = default;
+
+    public Large Large => _large;
+}
+
+class RefBox
+{
+    private readonly Large _large = default;
+
+    public ref readonly Large Large => ref _large;
+}
+
+#!markdown
+
+Pitting them against each other in exactly how much time it takes to retrieve a `Large` from them
+gives us a nice benchmark, with the following results on my machine:
+
+#!markdown
+
+```ini
+BenchmarkDotNet=v0.13.1, OS=Windows 10.0.22000
+Intel Core i5-8600K CPU 3.60GHz (Coffee Lake), 1 CPU, 6 logical and 6 physical cores
+.NET SDK=6.0.300
+  [Host]   : .NET 6.0.5 (6.0.522.21309), X64 RyuJIT
+  .NET 6.0 : .NET 6.0.5 (6.0.522.21309), X64 RyuJIT
+
+Job=.NET 6.0  Runtime=.NET 6.0
+```
+
+| Method |     Mean |    Error |   StdDev | Ratio | Allocated |
+|------- |---------:|---------:|---------:|------:|----------:|
+|    Box | 24.98 ns | 0.137 ns | 0.128 ns |  1.00 |         - |
+| RefBox | 15.68 ns | 0.112 ns | 0.100 ns |  0.63 |         - |
+
+#!markdown
+
+This copying-structs-might-be-expensive thing gives rise to one more feature, described in the next section.
 
 #!markdown
 
@@ -160,5 +435,5 @@ We've met the API that allows us to construct and examine magical spells using h
 
 ## Next up:
 
-Continue with the next section, [9.4. Array Pooling](https://gienieczko.com/teaching/csharp/9-performance/4-array-pooling),
-or straight to the next notebook, [`04-array-pooling.dib`](04-array-pooling.dib).
+Continue with the next section, [9.4. The `in` Modifier](https://gienieczko.com/teaching/csharp/9-performance/4-the-in-modifier),
+or straight to the next notebook, [`04-the-in-modifier.dib`](04-the-in-modifier.dib).

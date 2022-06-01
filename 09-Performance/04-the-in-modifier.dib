@@ -1,0 +1,358 @@
+#!markdown
+
+# 9.4. The `in` Modifier
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/9-performance/4-the-in-modifier.
+
+It covers topics for section [9.4. The `in` Modifier](https://gienieczko.com/teaching/csharp/9-performance/4-the-in-modifier).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Pass-by-Unmodifiable-Reference
+
+The `in` modifier is similar to `ref` and `out`, but it enforces that the argument is _not_ modified in any way.
+
+#!csharp
+
+// Intentionally does not compile.
+void Foo(in int number)
+{
+    number = 19;
+}
+
+int x = 44;
+Foo(x);
+
+#!markdown
+
+Sound completely useless, no? Well, this is yet another microoptimisation.
+It is useful when:
+
+1. We are passing a `readonly struct`.
+2. The struct is larger than $8$ bytes.
+3. We are in a performance-critical setting.
+
+All of those are important. Using the following, slightly smaller struct we can make another benchmark:
+
+#!csharp
+
+public struct QuiteBig
+{
+    public decimal Value1 { get; init; }
+    public decimal Value2 { get; init; }
+    public decimal Value3 { get; init; }
+    public decimal Value4 { get; init; }
+    public decimal Value5 { get; init; }
+    public decimal Value6 { get; init; }
+    public decimal Value7 { get; init; }
+    public decimal Value8 { get; init; }
+    public decimal Value9 { get; init; }
+    public decimal Value10 { get; init; }
+    public decimal Value11 { get; init; }
+    public decimal Value12 { get; init; }
+    public decimal Value13 { get; init; }
+    public decimal Value14 { get; init; }
+    public decimal Value15 { get; init; }
+    public decimal Value16 { get; init; }
+}
+
+#!csharp
+
+public struct Large
+{
+    public QuiteBig Value1 { get; init; }
+    public QuiteBig Value2 { get; init; }
+    public QuiteBig Value3 { get; init; }
+    public QuiteBig Value4 { get; init; }
+    public QuiteBig Value5 { get; init; }
+    public QuiteBig Value6 { get; init; }
+    public QuiteBig Value7 { get; init; }
+    public QuiteBig Value8 { get; init; }
+    public QuiteBig Value9 { get; init; }
+    public QuiteBig Value10 { get; init; }
+    public QuiteBig Value11 { get; init; }
+    public QuiteBig Value12 { get; init; }
+    public QuiteBig Value13 { get; init; }
+    public QuiteBig Value14 { get; init; }
+    public QuiteBig Value15 { get; init; }
+    public QuiteBig Value16 { get; init; }
+    
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public void Foo() { }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public void Bar() { }
+}
+
+#!csharp
+
+using System.Runtime.CompilerServices;
+
+[MethodImpl(MethodImplOptions.NoInlining)]
+void TakeByValue(Large large) {}
+
+[MethodImpl(MethodImplOptions.NoInlining)]
+void TakeByInReference(in Large large) {}
+
+#!markdown
+
+```ini
+BenchmarkDotNet=v0.13.1, OS=Windows 10.0.22000
+Intel Core i5-8600K CPU 3.60GHz (Coffee Lake), 1 CPU, 6 logical and 6 physical cores
+.NET SDK=6.0.300
+  [Host]   : .NET 6.0.5 (6.0.522.21309), X64 RyuJIT
+  .NET 6.0 : .NET 6.0.5 (6.0.522.21309), X64 RyuJIT
+
+Job=.NET 6.0  Runtime=.NET 6.0
+```
+
+|            Method |     Mean |    Error |   StdDev | Ratio | Allocated |
+|------------------ |---------:|---------:|---------:|------:|----------:|
+|       TakeByValue | 51.52 ns | 0.629 ns | 0.588 ns |  1.00 |         - |
+| TakeByInReference | 30.53 ns | 0.204 ns | 0.181 ns |  0.59 |         - |
+
+#!markdown
+
+This is great, BUT, let's see what happens when we try to do anything with the passed value.
+
+#!csharp
+
+using System.Runtime.CompilerServices;
+
+[MethodImpl(MethodImplOptions.NoInlining)]
+void TakeByValue(Large large)
+{
+    large.Foo();
+    large.Bar();
+}
+
+[MethodImpl(MethodImplOptions.NoInlining)]
+void TakeByInReference(in Large large)
+{
+    large.Foo();
+    large.Bar();
+}
+
+#!markdown
+
+```ini
+BenchmarkDotNet=v0.13.1, OS=Windows 10.0.22000
+Intel Core i5-8600K CPU 3.60GHz (Coffee Lake), 1 CPU, 6 logical and 6 physical cores
+.NET SDK=6.0.300
+  [Host]   : .NET 6.0.5 (6.0.522.21309), X64 RyuJIT
+  .NET 6.0 : .NET 6.0.5 (6.0.522.21309), X64 RyuJIT
+
+Job=.NET 6.0  Runtime=.NET 6.0
+```
+
+|            Method |     Mean |    Error |   StdDev | Ratio | Allocated |
+|------------------ |---------:|---------:|---------:|------:|----------:|
+|       TakeByValue | 41.65 ns | 0.165 ns | 0.146 ns |  1.00 |         - |
+| TakeByInReference | 66.22 ns | 0.242 ns | 0.202 ns |  1.59 |         - |
+
+#!markdown
+
+Oh... Oh no...
+
+The hell is going on?
+
+This is the code of `TakeByValue`:
+```csharp
+.method private hidebysig 
+	instance void TakeByValue (
+		valuetype InParameter.Large large
+	) cil managed noinlining 
+{
+	.maxstack 8
+
+	// large.Foo();
+	IL_0000: ldarga.s large
+	IL_0002: call instance void InParameter.Large::Foo()
+	// large.Bar();
+	IL_0007: ldarga.s large
+	IL_0009: call instance void InParameter.Large::Bar()
+	// }
+	IL_000e: ret
+}
+```
+
+#!markdown
+
+This is very simple, `ldarga` `l`oa`d`s the `arg`ument `a`ddress. So we load the argument and call `Foo`, then load it again and call `Bar`.
+This is as unremarkable as it gets. The `Large` value gets copied into this method.
+
+Now `TakeByInReference`:
+
+#!markdown
+
+```csharp
+.method private hidebysig 
+	instance void TakeByInReference (
+		[in] valuetype InParameter.Large& large
+	) cil managed noinlining 
+{
+	.param [1]
+		.custom instance void [System.Runtime]System.Runtime.CompilerServices.IsReadOnlyAttribute::.ctor() = (
+			01 00 00 00
+		)
+
+	.maxstack 1
+	.locals init (
+		[0] valuetype InParameter.Large
+	)
+
+	// large.Foo();
+	IL_0000: ldarg.1
+	IL_0001: ldobj InParameter.Large
+	IL_0006: stloc.0
+	// (no C# code)
+	IL_0007: ldloca.s 0
+	// large.Bar();
+	IL_0009: call instance void InParameter.Large::Foo()
+	IL_000e: ldarg.1
+	IL_000f: ldobj InParameter.Large
+	IL_0014: stloc.0
+	// (no C# code)
+	IL_0015: ldloca.s 0
+	// }
+	IL_0017: call instance void InParameter.Large::Bar()
+	IL_001c: ret
+}
+```
+
+#!markdown
+
+What kind of unholy manifestation is this? The header is understandable, we have some magical `IsReadOnlyAttribute` to signal
+that we take the reference as an `in`. We also allocate space for a local `Large` variable? For what?
+
+And then we `ldarg.1` (`l`oa`d` the `arg`ument `1`), which is the reference to `Large`, and then `ldobj`.
+
+`ldobj` is an instruction that copies the value type pointed to by the loaded reference.
+
+Nice, we wanted to get rid of copying with `in` so we got a copy. What the hell.
+We then `stloc` (`st`ore as a `loc`al variable), call `Foo`, and then... do the same copying logic! **Again**! What the fuck?
+
+This is all because C# is awful and structs are mutable by default. I am willing to die on the hill of it
+being a completely broken "feature". Anyway, the core issue is that the compiler doesn't have a guarantee that
+`Foo` or `Bar` aren't tragically malicious and mutate the struct. They could literally replace all their internal
+memory with something else. But `in` says explicitly that we don't want the method to mutate the struct. Therefore
+the compiler inserts a defensive copy. This can be alleviated by making it `readonly`,
+or at least the methods being called.
+
+If we mark `Foo` as `readonly` the code becomes:
+
+#!markdown
+
+```csharp
+// large.Foo();
+IL_0000: ldarg.1
+IL_0001: call instance void InParameter.Large::Foo()
+// large.Bar();
+IL_0006: ldarg.1
+IL_0007: ldobj InParameter.Large
+IL_000c: stloc.0
+// (no C# code)
+IL_000d: ldloca.s 0
+// }
+IL_000f: call instance void InParameter.Large::Bar()
+IL_0014: ret
+```
+
+#!markdown
+
+And declaring them both as `readonly`, or better, the entire struct as `readonly`:
+
+#!markdown
+
+```csharp
+// large.Foo();
+IL_0000: ldarg.1
+IL_0001: call instance void InParameter.Large::Foo()
+// large.Bar();
+IL_0006: ldarg.1
+IL_0007: call instance void InParameter.Large::Bar()
+// }
+IL_000c: ret
+```
+
+#!markdown
+
+Heyyy, now that looks sensible! And the benchmarks are back:
+
+#!markdown
+
+```ini
+BenchmarkDotNet=v0.13.1, OS=Windows 10.0.22000
+Intel Core i5-8600K CPU 3.60GHz (Coffee Lake), 1 CPU, 6 logical and 6 physical cores
+.NET SDK=6.0.300
+  [Host]   : .NET 6.0.5 (6.0.522.21309), X64 RyuJIT
+  .NET 6.0 : .NET 6.0.5 (6.0.522.21309), X64 RyuJIT
+
+Job=.NET 6.0  Runtime=.NET 6.0
+```
+
+|            Method |     Mean |    Error |   StdDev | Ratio | Allocated |
+|------------------ |---------:|---------:|---------:|------:|----------:|
+|       TakeByValue | 54.42 ns | 0.246 ns | 0.230 ns |  1.00 |         - |
+| TakeByInReference | 32.06 ns | 0.193 ns | 0.171 ns |  0.59 |         - |
+
+#!markdown
+
+## Usage
+
+The three rules mentioned above all apply. You should already be making all your structs readonly.
+If, for some reason, you need a mutable struct, do not pass it with `in` _unless_ you're only
+going to call its `readonly` methods and properties. And don't just pass _all_ your structs as `in`,
+do that only when you have performance issues and you can MEASURE the impact it has on your code.
+
+Oh, and remember that they have to be larger than a pointer, the rule of thumb is $16$-bytes.
+The reason should be obvious -- a reference is a pointer so it takes $4$ or $8$ bytes.
+
+Here's an example of passing an `int` by value vs. by `in` reference on my $64$-bit machine:
+
+#!markdown
+
+```ini
+BenchmarkDotNet=v0.13.1, OS=Windows 10.0.22000
+Intel Core i5-8600K CPU 3.60GHz (Coffee Lake), 1 CPU, 6 logical and 6 physical cores
+.NET SDK=6.0.300
+  [Host]   : .NET 6.0.5 (6.0.522.21309), X64 RyuJIT
+  .NET 6.0 : .NET 6.0.5 (6.0.522.21309), X64 RyuJIT
+
+Job=.NET 6.0  Runtime=.NET 6.0
+```
+
+|            Method |      Mean |     Error |    StdDev | Ratio | RatioSD | Allocated |
+|------------------ |----------:|----------:|----------:|------:|--------:|----------:|
+|       TakeByValue | 0.4719 ns | 0.0060 ns | 0.0047 ns |  1.00 |    0.00 |         - |
+| TakeByInReference | 1.2503 ns | 0.0092 ns | 0.0077 ns |  2.65 |    0.03 |         - |
+
+#!markdown
+
+## Summary
+
+We've met the API that allows us to construct and examine magical spells using higher-level magical language.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [9.5. Array Pooling](https://gienieczko.com/teaching/csharp/9-performance/5-array-pooling),
+or straight to the next notebook, [`05-array-pooling.dib`](05-array-pooling.dib).

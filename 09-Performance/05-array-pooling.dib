@@ -1,0 +1,127 @@
+#!markdown
+
+# 9.5. Array Pooling
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/9-performance/5-array-pooling.
+
+It covers topics for section [9.5. Array Pooling](https://gienieczko.com/teaching/csharp/9-performance/5-array-pooling).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## `ArrayPool<T>`
+
+As mentioned in [9.0. Garbage Collection Details](https://gienieczko.com/teaching/csharp/9-performance/0-garbage-collection-details),
+large objects have their own portion of the managed heap that is treated specially by the GC. Large objects are usually
+arrays. Allocating large buffers often is therefore a pattern to avoid in .NET.
+
+The `System.Buffers.ArrayPool<T>` provides a solution to this by enabling reuse of `T[]` objects.
+A single pool manages a number of arrays of different sizes that it can _rent_ to the consumer.
+It can react dynamically to demand by increasing the number of pooled objects when it runs out of them.
+
+The recommended way of using a pool is via the thread-safe `Shared` instance.
+
+#!csharp
+
+using System.Buffers;
+
+void Foo()
+{
+    int[] array = ArrayPool<int>.Shared.Rent(10);
+
+    try
+    {
+        Console.WriteLine($"Value at 3: {array[3]}");
+        Console.WriteLine($"Length: {array.Length}");
+        
+        array[3] = 42;
+    }
+    finally
+    {
+        ArrayPool<int>.Shared.Return(array);
+    }
+}
+
+Foo();
+Foo();
+
+#!markdown
+
+Few things:
+
+1. The size of the array is guaranteed to be _at least_ the requested size, but it might be larger. The pool usually
+keeps arrays of sizes being powers of two.
+2. Arrays from the pool need not be zeroed.
+3. When we are done with an array we should `Return` it. It is permissible to not return an array,
+but the consequence is that effectively it is yoinked from the pool and a new one may need to be
+created in the pool to replace it.
+4. Using the array in any way after it was returned is a fatal error and may result in dragons eating
+the developer's face.
+
+We can create our own pools instead of using the `Shared` instance, but it's advised only for advanced scenarios.
+The main limitation of the `Shared` instance is that it supports "only" arrays of size up to 1GB.
+That is rarely an issue, but if it is for you then `ArrayPool<T>.Create` allows you to configure that maximum.
+
+#!markdown
+
+## `MemoryPool<T>`
+
+A memory pool is similar to the `ArrayPool`, but it rents out generic `Memory<T>` instances instead of full arrays.
+It makes it a bit more flexible and gives a nicer API returning a disposable object for automatic returning of the rented memory.
+
+#!csharp
+
+using System.Buffers;
+
+void Foo()
+{
+    using IMemoryOwner<int> owner = MemoryPool<int>.Shared.Rent(10);
+    Span<int> memory = owner.Memory.Span;
+
+    Console.WriteLine($"Value at 3: {memory[3]}");
+    Console.WriteLine($"Length: {memory.Length}");
+    
+    memory[3] = 42;
+}
+
+Foo();
+Foo();
+
+#!markdown
+
+Currently `MemoryPool` simply wraps over `ArrayPool` to provide a nicer API. If you don't care about
+your data being an actual array you should probably use `MemoryPool`.
+
+#!markdown
+
+I feel like benchmarks for these are fairly useless, as comparing allocating megabytes of data to... you know, _not_ doing that at all
+is not really fair. You can find some benchmarks done by a less lazy person [here](https://adamsitnik.com/Array-Pool/#the-benchmarks).
+
+#!markdown
+
+## Summary
+
+We've met the API that allows us to construct and examine magical spells using higher-level magical language.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [9.5. Array Pooling](https://gienieczko.com/teaching/csharp/9-performance/5-array-pooling),
+or straight to the next notebook, [`05-array-pooling.dib`](05-array-pooling.dib).

@@ -23,30 +23,42 @@ public class Benches
 
     public static string Needle => "interrelationships";
 
-    public string FromLongestSearch() =>
-        BenchmarkDemo.Library.FromLongestSearch.FindLongestSubstring(Needle, Haystack);
+    //[Benchmark(Baseline = true)]
+    //public string FromLongestSearch() =>
+    //    BenchmarkDemo.Library.FromLongestSearch.FindLongestSubstring(Needle, Haystack);
+
+    // [Benchmark]
+    // public string SpanBasedFromLongestSearch() =>
+    //     BenchmarkDemo.Library.FromLongestSearch.SpanBasedFindLongestSubstring(Needle, Haystack);
 
     [Benchmark(Baseline = true)]
     public string FromShortestSearch() =>
         BenchmarkDemo.Library.FromShortestSearch.FindLongestSubstring(Needle, Haystack);
 
+    // [Benchmark]
+    // public string SpanBasedFromShortestSearch() =>
+    //     BenchmarkDemo.Library.FromShortestSearch.SpanBasedFindLongestSubstring(Needle, Haystack);
 
     [Benchmark]
     public string FromShortestWithEliminationSearch() =>
-        BenchmarkDemo.Library.FromShortestWithEliminationSearch.FindLongestSubstring(Needle, Haystack);
+         BenchmarkDemo.Library.FromShortestWithEliminationSearch.FindLongestSubstring(Needle, Haystack);
+
+    // [Benchmark]
+    // public string SpanBasedFromShortestWithEliminationSearch() =>
+    //     BenchmarkDemo.Library.FromShortestWithEliminationSearch.SpanBasedFindLongestSubstring(Needle, Haystack);
 
     [GlobalSetup]
     public async Task SetupAsync()
     {
         StringBuilder regexBuilder = new();
 
-        for (var length = Needle.Length; length > ResultSize * Needle.Length; length -= 1)
+        var length = Math.Max((int)Math.Ceiling(ResultSize * Needle.Length), 1);
+
+        for (var start = 0; start + length <= Needle.Length; start += 1)
         {
-            for (var start = 0; start + length <= Needle.Length; start += 1)
-            {
-                var substring = Needle.Substring(start, length);
-                regexBuilder.Append($"({substring})|");
-            }
+            regexBuilder.Append('(');
+            regexBuilder.Append(Needle.AsSpan().Slice(start, length));
+            regexBuilder.Append(")|");
         }
 
         Haystack = await File.ReadAllTextAsync("./data/words.txt");
@@ -58,6 +70,6 @@ public class Benches
             Haystack = regex.Replace(Haystack, ReplaceWithXs);
         }
 
-        static string ReplaceWithXs(Match match) => string.Concat(Enumerable.Repeat('x', match.Length));
+        static string ReplaceWithXs(Match match) => string.Concat(Enumerable.Repeat('#', match.Length));
     }
 }
