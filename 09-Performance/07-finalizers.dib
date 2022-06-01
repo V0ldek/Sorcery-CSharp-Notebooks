@@ -1,0 +1,174 @@
+#!markdown
+
+# 9.7. Finalizers
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/9-performance/7-finalizers.
+
+It covers topics for section [9.7. Finalizers](https://gienieczko.com/teaching/csharp/9-performance/7-finalizers).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Here Be Dragons, Again
+
+There is only one reason for you to use finalizers, ever, is when you write some code
+holding an operating system resource. This is a fundamental problem that _needs_ to be solved
+for any general-purpose language, but usually is solved by the standard library.
+Most of the time you would use `SafeHandle`, described at the end of this section.
+
+However, we are inquisitive folk and we want to know all about C#, so let's talk about
+the hairiest bit yet.
+
+#!markdown
+
+## Finalization
+
+As mentioned in [9.0. Garbage Collection Details](https://gienieczko.com/teaching/csharp/9-performance/0-garbage-collection-details), some types need special finalization at the end of their lifetime. These are put on a finalization queue that the GC manages.
+It tries its best to execute the finalizers of all such instances.
+
+A finalizer is a special cleanup method that takes care of unmanaged resources that _critically_ need cleanup.
+When we have a `Mutex` instance that actually wraps an operating system handle to a kernel resource, it
+absolutely _needs_ to be returned back to the OS.
+
+A finalizer is declared with the special `~TypeName` syntax. It has to be a parameterless method.
+
+#!markdown
+
+```csharp
+public sealed class MyClass
+{
+    ~MyClass()
+    {
+        // cleanup
+    }
+}
+```
+
+#!markdown
+
+## Safe Handle
+
+Writing finalizers is complex and can very badly influence the application
+if you do it improperly. Therefore, the golden rule is: **don't**.
+
+If you ever need to wrap over an unmanaged resource, use a `SafeHandle`.
+It is an `abstract` base class implemented for all common OS handles,
+like `SafeFileHandle`. It can also be derived by a user for their
+own type of handle.
+
+When wrapping any type of releasable resource you should implement
+`IDisposable` with the familiar pattern:
+
+#!markdown
+
+```csharp
+public void Dispose()
+{
+    // Dispose of unmanaged resources.
+    Dispose(true);
+    // Suppress finalization.
+    GC.SuppressFinalize(this);
+}
+```
+
+#!markdown
+
+```csharp
+protected virtual void Dispose(bool disposing)
+{
+    if (_disposed)
+    {
+        return;
+    }
+
+    if (disposing)
+    {
+        // TODO: dispose managed state (managed objects).
+    }
+
+    // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+    // TODO: set large fields to null.
+
+    _disposed = true;
+}
+```
+
+#!markdown
+
+This ceremony is only needed for unsealed types. If you intend your
+operating-system-handle-wrapping class to be inherited, that's the correct way.
+Otherwise, just implement `void Dispose()`.
+
+Here's an example of a type wrapping over a `SafeHandle`:
+
+#!markdown
+
+```csharp
+class BaseClassWithSafeHandle : IDisposable
+{
+    // To detect redundant calls
+    private bool _disposedValue;
+
+    // Instantiate a SafeHandle instance.
+    private SafeHandle _safeHandle = new SafeFileHandle(IntPtr.Zero, true);
+
+    // Public implementation of Dispose pattern callable by consumers.
+    public void Dispose() => Dispose(true);
+
+    // Protected implementation of Dispose pattern.
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposedValue)
+        {
+            if (disposing)
+            {
+                _safeHandle.Dispose();
+            }
+
+            _disposedValue = true;
+        }
+    }
+}
+```
+
+#!markdown
+
+## Finalizers Are Last Resort
+
+In a perfect world everyone calls `Dispose` on things they control and everything is great.
+In an imperfect world that we live in we need finalizers as the last line of defence of the runtime,
+before we leak an OS resource.
+
+Finalizers are **evil**. They give virtually zero guarantees. The runtime says that
+it _might_ run a finalizer at some point, maybe, hopefully at most once, but no backsies.
+
+There is no guarantee a finalizer will ever be run.
+
+There is no guarantee that it will ever complete.
+
+There is no guarantee inside the finalizer that the managed objects owned by
+the object being finalized are even there. Or were even initialised.
+
+#!markdown
+
+## Summary
+
+Don't.
+
+If you have to, read up all the resources for this section to make sure you know what you're doing.

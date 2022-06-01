@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InParameter", "InParameter\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InParameterSmallStruct", "InParameterSmallStruct\InParameterSmallStruct.csproj", "{01CE5C5A-0AFC-44FA-B430-AA6DD755B805}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnsafeSum", "UnsafeSum\UnsafeSum.csproj", "{C6BB8542-F143-4668-8B40-C6F97E60490C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,6 +64,10 @@ Global
 		{01CE5C5A-0AFC-44FA-B430-AA6DD755B805}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{01CE5C5A-0AFC-44FA-B430-AA6DD755B805}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{01CE5C5A-0AFC-44FA-B430-AA6DD755B805}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C6BB8542-F143-4668-8B40-C6F97E60490C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C6BB8542-F143-4668-8B40-C6F97E60490C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C6BB8542-F143-4668-8B40-C6F97E60490C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C6BB8542-F143-4668-8B40-C6F97E60490C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{FC578051-3F43-48C8-8507-3DB4CC42DF32} = {9B35FA98-2370-4D1E-A30D-DFF06AB7427C}

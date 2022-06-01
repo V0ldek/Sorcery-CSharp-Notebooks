@@ -23,15 +23,15 @@ public class Benches
 
     public static string Needle => "interrelationships";
 
-    //[Benchmark(Baseline = true)]
-    //public string FromLongestSearch() =>
-    //    BenchmarkDemo.Library.FromLongestSearch.FindLongestSubstring(Needle, Haystack);
+    [Benchmark(Baseline = true)]
+    public string FromLongestSearch() =>
+        BenchmarkDemo.Library.FromLongestSearch.FindLongestSubstring(Needle, Haystack);
 
     // [Benchmark]
     // public string SpanBasedFromLongestSearch() =>
     //     BenchmarkDemo.Library.FromLongestSearch.SpanBasedFindLongestSubstring(Needle, Haystack);
 
-    [Benchmark(Baseline = true)]
+    [Benchmark]
     public string FromShortestSearch() =>
         BenchmarkDemo.Library.FromShortestSearch.FindLongestSubstring(Needle, Haystack);
 
@@ -39,9 +39,9 @@ public class Benches
     // public string SpanBasedFromShortestSearch() =>
     //     BenchmarkDemo.Library.FromShortestSearch.SpanBasedFindLongestSubstring(Needle, Haystack);
 
-    [Benchmark]
-    public string FromShortestWithEliminationSearch() =>
-         BenchmarkDemo.Library.FromShortestWithEliminationSearch.FindLongestSubstring(Needle, Haystack);
+    // [Benchmark]
+    // public string FromShortestWithEliminationSearch() =>
+    //     BenchmarkDemo.Library.FromShortestWithEliminationSearch.FindLongestSubstring(Needle, Haystack);
 
     // [Benchmark]
     // public string SpanBasedFromShortestWithEliminationSearch() =>

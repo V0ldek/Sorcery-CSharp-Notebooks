@@ -27,15 +27,249 @@ That's kind of the point of doing all this in notebooks.
 
 ## Here Be Dragons
 
+The topics here are useful in very specific. The primary usage of `unsafe` is to allow interop
+with other programming languages that run outside of the CLR, so _unmanaged_ code.
+There is a misconception that going to `unsafe` will give magical performance gains
+due to the virtue of being closer to the bare metal. It is well-known that the best
+way to make your Python code run fast is to replace it with C. But C# is not Python --
+it is fast by its own.
+
+I never wrote production code that contained `unsafe` and I'm very happy with it.
+On the other hand, there are people who work in embedded development or graphics
+processing that use it on a day-to-day basis due to the nature of their work.
+
+#!markdown
+
+## With Great Power Comes Great Unsafety
+
+To use any of the stuff from this module we need to enable unsafe compilation with
+
+```xml
+<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+```
+
+An unsafe context is an area of code that is allowed to do magical pointer stuff
+outside of managed jurisdiction, like dereference a pointer. We can make a
+block of code unsafe, or the entire method.
+
+#!csharp
+
+unsafe void Foo(int[] x)
+{
+    // Unsafe stuff permitted.
+}
+
+void Bar(int[] x)
+{
+    // Unsafe stuff not permitted here.
+    unsafe
+    {    
+        // Unsafe stuff permitted.
+    }
+    // Unsafe stuff not permitted here.
+}
+
+#!markdown
+
+Inside an `unsafe` context, we can basically use C. We get pointer types, like
+`void*`, `int*`, `char***`, etc. We can take addresses of values with `&`, and we
+can dereference pointers with `*` and the `->` accessor. We can index pointers with `[]`,
+just like in C, and we can do pointer arithmetic.
+
+Before we do any of that on a managed object, we need to _fix_ it. Remember that the GC
+is allowed to move objects around willy-nilly when it compresses the heap. This can happen
+whenever there is an allocation, since that can trigger a collection, and in particular
+it might happen in a different thread. Therefore, before we take any pointers, we need to
+tell the GC that an object is _pinned_ and it absolutely cannot move it.
+
+#!csharp
+
+unsafe long UnsafeSum(int[] x)
+{
+    long sum = 0;
+    int i = 0;
+    int n = x.Length;
+
+    fixed (int* pointer = &x[0])
+    {
+        while (i < n)
+        {
+            sum += pointer[i];
+            i += 1;
+        }
+    }
+
+    return sum;
+}
+
+int[] array = Enumerable.Range(0, 1000).ToArray();
+Console.WriteLine(UnsafeSum(array));
+
+#!markdown
+
+And now we can shoot ourselves in the foot, finally:
+
+#!csharp
+
+unsafe long UnsafeSum(int[] x)
+{
+    long sum = 0;
+    int i = 0;
+    int n = 10 * x.Length;
+
+    fixed (int* pointer = &x[0])
+    {
+        //       vv
+        while (i <= n)
+        {
+            sum += pointer[i];
+            i += 1;
+        }
+    }
+
+    return sum;
+}
+
+int[] array = Enumerable.Range(0, 1000).ToArray();
+Console.WriteLine(UnsafeSum(array));
+
+#!markdown
+
+Hey, it works, so it must be correct! Until we get a SEGFAULT at runtime
+or a random value, because the out-of-bounds thing was complete garbage.
+
+#!markdown
+
+Do we get performance out of it? A bit. Comparing summing with this method, a `for` loop, a `foreach` loop and LINQ's `Sum` extension method:
+
+#!markdown
+
+|     Method | ArraySize |      Mean |    Error |    StdDev | Ratio | RatioSD | Allocated |
+|----------- |---------- |----------:|---------:|----------:|------:|--------:|----------:|
+| ForeachSum |    100000 |  53.35 us | 0.062 us |  0.052 us |  1.00 |    0.00 |         - |
+|    LinqSum |    100000 | 490.52 us | 9.452 us | 10.885 us |  9.23 |    0.20 |      32 B |
+|     ForSum |    100000 |  55.81 us | 0.414 us |  0.346 us |  1.05 |    0.01 |         - |
+|  UnsafeSum |    100000 |  48.73 us | 0.249 us |  0.233 us |  0.91 |    0.00 |         - |
+
+#!markdown
+
+A regular `for` loop is slower than a `foreach`, fun fact. The win for `unsafe` is that it never
+does bounds-checking. However, there are many more performance considerations that need to be made.
+
+#!markdown
+
+## Pinning
+
+Pinning stuff is rather expensive for the GC. It needs to respect the pinned object during
+compression and it throws a small wrench into its gears. Therefore, `fixed` statements
+should be very limited in scope. Think of them the same as `lock` statements -- put them
+where they are needed, but don't hold them any longer than absolutely necessary.
+
+#!markdown
+
+## Unsafe `stackalloc`
+
+We can `stackalloc` and get a pointer instead of a `Span<T>` in an unsafe context.
+This allows us to shoot ourselves in the foot even more spectacularly!
+
+#!csharp
+
+unsafe int* StackAlloc(int size)
+{
+    int* ptr = stackalloc int[size];
+
+    for (int i = 0; i < size; i += 1)
+    {
+        ptr[i] = i;
+    }
+
+    Console.WriteLine(Sum(ptr, size));
+    return ptr;
+}
+
+unsafe long Sum(int* ptr, int length)
+{
+    long sum = 0;
+
+    for (var i = 0; i < length; i += 1)
+    {
+        sum += ptr[i];
+    }
+
+    return sum;
+}
+
+int DoSomeStuffOnTheStack(int i)
+{
+    if (i <= 1)
+    {
+        return 1;
+    }
+    
+    return DoSomeStuffOnTheStack(i - 1) + DoSomeStuffOnTheStack(i - 2);
+}
+
+unsafe void Foo()
+{
+    int* ptr = StackAlloc(10);
+
+    DoSomeStuffOnTheStack(10);
+
+    Console.WriteLine(Sum(ptr, 10));
+}
+
+Foo();
+
+#!markdown
+
+Fun!
+
+#!markdown
+
+## Function pointers
+
+For performance critical paths sometimes instantiating a delegate is relatively costly.
+When we want to call a function, usually an interop function from a different language,
+we can use function pointers, which, again, work like in C.
+
+#!csharp
+
+unsafe void Foo(delegate*<int, int> get)
+{
+    Console.WriteLine(get(10));
+}
+
+static int Bar(int n) => n * n;
+
+unsafe
+{
+    Foo(&Bar);
+}
+
+#!markdown
+
+## `nint` and `nuint`
+
+To represent memory offsets it's best to use special native integer types, `nint` and `nuint`.
+They are guaranteed to be the size of the pointer width of the running architecture.
+
+#!markdown
+
+## `Unsafe` class
+
+`Unsafe` is a special class in `System.CompilerServices` that contains fun
+utility methods for shooting yourself in the foot. You can add pointers together,
+copy buffers from raw `void*` pointers, directly write to memory...
+
 #!markdown
 
 ## Summary
 
-We've met the API that allows us to construct and examine magical spells using higher-level magical language.
+We've learnt how to turn C# into C if we really need to.
 
 #!markdown
 
 ## Next up:
 
-Continue with the next section, [9.5. Array Pooling](https://gienieczko.com/teaching/csharp/9-performance/5-array-pooling),
-or straight to the next notebook, [`05-array-pooling.dib`](05-array-pooling.dib).
+Continue with the next section, [9.7. Finalizers](https://gienieczko.com/teaching/csharp/9-performance/7-finalizers),
+or straight to the next notebook, [`07-finalizers.dib`](07-finalizers.dib).

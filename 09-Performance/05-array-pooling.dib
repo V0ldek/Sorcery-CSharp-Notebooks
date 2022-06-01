@@ -123,5 +123,5 @@ We've met the API that allows us to construct and examine magical spells using h
 
 ## Next up:
 
-Continue with the next section, [9.5. Array Pooling](https://gienieczko.com/teaching/csharp/9-performance/5-array-pooling),
-or straight to the next notebook, [`05-array-pooling.dib`](05-array-pooling.dib).
+Continue with the next section, [9.6. Unsafe](https://gienieczko.com/teaching/csharp/9-performance/6-unsafe),
+or straight to the next notebook, [`06-unsafe.dib`](06-unsafe.dib).
