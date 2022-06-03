@@ -323,7 +323,7 @@ going to call its `readonly` methods and properties. And don't just pass _all_ y
 do that only when you have performance issues and you can MEASURE the impact it has on your code.
 
 Oh, and remember that they have to be larger than a pointer, the rule of thumb is $16$-bytes.
-The reason should be obvious -- a reference is a pointer so it takes $4$ or $8$ bytes.
+The reason should be obvious – a reference is a pointer so it takes $4$ or $8$ bytes.
 
 Here's an example of passing an `int` by value vs. by `in` reference on my $64$-bit machine:
 
