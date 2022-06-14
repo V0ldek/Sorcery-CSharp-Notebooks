@@ -148,14 +148,14 @@ _(benchmarks can be found in the `RefStructs` directory for this notebook module
 
 ## `ref` struct
 
-A `ref` struct is a struct that has restrictions on its location on memory -- it can never be stored on the heap.
+A `ref` struct is a struct that has restrictions on its location on memory – it can never be stored on the heap.
 That's the rule number zero that governs and implies all other rules:
 
 1. A `ref` struct can't be the element type of an array. An array is basically always stored on the heap.
 2. A `ref` struct can't be a declared type of a field of a class or a non-`ref` struct. Pretty natural,
 only-on-stackness has to be compositional.
 3. A `ref` struct can't be boxed to `System.ValueType` or `System.Object`. Boxing is literally just "putting on the heap".
-4. A `ref` struct can't be a generic type argument. This one is a bit overly prohibitive -- there could be a modifier on a
+4. A `ref` struct can't be a generic type argument. This one is a bit overly prohibitive – there could be a modifier on a
 generic parameter that says "I promise to use this according to all these rules so it'd be safe to pass a `ref` struct here".
 However, it is clear that it cannot be passed to a method without any constraints, as we can do pretty much whatever
 with such a type.
@@ -164,7 +164,7 @@ as per the two above rules.
 6. A `ref` struct variable can't be captured by a lambda expression or a local function. Closures may need to allocate a heap-based object
 to keep their state.
 7. A `ref` struct variable can't be used in iterators, and ...
-8. A `ref` struct variable can't be used in an `async` method. Both of these for the same reason -- the state machine might be heap allocated.
+8. A `ref` struct variable can't be used in an `async` method. Both of these for the same reason – the state machine might be heap allocated.
 
 There is a special provision that allows `ref` structs to be disposable by simply having a `void Dispose()` method.
 
@@ -274,7 +274,7 @@ readonly struct NotRef
 ## `ref` Locals and `ref` Returns
 
 Following up on `ref`-ness, we can declare `ref` locals and return by-ref values.
-Locals follow similar rules to `ref` structs -- we must ensure that the reference to an on-stack
+Locals follow similar rules to `ref` structs – we must ensure that the reference to an on-stack
 value remains valid, so a `ref` local cannot escape to the heap. We can `ref` return
 things that live on the heap, and even build `ref` enumerables, as we've seen with `Span<T>`.
 

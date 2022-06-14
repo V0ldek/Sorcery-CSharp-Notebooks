@@ -81,7 +81,7 @@ ArgumentNullException.ThrowIfNull(myFancyName);
 ## Special System Attributes
 
 Some BCL attributes influence codegen or analysis in predefined ways.
-We've seen one of them -- the `ObsoleteAttribute` triggers an analysis warning
+We've seen one of them – the `ObsoleteAttribute` triggers an analysis warning
 when a given member is used.
 
 #!csharp

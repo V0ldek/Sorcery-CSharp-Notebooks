@@ -162,7 +162,7 @@ does bounds-checking. However, there are many more performance considerations th
 
 Pinning stuff is rather expensive for the GC. It needs to respect the pinned object during
 compression and it throws a small wrench into its gears. Therefore, `fixed` statements
-should be very limited in scope. Think of them the same as `lock` statements -- put them
+should be very limited in scope. Think of them the same as `lock` statements – put them
 where they are needed, but don't hold them any longer than absolutely necessary.
 
 #!markdown
