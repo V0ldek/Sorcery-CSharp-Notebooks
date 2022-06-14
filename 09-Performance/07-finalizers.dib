@@ -8,7 +8,7 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/9-performance/7-finalizers.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/9-performance.
 
 It covers topics for section [9.7. Finalizers](https://gienieczko.com/teaching/csharp/9-performance/7-finalizers).
 
@@ -172,3 +172,10 @@ the object being finalized are even there. Or were even initialised.
 Don't.
 
 If you have to, read up all the resources for this section to make sure you know what you're doing.
+
+#!markdown
+
+## Next up:
+
+This is the end of the module, next up is the Assignment!
+Click here to go there: [Assignment 9. - Rapid Reconnaissance](https://gienieczko.com/teaching/csharp/9-performance/assignment/9-rapid-reconnaissance).

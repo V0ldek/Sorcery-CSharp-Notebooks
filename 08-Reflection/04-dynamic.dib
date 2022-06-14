@@ -8,7 +8,7 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/8-reflection/4-dynamic.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/8-reflection.
 
 It covers topics for section [8.4. Dynamic](https://gienieczko.com/teaching/csharp/8-reflection/4-dynamic).
 
@@ -450,4 +450,5 @@ soundness checks until runtime.
 
 ## Next up:
 
-An unpublished assignment.
+This is the end of the module, next up is the Assignment!
+Click here to go there: [Assignment 8. - Adventurers, Assemble!](https://gienieczko.com/teaching/csharp/8-reflection/assignment/8-adventurers-assemble).

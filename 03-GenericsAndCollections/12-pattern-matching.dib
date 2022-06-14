@@ -168,7 +168,7 @@ readonly record struct Point3D(double X, double Y, double Z);
 string Match(Point2D obj) => obj switch
 {
     (1.0, 1.0) => "2D unit vector",
-    (double x, double y) => $"2D vector: {x}, {y}",
+    (var x, var y) => $"2D vector: {x}, {y}",
 };
 
 Console.WriteLine(Match(new Point2D(1.0, 1.0)));

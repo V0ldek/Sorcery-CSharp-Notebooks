@@ -8,7 +8,7 @@
 
 ### Content
 
-This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/9-performance/4-the-in-modifier.
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/9-performance.
 
 It covers topics for section [9.4. The `in` Modifier](https://gienieczko.com/teaching/csharp/9-performance/4-the-in-modifier).
 
@@ -94,10 +94,8 @@ public struct Large
     public QuiteBig Value15 { get; init; }
     public QuiteBig Value16 { get; init; }
     
-    [MethodImpl(MethodImplOptions.NoInlining)]
     public void Foo() { }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
     public void Bar() { }
 }
 
