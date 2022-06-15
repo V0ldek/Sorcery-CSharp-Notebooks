@@ -1,0 +1,147 @@
+#!markdown
+
+# 10.1. Concurrent Collections
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/10-concurrency.
+
+It covers topics for section [10.1. Concurrent Collections](https://gienieczko.com/teaching/csharp/10-concurrency/1-concurrent-collections).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Standard collections
+
+Standard collections in .NET are _not_ thread-safe. They are thread-safe for readonly access,
+but when a write comes into play it all breaks down. In particular, it's illegal to modify a collection
+while an enumerator to it exists, in most cases causing the enumerator to break.
+
+#!csharp
+
+using System.Threading;
+
+var list = Enumerable.Range(1, 1_000_000).ToList();
+var barrier = new Barrier(2);
+
+var writeTask = Task.Run(() => {
+    barrier.SignalAndWait();
+
+    for (var i = 1; i <= 1_000_000; i += 1)
+    {
+        list.Add(i);
+    }
+});
+var readTask = Task.Run(() => {
+    barrier.SignalAndWait();
+
+    var sum = list.Sum();
+    Console.WriteLine(sum);
+});
+
+await Task.WhenAll(writeTask, readTask);
+
+#!markdown
+
+Note that you don't need multithreading to get that behaviour:
+
+#!csharp
+
+var list = new List<int> { 1, 2 };
+
+var enumerator = list.GetEnumerator();
+enumerator.MoveNext();
+Console.WriteLine(enumerator.Current);
+
+list.Add(3);
+enumerator.MoveNext();
+Console.WriteLine(enumerator.Current);
+
+#!markdown
+
+## `System.Collections.Concurrent`
+
+Most popular collections have their concurrent counterparts:
+
+| Basic | Concurrent |
+|:------|:-----------|
+| `Stack<T>` | `ConcurrentStack<T>` |
+| `Queue<T>` | `ConcurrentQueue<T>` |
+| `Dictionary<T>` | `ConcurrentDictionary<T>` |
+| N/A | `ConcurrentBag<T>` |
+
+The `ConcurrentBag<T>` is a magical type that guarantees no ordering of items whatsoever,
+but is very well optimised for a multithreaded scenario where order doesn't matter.
+
+On top of those primitives we can construct a `BlockingCollection<T>`, which will wrap the provider and
+give us a blocking API.
+
+#!csharp
+
+using System.Diagnostics;
+using System.Threading;
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+
+#!csharp
+
+using System.Collections.Concurrent;
+
+void RunProducer(BlockingCollection<int> collection)
+{
+    for (var i = 0; i < 5; i += 1)
+    {
+        Thread.Sleep(250);
+        Log($"Producing {i}...");
+        collection.Add(i);
+        Log("Added.");
+    }
+
+    collection.CompleteAdding();
+    Log("Adding completed.");
+}
+
+void RunConsumer(BlockingCollection<int> collection)
+{
+    while (!collection.IsCompleted)
+    {
+        Thread.Sleep(1000);
+        Log("Taking...");
+        var value = collection.Take();
+        Log($"Consumed: {value}.");
+    }
+
+    Log("Completed.");
+}
+
+var collection = new BlockingCollection<int>(new ConcurrentQueue<int>(), 3);
+
+var task1 = Task.Run(() => RunProducer(collection));
+var task2 = Task.Run(() => RunConsumer(collection));
+
+await Task.WhenAll(task1, task2);
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [10.2. PLINQ](https://gienieczko.com/teaching/csharp/10-concurrency/2-plinq),
+or straight to the next notebook, [`02-plinq.dib`](02-plinq.dib).

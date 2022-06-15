@@ -1,0 +1,180 @@
+#!markdown
+
+# 10.2. PLINQ
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/10-concurrency.
+
+It covers topics for section [10.2. PLINQ](https://gienieczko.com/teaching/csharp/10-concurrency/2-plinq).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Parallel LINQ
+
+PLINQ is a wonderful contraption that gives us all the power and ergonomics of LINQ
+combined with out-of-the-box parallel processing. A single spell makes our code magically
+faster:
+
+#!csharp
+
+using System.Diagnostics;
+using System.IO;
+
+string[] lines = await File.ReadAllLinesAsync("./data/lorem-ipsum.txt");
+
+var stopwatch = new Stopwatch();
+stopwatch.Start();
+var numberOfWords = lines.Sum(l => l.Split().Length);
+stopwatch.Stop();
+
+Console.WriteLine(stopwatch.Elapsed);
+
+#!csharp
+
+using System.Diagnostics;
+using System.IO;
+
+string[] lines = await File.ReadAllLinesAsync("./data/lorem-ipsum.txt");
+
+var stopwatch = new Stopwatch();
+stopwatch.Start();
+var numberOfWords = lines.AsParallel().Sum(l => l.Split().Length);
+stopwatch.Stop();
+
+Console.WriteLine(stopwatch.Elapsed);
+
+#!markdown
+
+Underneath, the PLINQ engine determines the best strategy and degree of parallelism for the query and executes it.
+In most cases it just splits work evenly between as many workers as there are cores on the CPU.
+
+Ordering of results is not guaranteed, which should be natural:
+
+#!csharp
+
+var numbers = Enumerable.Range(2_137, 60).ToList();
+
+foreach (var n in numbers.AsParallel().Where(x => IsPrime(x)))
+{
+    Console.WriteLine(n);
+}
+
+bool IsPrime(long number)
+{
+    for (long i = 2; i <= Math.Sqrt(number); i += 1)
+    {
+        if (number % i == 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+#!markdown
+
+However, the original order can be preserved at a performance cost:
+
+#!csharp
+
+foreach (var n in numbers.AsParallel().AsOrdered().Where(x => IsPrime(x)))
+{
+    Console.WriteLine(n);
+}
+
+#!markdown
+
+Some operators don't have specialised parallelised versions in which case they will execute sequentially.
+
+#!markdown
+
+## Partitioners
+
+PLINQ has a strategy for dividing up work governed by a _Partitioner_. It can be one of the predefined
+types, or a custom one for really fine-tuned performance requirements.
+
+1. Hash partitioner -- used by default when needed, for example in `Join`s, `GroupBy`s, etc.
+2. Range partitioner -- used for indexable collections;
+3. Chunk partitioner -- used in other cases.
+
+This choice is important. The hash partitioner has high overhead, but is required for some use cases.
+Range partitioner will evenly distribute work, which might be beneficial in some cases, but not always.
+Chunk partitioner is better when elements of the sequence don't necessarily constitute equal amount of computational
+requirements. Our prime number algorithm is a good example -- it works long for primes, but for complex numbers
+with small divisors is very fast.
+
+We can force PLINQ to use some partitioning instead of figuring one out on its own.
+
+#!csharp
+
+using System.Collections.Concurrent;
+using System.Diagnostics;
+
+var numbers = Enumerable.Range(1, 10_000_000).ToList();
+
+var stopwatch = new Stopwatch();
+stopwatch.Start();
+var count1 = numbers.AsParallel().Count(x => IsPrime(x));
+stopwatch.Stop();
+
+Console.WriteLine(count1);
+Console.WriteLine(stopwatch.Elapsed);
+
+stopwatch.Restart();
+var count2 = Partitioner.Create(numbers, true).AsParallel().Count(x => IsPrime(x));
+stopwatch.Stop();
+
+Console.WriteLine(count2);
+Console.WriteLine(stopwatch.Elapsed);
+
+#!markdown
+
+This benchmark is volatile enough to warrant scepticism based on what we've learned
+in module 09. You should try and convert it into a BenchmarkDotNet benchmark!
+
+Oh, and I'm not comparing the baseline sequential solution here because it takes _ages_, like, almost $20$ seconds or so.
+
+#!markdown
+
+## Parallel loops
+
+In the `Parallel` class there are two loop constructs, `Parallel.For` and `Parallel.ForEach`, that enable efficient parallelisation
+of imperative loops. These are lower-level than the PLINQ operators, but if our operations couldn't
+be expressed as LINQ queries then these are the go-to methods.
+
+One of the interesting features it provides is short-circuiting loops using a special Loop State object.
+This is easier shown than described:
+
+#!csharp
+
+IEnumerable<int> source = Enumerable.Range(0, 1_000_000);
+
+Parallel.ForEach(source, (elem, state) => {
+    if (elem >= 500_000) {
+        state.Break();
+        Console.WriteLine(elem);
+    }
+});
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [10.3. Channels](https://gienieczko.com/teaching/csharp/10-concurrency/3-channels),
+or straight to the next notebook, [`03-channels.dib`](03-channels.dib).

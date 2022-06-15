@@ -1,0 +1,333 @@
+#!markdown
+
+# 10.0. Synchronisation
+
+<small>Copyright (c) Mateusz Gienieczko 2022</small>
+
+## How to use this notebook
+
+### Content
+
+This notebook is a part of the C#.NET Course at https://gienieczko.com/teaching/csharp/10-concurrency.
+
+It covers topics for section [10.0. Synchronisation](https://gienieczko.com/teaching/csharp/10-concurrency/0-synchronisation).
+
+### Notebook flow
+
+The content within a single subsection of this notebook is self-contained.
+However, within a single subsection you need to execute snippets from top to bottom,
+as the snippets below might use variables or types that are declared in the snippets above.
+
+### Play around
+
+You can edit the code parts freely and experiment with the language.
+That's kind of the point of doing all this in notebooks.
+
+#!markdown
+
+## Thread synchronisation
+
+When we write concurrent applications we need to coordinate access to mutable data with
+synchronisation mechanisms. We've met one before, the `lock` statement.
+
+#!markdown
+
+## Mutual Exclusion
+
+The `lock` statement is in fact syntactic sugar over `Monitor.Enter` and `Monitor.Exit`
+with a `try`/`finally` block. It also provides a `TryEnter` overload, that acquires a lock
+if it is available, but if not then it bails and moves on.
+
+#!csharp
+
+using System.Diagnostics;
+using System.Threading;
+
+static var stopwatch = new Stopwatch();
+stopwatch.Start();
+
+static void Log(string message) => 
+    Console.WriteLine($"[{Environment.CurrentManagedThreadId}][{stopwatch.Elapsed}] {message}");
+
+#!csharp
+
+using System.Threading;
+
+stopwatch.Restart();
+
+var syncRoot = new object();
+
+var task1 = Task.Run(() => {
+    Log("Task 1 starts.");
+    Log("Acquiring lock...");
+    lock (syncRoot) 
+    {
+        Log("Acquired lock.");
+        Thread.Sleep(2000);
+        Log("Releasing lock...");
+    }
+    Log("Task 1 ends.");
+});
+var task2 = Task.Run(() => {
+    Log("Task 2 starts.");
+    Thread.Sleep(500);
+    Log("Acquiring lock...");
+    lock (syncRoot) 
+    {
+        Log("Acquired lock.");
+        Thread.Sleep(1000);
+        Log("Releasing lock...");
+    }
+    Log("Task 2 ends.");
+});
+
+await Task.WhenAll(task1, task2);
+
+#!csharp
+
+using System.Threading;
+
+stopwatch.Restart();
+
+var syncRoot = new object();
+
+var task1 = Task.Run(() => {
+    Log("Task 1 starts.");
+    Log("Acquiring lock...");
+    lock (syncRoot) 
+    {
+        Log("Acquired lock.");
+        Thread.Sleep(2000);
+        Log("Releasing lock...");
+    }
+    Log("Task 1 ends.");
+});
+var task2 = Task.Run(() => {
+    Log("Task 2 starts.");
+    Thread.Sleep(500);
+    Log("Acquiring lock...");
+    var lockTaken = false;
+
+    try
+    {
+        Monitor.TryEnter(syncRoot, ref lockTaken);
+        if (lockTaken)
+        {
+            Log("Acquired lock.");
+            Thread.Sleep(1000);
+        }
+        else
+        {
+            Log("Failed to acquire.");
+        }
+    }
+    finally
+    {
+        if (lockTaken)
+        {
+            Log("Releasing lock...");
+            Monitor.Exit(syncRoot);
+        }
+    }
+    Log("Task 2 ends.");
+});
+
+await Task.WhenAll(task1, task2);
+
+#!markdown
+
+There's also an overload with a timeout. Try it out -- a timeout of $\approx1600$ ms should be sufficient to acquire the lock!
+
+#!markdown
+
+This is the fastest synchronisation primitive, acquiring an uncontested lock is in the range of nanoseconds.
+It is also very flexible, locks can be entered many times by the same thread and are released only when exited that many times.
+
+However, it obviously only works for multiple threads in the same process, as they need to see the same object
+on the managed heap. For interprocess communication we'd use a [`Mutex`](https://docs.microsoft.com/en-us/dotnet/api/system.threading.mutex?view=net-6.0),
+which actually allocates a kernel resource with a name that can be referenced from other processes on the machine.
+
+#!markdown
+
+## Nonexclusive locking
+
+To allow more than one thread to access a resource we can use a `Semaphore`, which is another system-wide resource.
+For local synchronisation, the crazily optimised `SemaphoreSlim` is better suited.
+
+#!csharp
+
+using System.Threading;
+
+stopwatch.Restart();
+
+var semaphore = new SemaphoreSlim(0, 5);
+
+void AccessResource()
+{
+    Log("Accessing...");
+
+    semaphore.Wait();
+    Log("Acquired");
+    Thread.Sleep(1000);
+    Log("Releasing...");
+    semaphore.Release();
+}
+
+var tasks = Enumerable.Range(0, 5).Select(_ => Task.Run(AccessResource)).ToList();
+
+await Task.Delay(500);
+Log("Ready...");
+await Task.Delay(500);
+Log("Set...");
+await Task.Delay(500);
+Log("Go!");
+semaphore.Release(3);
+
+await Task.WhenAll(tasks);
+
+#!markdown
+
+There is also a specialised reader-writer lock, the `ReaderWriterLockSlim`. Unlike previously, the non-slim version is not system wide and should not be used as obsolete.
+
+#!markdown
+
+## `Lazy<T>`
+
+There is a common problem of wanting to compute and then cache some value.
+Writing thread-safe logic for that by hand is error-prone, thus we have a built-in .NET type that does that for us.
+
+#!csharp
+
+stopwatch.Restart();
+
+var lazy = new Lazy<int>(Initialize);
+
+int Initialize()
+{
+    Log("Initializing...");
+    return 42;
+}
+
+var barrier = new Barrier(10);
+
+var tasks = Enumerable.Range(0, 10).Select(_ => Task.Run(() => 
+{
+    barrier.SignalAndWait();
+    var value = lazy.Value;
+    Log($"Read: {value}");
+})).ToList();
+
+await Task.WhenAll(tasks);
+
+#!markdown
+
+If asynchronous initialisation is needed, `Lazy<Task<T>>` should be used. It ensures only a single thread
+will kick off the task (due to `Lazy`), and then allows thread-safe asynchronous awaiting for the result
+(`Task<T>` is thread-safe).
+
+#!markdown
+
+## Nonblocking Synchronisation
+
+All of the above approaches block the thread if it cannot access the synchronised resource.
+There are some basic operations that can be synchronised effectively by our hardware.
+This is done with magical methods available via the `Interlocked` static class.
+
+Recall that the following code is not thread-safe and results in arbitrary values:
+
+#!csharp
+
+var counter = 0;
+
+var task1 = Task.Run(() => {
+    for (var i = 0; i < 1_000_000; i += 1) counter += 1;
+});
+var task2 = Task.Run(() => {
+    for (var i = 0; i < 1_000_000; i += 1) counter += 1;
+});
+
+await task1;
+await task2;
+
+Console.WriteLine(counter);
+
+#!markdown
+
+However, this code is safe and non-blocking, thanks to CPU's atomic instructions.
+
+#!csharp
+
+var counter = 0;
+
+var task1 = Task.Run(() => {
+    for (var i = 0; i < 1_000_000; i += 1) Interlocked.Increment(ref counter);
+});
+var task2 = Task.Run(() => {
+    for (var i = 0; i < 1_000_000; i += 1) Interlocked.Increment(ref counter);
+});
+
+await task1;
+await task2;
+
+Console.WriteLine(counter);
+
+#!markdown
+
+This will be safe in situations where lock contention for blocking solutions is large.
+
+Another staple of atomic operations is `CompareExchange`, which generalises many atomic operations.
+It takes a reference to a field and two values, $x$ and $y$. If the value in the field is equal to
+$y$, it gets replaced by $x$. Otherwise, it is unchanged. The method always returns the actual value found in the field
+and the entire operation is guaranteed to be atomic.
+
+#!csharp
+
+stopwatch.Restart();
+
+int mutex = 1;
+
+var task1 = Task.Run(() => {
+    Log("Task 1.");
+    Thread.Sleep(500);
+    var value = Interlocked.CompareExchange(ref mutex, 0, 1);
+
+    if (value == 1)
+    {
+        Log("Acquired.");
+    }
+    else
+    {
+        Log("Too late.");
+    }
+});
+var task2 = Task.Run(() => {
+    Log("Task 2.");
+    Thread.Sleep(490);
+    var value = Interlocked.CompareExchange(ref mutex, 0, 1);
+
+    if (value == 1)
+    {
+        Log("Acquired.");
+    }
+    else
+    {
+        Log("Too late.");
+    }
+});
+
+await Task.WhenAll(task1, task2);
+
+#!markdown
+
+## Free thread-safety
+
+Remember -- thread-safety comes to play only with mutable state. When using immutable structures
+the problem does not exist. While having side effects somewhere in your code is unavoidable in the end,
+oftentimes making a type immutable is the easiest way of making it thread-safe.
+
+#!markdown
+
+## Next up:
+
+Continue with the next section, [10.1. Concurrent Collections](https://gienieczko.com/teaching/csharp/10-concurrency/1-concurrent-collections),
+or straight to the next notebook, [`01-concurrent-collections.dib`](01-concurrent-collections.dib).
