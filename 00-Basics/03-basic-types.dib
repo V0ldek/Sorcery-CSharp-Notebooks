@@ -1,3 +1,7 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":null,"items":[{"name":"csharp","languageName":"C#","aliases":["c#","cs"]},{"name":"fsharp","languageName":"F#","aliases":["f#","fs"]},{"name":"pwsh","languageName":"PowerShell","aliases":["powershell"]},{"name":"javascript","languageName":"JavaScript","aliases":["js"]},{"name":"html","languageName":"HTML"},{"name":"sql","languageName":"SQL"},{"name":"kql","languageName":"KQL"},{"name":"mermaid","languageName":"Mermaid"},{"name":"httpRequest","languageName":"http"},{"name":"value"}]}}
+
 #!markdown
 
 # 0.3. Basic Types
@@ -295,8 +299,8 @@ This can cause information loss and overflow.
 
 #!csharp
 
-long x = 1_000_000_000_000;
-var y = (int) x;
+long x = 1_000_000_000_000; // 1110_1000_1101_0100_1010_0101_0001_0000_0000_0000
+var y = (int) x;            //           1101_0100_1010_0101_0001_0000_0000_0000
 
 Console.WriteLine(x);
 Console.WriteLine(y);
@@ -538,6 +542,48 @@ we need to somehow escape it, and backslash no longer works. To do that, we just
 var verbatimQuotes = @"""Within quotes""";
 
 Console.WriteLine(verbatimQuotes);
+
+#!markdown
+
+Another feature are **raw string literals**. We delimit them with triple double quotes,
+and they can contain any crazy characters you want. They can either be single-line or multi-line, as long as the triple quotes appear on their own lines separate from the text.
+
+They are automatically formatted in a sensible way, excluding leading and trailing newlines and indentation &ndash; the indentation of the delimiters is taken as baseline.
+
+#!csharp
+
+var x = """
+        I'm writing a poem.
+        It's not really long.
+
+        Or very good at that.
+        But it can contain \ ""literally"" { any } unicode \n\b \u0000 characters.
+        """;
+var y = @"I'm writing a poem.
+          It's not really long.
+
+          Or very good at that.
+";
+
+Console.WriteLine("==========================");
+Console.WriteLine(x);
+Console.WriteLine("==========================");
+Console.WriteLine(y);
+Console.WriteLine("==========================");
+
+#!markdown
+
+If you want to include triple double quote sequences within the text, you can increase the number of quotes in the delimiters. As long as they're longer than the longest sequence in the actual raw text, you're golden.
+
+#!csharp
+
+var x = """"""
+        
+        Quote mania! """"" wooo hooo """""
+        
+        """""";
+
+Console.WriteLine(x);
 
 #!markdown
 
